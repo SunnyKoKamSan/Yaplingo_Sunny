@@ -1,0 +1,19 @@
+[project]
+name = "yaplingo"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "uvicorn>=0.35.0",
+    "fastapi>=0.116.1",
+    "python-multipart>=0.0.20",
+    "transformers>=4.56.1",
+    "torchaudio>=2.8.0",
+    "torch>=2.8.0",
+    "soundfile>=0.13.1",
+    "phonemizer>=3.3.0",
+    "levenshtein>=0.27.1",
+    "deepfilternet>=0.5.6",
+]
+
+[tool.ruff]
+line-length = 120
