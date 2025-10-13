@@ -7,6 +7,7 @@
     "scheme": "yaplingo",
     "plugins": [
       "expo-router",
+      "expo-audio",
       "expo-font",
       "expo-dev-client",
       [
@@ -19,12 +20,6 @@
             "image": "./assets/icon.png"
           },
           "imageWidth": 128
-        }
-      ],
-      [
-        "expo-audio",
-        {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
         }
       ]
     ],
