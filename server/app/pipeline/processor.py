@@ -9,7 +9,6 @@ class AudioProcessor:
     SR = 16_000  # 16kHz for Wav2Vec2
 
     def __init__(self):
-        print("initializing audio processor...")
         self._df_model, self._df_state, _ = deepfilter.init_df()
 
     def __call__(self, data: bytes) -> torch.Tensor | None:

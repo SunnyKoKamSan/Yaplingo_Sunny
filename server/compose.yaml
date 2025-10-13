@@ -13,6 +13,6 @@ services:
 
 models:
   llm:
-    model: "ai/llama3.2"
+    model: ai/llama3.1
     runtime_flags:
       - "--no-prefill-assistant"

@@ -6,6 +6,7 @@ import torch
 import torchaudio
 from transformers import Wav2Vec2ForCTC, Wav2Vec2PhonemeCTCTokenizer, Wav2Vec2Processor
 
+from ..generators.transcript import Transcript
 from .processor import AudioProcessor
 
 
@@ -35,7 +36,6 @@ class PhonemeAligner:
     MODEL_ID = "facebook/wav2vec2-lv-60-espeak-cv-ft"
 
     def __init__(self):
-        print("initializing phoneme aligner...")
         self._model = Wav2Vec2ForCTC.from_pretrained(PhonemeAligner.MODEL_ID)
         self._processor = Wav2Vec2Processor.from_pretrained(PhonemeAligner.MODEL_ID)
         self._tokenizer = Wav2Vec2PhonemeCTCTokenizer.from_pretrained(PhonemeAligner.MODEL_ID)
@@ -49,37 +49,14 @@ class PhonemeAligner:
         with torch.inference_mode():
             return self._model(**inputs).logits
 
-    def align_phonemes(self, logits: torch.Tensor, transcript: str) -> list[AlignedPhoneme]:
-        tokens = self._tokenizer(transcript).input_ids
+    def align_phonemes(self, logits: torch.Tensor, transcript: Transcript) -> list[AlignedPhoneme]:
+        tokens = self._tokenizer(transcript.text).input_ids
         tokens = torch.tensor([tokens], dtype=torch.int32)
 
         log_probs = logits.log_softmax(dim=-1)
 
         [alignments], [scores] = torchaudio.functional.forced_align(log_probs, tokens)
         spans = torchaudio.functional.merge_tokens(alignments, scores.exp())
-
-        # # TODO: use model's tokenizer to convert to phonemes
-        # phonemes = phonemize(
-        #     transcript,
-        #     language="en-us",
-        #     backend="espeak",
-        #     strip=True,
-        #     with_stress=False,
-        #     preserve_punctuation=False,
-        # )
-        # lengths = [len(p) for p in str(phonemes).split()]
-
-        # i, wordgroups = 0, []
-        # for length in lengths:
-        #     x, size = 0, 0
-        #     for phoneme in aligned_phonemes[i:]:
-        #         x += 1
-        #         size += len(phoneme.token)
-        #         if size >= length:
-        #             break
-        #     wordgroups.append(aligned_phonemes[i : i + x])
-        #     i += x
-        # return wordgroups
 
         return [
             AlignedPhoneme(
@@ -112,7 +89,7 @@ class PhonemeAligner:
         ]
         return differences
 
-    def __call__(self, waveform: torch.Tensor, transcript: str) -> Phonemes:
+    def __call__(self, waveform: torch.Tensor, transcript: Transcript) -> Phonemes:
         logits = self.perform_inference(waveform)
         aligned_phonemes = self.align_phonemes(logits, transcript)
         predicted_phonemes = self.predict_phonemes(logits)
