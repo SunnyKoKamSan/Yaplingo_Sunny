@@ -9,7 +9,7 @@ class Generator(ABC):
     BASE_URL = "http://model-runner.docker.internal/engines/v1"
 
     def __init__(self):
-        self.client = OpenAI(base_url=Generator.BASE_URL, api_key="")
+        self._client = OpenAI(base_url=Generator.BASE_URL, api_key="")
 
     @property
     @abstractmethod
@@ -17,7 +17,7 @@ class Generator(ABC):
         raise NotImplementedError
 
     def __call__(self, prompt: str, **kwargs) -> str:
-        completion = self.client.chat.completions.create(
+        completion = self._client.chat.completions.create(
             model=Generator.MODEL_ID,
             messages=[
                 {"role": "system", "content": self.system_prompt},

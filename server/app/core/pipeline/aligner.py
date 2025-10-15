@@ -43,8 +43,8 @@ class PhonemeAligner:
     def perform_inference(self, waveform: torch.Tensor) -> torch.Tensor:
         inputs = self._processor(
             waveform,
-            sampling_rate=AudioProcessor.SR,
-            return_tensors="pt",  # essential
+            sampling_rate=AudioProcessor.SR,  # type: ignore[arg-type]
+            return_tensors="pt",  # essential # type: ignore[arg-type]
         )
         with torch.inference_mode():
             return self._model(**inputs).logits

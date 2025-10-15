@@ -14,14 +14,17 @@ class Transcript:
 
 
 class TranscriptGenerator(Generator):
-    SYSTEM_PROMPT = """
-    You are an expert language teacher specializing in pronunciation for English learners.
+    LANGUAGE = "English"
+    LANG_CODE = "en-us"
+    SYSTEM_PROMPT = f"""
+    You are an expert language teacher specializing in pronunciation for {LANGUAGE} learners.
     Generate exactly one sentence with the following context for pronunciation practice.
 
     - Scenario: extracted from a casual conversation
     - Difficulty: suitable for intermediate learners
 
     Output only the sentence itself, with no additional text and no quotes.
+    The sentence should be fresh and should not have been generated previously.
     """
 
     @property
@@ -38,7 +41,7 @@ class TranscriptGenerator(Generator):
         # TODO: use model's tokenizer to do phonemes conversion
         phonemes = phonemize(
             text,
-            language="en-us",
+            language=TranscriptGenerator.LANG_CODE,
             backend="espeak",
             strip=True,
             with_stress=False,

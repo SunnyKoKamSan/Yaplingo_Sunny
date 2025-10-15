@@ -7,13 +7,16 @@ import {
   AudioQuality,
   RecordingOptions,
   setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
   useAudioRecorder,
   useAudioRecorderState,
 } from "expo-audio";
-import * as Speech from "expo-speech";
 import axios from "axios";
 import { AudioLinesIcon, MicIcon, Repeat2Icon, Volume2Icon } from "lucide-react-native";
 import tw from "twrnc";
+
+import { encodeArrayBufferBase64 } from "~/utils";
 
 const RECORDING_OPTIONS: RecordingOptions = {
   extension: ".wav",
@@ -51,27 +54,45 @@ type Result = {
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
+const client = axios.create({
+  baseURL: API_URL,
+  responseType: "json",
+});
+
 export default function HomeScreen() {
+  const player = useAudioPlayer();
+  const playerStatus = useAudioPlayerStatus(player);
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder);
 
-  const query = useQuery({
+  const _queryTranscript = useQuery({
     queryKey: ["transcript"],
     queryFn: async () => {
-      const response = await axios.get(`${API_URL}/`);
-      return response.data as Transcript;
+      const response = await client.get<Transcript>("/");
+      return response.data;
     },
   });
+  const { data: transcript, ...queryTranscript } = _queryTranscript;
+
+  const _queryPronunciation = useQuery({
+    queryKey: ["pronunciation", transcript?.id],
+    queryFn: async () => {
+      const response = await client.get<ArrayBuffer>(`/${transcript!.id}/pronunciation.wav`, {
+        responseType: "arraybuffer",
+      });
+      return response.data;
+    },
+    enabled: !!transcript,
+  });
+  const { data: pronunciation, ...queryPronunciation } = _queryPronunciation;
 
   const mutation = useMutation({
     mutationFn: async (uri: string) => {
-      if (!query.data) {
-        throw new Error("No transcript loaded.");
-      }
+      if (!transcript) throw new Error("No transcript loaded.");
       const data = new FormData();
       // @ts-expect-error React Native FormData issue
       data.append("audio", { uri, name: "audio.wav", type: "audio/vnd.wav" });
-      const response = await axios.post(`${API_URL}/${query.data.id}/teach`, data, {
+      const response = await client.post(`/${transcript.id}/teach`, data, {
         validateStatus: () => true, // do not throw as error on non-ok status
       });
       if (response.status !== 200) {
@@ -88,6 +109,15 @@ export default function HomeScreen() {
     })();
   }, []);
 
+  React.useEffect(() => {
+    // replace player's audio source when `pronunciation` changes
+    if (pronunciation) {
+      const base64 = encodeArrayBufferBase64(pronunciation);
+      const uri = `data:audio/wav;base64,${base64}`;
+      player.replace(uri);
+    }
+  }, [player, pronunciation]);
+
   async function startRecording() {
     await setAudioModeAsync({
       allowsRecording: true,
@@ -100,10 +130,19 @@ export default function HomeScreen() {
 
   async function stopRecording() {
     await recorder.stop();
-    if (recorder.uri) {
-      mutation.mutate(recorder.uri);
-    }
+    if (recorder.uri) mutation.mutate(recorder.uri);
   }
+
+  const disabledPronounce =
+    playerStatus.playing ||
+    playerStatus.isBuffering ||
+    queryTranscript.isFetching ||
+    queryTranscript.isError ||
+    queryPronunciation.isFetching ||
+    queryPronunciation.isError;
+  const disabledRecord =
+    mutation.isPending || queryTranscript.isFetching || queryTranscript.isError;
+  const disabledNext = mutation.isPending || queryTranscript.isFetching;
 
   return (
     <SafeAreaView style={tw`flex-1 items-center justify-between gap-2 px-4`}>
@@ -112,68 +151,61 @@ export default function HomeScreen() {
         {/* <Text style={tw`text-lg font-medium`}>{new Date().toLocaleDateString()}</Text> */}
       </View>
       <View style={tw`gap-4`}>
-        {query.isFetching ? (
+        {queryTranscript.isFetching ? (
           <ActivityIndicator size="large" />
-        ) : (
-          <>
-            <View style={tw`items-center justify-center gap-4 rounded-xl bg-white p-8 `}>
-              {query.isSuccess && (
-                <>
-                  <Text selectable style={tw`text-center text-3xl font-medium`}>
-                    {query.data.text}
-                  </Text>
-                  <Text style={tw`text-center text-2xl font-medium`}>
-                    {query.data.phonemes.join(" ")}
-                  </Text>
-                </>
-              )}
-            </View>
-          </>
-        )}
+        ) : queryTranscript.isSuccess ? (
+          <View style={tw`items-center justify-center gap-4 rounded-xl bg-white p-8 `}>
+            <Text selectable style={tw`text-center text-3xl font-medium`}>
+              {transcript!.text}
+            </Text>
+            <Text style={tw`text-center text-2xl font-medium`}>
+              {transcript!.phonemes.join(" ")}
+            </Text>
+          </View>
+        ) : null}
       </View>
       <View style={tw`w-full flex-row items-center justify-between p-8`}>
-        {!query.isFetching && (
-          <>
-            {!recorderState.isRecording && (
-              <Pressable
-                style={({ pressed }) =>
-                  tw.style("rounded-full bg-violet-500 p-4", pressed && "opacity-80")
-                }
-                onPress={async () => {
-                  if (!(await Speech.isSpeakingAsync()))
-                    Speech.speak(query.data?.text ?? "", {
-                      rate: 0.75,
-                      // language: "de-DE",
-                    });
-                }}>
-                <Volume2Icon color="white" size={24} />
-              </Pressable>
-            )}
-            <Pressable
-              style={({ pressed }) =>
-                tw.style(
-                  "mx-auto rounded-full p-6",
-                  pressed && "opacity-80",
-                  recorderState.isRecording ? "bg-red-500" : "bg-blue-500",
-                )
-              }
-              onPress={() => (recorderState.isRecording ? stopRecording() : startRecording())}>
-              {recorderState.isRecording ? (
-                <AudioLinesIcon color="white" size={32} />
-              ) : (
-                <MicIcon color="white" size={32} />
-              )}
-            </Pressable>
-            {!recorderState.isRecording && (
-              <Pressable
-                style={({ pressed }) =>
-                  tw.style("rounded-full bg-gray-500 p-4", pressed && "opacity-80")
-                }
-                onPress={() => query.refetch()}>
-                <Repeat2Icon color="white" size={24} />
-              </Pressable>
-            )}
-          </>
+        {!recorderState.isRecording && (
+          <Pressable
+            style={({ pressed }) =>
+              tw.style("rounded-full bg-violet-500 p-4", pressed && "opacity-80")
+            }
+            onPress={() => {
+              player.seekTo(0);
+              player.play();
+            }}
+            disabled={disabledPronounce}>
+            <Volume2Icon color="white" size={24} />
+          </Pressable>
+        )}
+        <Pressable
+          style={({ pressed }) =>
+            tw.style(
+              "mx-auto rounded-full p-6",
+              pressed && "opacity-80",
+              recorderState.isRecording ? "bg-red-500" : "bg-blue-500",
+            )
+          }
+          onPress={() => (recorderState.isRecording ? stopRecording() : startRecording())}
+          disabled={disabledRecord}>
+          {recorderState.isRecording ? (
+            <AudioLinesIcon color="white" size={32} />
+          ) : (
+            <MicIcon color="white" size={32} />
+          )}
+        </Pressable>
+        {!recorderState.isRecording && (
+          <Pressable
+            style={({ pressed }) =>
+              tw.style("rounded-full bg-gray-500 p-4", pressed && "opacity-80")
+            }
+            onPress={() => {
+              player.pause();
+              queryTranscript.refetch();
+            }}
+            disabled={disabledNext}>
+            <Repeat2Icon color="white" size={24} />
+          </Pressable>
         )}
       </View>
     </SafeAreaView>

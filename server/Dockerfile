@@ -1,4 +1,4 @@
-FROM python:3.13.7
+FROM python:3.10
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN apt-get update && \
@@ -13,7 +13,9 @@ WORKDIR /app
 COPY pyproject.toml uv.lock .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project
+    uv sync --no-install-project && \
+    # kokoro requires pip to install some packages
+    uv run python -m ensurepip --upgrade
 
 COPY ./app ./app
 

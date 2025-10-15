@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from ..generators.transcript import Transcript, TranscriptGenerator
+from ..generators.transcript import Transcript
 from .aligner import PhonemeAligner, Phonemes
 from .processor import AudioProcessor
 
@@ -15,10 +15,6 @@ class Pipeline:
     def __init__(self):
         self.audio_processor = AudioProcessor()
         self.phoneme_aligner = PhonemeAligner()
-        self._transcript_generator = TranscriptGenerator()
-
-    def generate_transcript(self) -> Transcript:
-        return self._transcript_generator()
 
     def __call__(self, audio: bytes, transcript: Transcript) -> Result | None:
         waveform = self.audio_processor(audio)
