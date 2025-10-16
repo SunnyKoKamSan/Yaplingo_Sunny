@@ -2,11 +2,10 @@ FROM python:3.10
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN apt-get update && \
-    # install espeak-ng for phonemizer to work
+    # phonemizer: uses espeak-ng as the backend
     apt-get install espeak-ng -y --no-install-recommends && \
-    # install maturin to build deepfilternet
-    apt-get install cargo -y --no-install-recommends && \
-    uv tool install maturin
+    # deepfilternet: requires maturin to build
+    apt-get install python3-maturin -y --no-install-recommends
 
 WORKDIR /app
 
@@ -14,8 +13,8 @@ COPY pyproject.toml uv.lock .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-install-project && \
-    # kokoro requires pip to install some packages
-    uv run python -m ensurepip --upgrade
+    # kokoro: requires pip to install some packages
+    uv pip install pip
 
 COPY ./app ./app
 
