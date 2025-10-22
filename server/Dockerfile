@@ -10,6 +10,7 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY pyproject.toml uv.lock .
+COPY ./vendor ./vendor
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-install-project && \

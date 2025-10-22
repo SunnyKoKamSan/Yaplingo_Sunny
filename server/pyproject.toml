@@ -16,9 +16,11 @@ dependencies = [
     "openai>=2.1.0",
     "kokoro>=0.9.4",
     "protobuf>=6.33.0",
-    "phonemizer>=3.3.0",
-    "phonemizer-fork>=3.3.2",
+    "phonemizer",
 ]
 
 [tool.ruff]
 line-length = 120
+
+[tool.uv.sources]
+phonemizer = { path = "vendor/phonemizer", editable = true }
