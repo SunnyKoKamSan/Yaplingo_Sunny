@@ -37,20 +37,21 @@ const RECORDING_OPTIONS: RecordingOptions = {
 type Transcript = {
   id: string;
   text: string;
-  phonemes: string[];
+  sequence: string;
 };
 
 type Result = {
-  feedback: string;
+  feedback: string | null;
   phonemes: {
-    aligned: {
+    alignments: {
       token: string;
       score: number;
       interval: [number, number];
     }[];
-    predicted: string[];
+    predictions: string[];
+    differences: unknown[];
   };
-} | null;
+};
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -98,7 +99,7 @@ export default function HomeScreen() {
       if (response.status !== 200) {
         throw new Error(response.data as string);
       }
-      return response.data as Result;
+      return response.data as Result | null;
     },
   });
 
@@ -153,16 +154,25 @@ export default function HomeScreen() {
       <View style={tw`gap-4`}>
         {queryTranscript.isFetching ? (
           <ActivityIndicator size="large" />
-        ) : queryTranscript.isSuccess ? (
-          <View style={tw`items-center justify-center gap-4 rounded-xl bg-white p-8 `}>
-            <Text selectable style={tw`text-center text-3xl font-medium`}>
-              {transcript!.text}
-            </Text>
-            <Text style={tw`text-center text-2xl font-medium`}>
-              {transcript!.phonemes.join(" ")}
-            </Text>
-          </View>
-        ) : null}
+        ) : (
+          <>
+            {queryTranscript.isSuccess && (
+              <View style={tw`items-center justify-center gap-4 rounded-xl bg-white p-8 `}>
+                <Text selectable style={tw`text-center text-3xl font-medium`}>
+                  {transcript!.text}
+                </Text>
+                <Text style={tw`text-center text-2xl font-medium`}>{transcript!.sequence}</Text>
+              </View>
+            )}
+            {mutation.isSuccess && mutation.data !== null && (
+              <View style={tw`items-center justify-center rounded-xl bg-white p-8 `}>
+                <Text style={tw`text-center text-lg font-medium`}>
+                  {mutation.data.feedback ?? "Excellent!"}
+                </Text>
+              </View>
+            )}
+          </>
+        )}
       </View>
       <View style={tw`w-full flex-row items-center justify-between p-8`}>
         {!recorderState.isRecording && (

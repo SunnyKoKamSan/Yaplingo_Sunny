@@ -1,28 +1,44 @@
-from dataclasses import dataclass
-
 from phonemizer import phonemize
+from phonemizer.separator import Separator
+from pydantic import Field, computed_field
+from pydantic.dataclasses import dataclass
 from ulid import ULID
 
 from . import Generator
 
+PUNCTUATION = r"""!"#$%&'()*+,-.:;<=>?@[\]^_`{|}~"""  # exclude /
 
-@dataclass
+
+@dataclass(frozen=True, kw_only=True)
 class Transcript:
     id: ULID
     text: str
-    phonemes: list[str]
+    _sequence: str = Field(exclude=True)
+
+    @computed_field
+    @property
+    def sequence(self) -> str:
+        return self._sequence.replace("/", "")
+
+    @property
+    def word_phonemes(self) -> list[tuple[str, list[str]]]:
+        trans = str.maketrans("", "", PUNCTUATION)
+        sequence = self._sequence.translate(trans)
+        results: list[tuple[str, list[str]]] = []
+        for word, seq in zip(self.text.split(), sequence.split()):
+            results.append((word.strip(PUNCTUATION), seq.split("/")))
+        return results
 
 
 class TranscriptGenerator(Generator):
     LANGUAGE = "English"
     LANG_CODE = "en-us"
+    PHONEMIZER_BACKEND = "espeak"
     SYSTEM_PROMPT = f"""
     You are an expert language teacher specializing in pronunciation for {LANGUAGE} learners.
     Generate exactly one sentence with the following context for pronunciation practice.
-
     - Scenario: extracted from a casual conversation
     - Difficulty: suitable for intermediate learners
-
     Output only the sentence itself, with no additional text and no quotes.
     The sentence should be fresh and should not have been generated previously.
     """
@@ -38,13 +54,13 @@ class TranscriptGenerator(Generator):
             temperature=0.8,
             frequency_penalty=0.1,
         )
-        # TODO: use model's tokenizer to do phonemes conversion
-        phonemes = phonemize(
+        sequence = phonemize(
             text,
-            language=TranscriptGenerator.LANG_CODE,
-            backend="espeak",
             strip=True,
             with_stress=False,
             preserve_punctuation=True,
+            separator=Separator(phone="/", word=" "),
+            language=TranscriptGenerator.LANG_CODE,
+            backend=TranscriptGenerator.PHONEMIZER_BACKEND,
         )
-        return Transcript(id=ULID(), text=text, phonemes=str(phonemes).split())
+        return Transcript(id=ULID(), text=text, _sequence=str(sequence))

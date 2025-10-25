@@ -1,34 +1,34 @@
-from dataclasses import dataclass
 from typing import Literal, cast
 
 import Levenshtein
 import torch
 import torchaudio
+from pydantic.dataclasses import dataclass
 from transformers import Wav2Vec2ForCTC, Wav2Vec2PhonemeCTCTokenizer, Wav2Vec2Processor
 
 from ..generators.transcript import Transcript
 from .processor import AudioProcessor
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class Difference:
     type: Literal["insert", "delete", "replace"]
     position: int  # wrt predictions
-    expected: str
     predicted: str
+    expected: str
 
 
-@dataclass
-class AlignedPhoneme:
+@dataclass(frozen=True, kw_only=True)
+class Alignment:
     token: str
     score: float
     interval: tuple[int, int]
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class Phonemes:
-    alignments: list[AlignedPhoneme]
     predictions: list[str]
+    alignments: list[Alignment]
     differences: list[Difference]
 
 
@@ -49,7 +49,12 @@ class PhonemeAligner:
         with torch.inference_mode():
             return self._model(**inputs).logits
 
-    def align_phonemes(self, logits: torch.Tensor, transcript: Transcript) -> list[AlignedPhoneme]:
+    def predict_phonemes(self, logits: torch.Tensor) -> list[str]:
+        predictions = logits.argmax(dim=-1)
+        [phonemes] = self._tokenizer.batch_decode(predictions)
+        return phonemes.split()
+
+    def align_phonemes(self, logits: torch.Tensor, transcript: Transcript) -> list[Alignment]:
         tokens = self._tokenizer(transcript.text).input_ids
         tokens = torch.tensor([tokens], dtype=torch.int32)
 
@@ -59,31 +64,26 @@ class PhonemeAligner:
         spans = torchaudio.functional.merge_tokens(alignments, scores.exp())
 
         return [
-            AlignedPhoneme(
-                self._tokenizer.convert_ids_to_tokens(s.token),
-                s.score,
-                (s.start, s.end),
+            Alignment(
+                token=self._tokenizer.convert_ids_to_tokens(s.token),
+                score=s.score,
+                interval=(s.start, s.end),
             )
             for s in spans
         ]
 
-    def predict_phonemes(self, logits: torch.Tensor) -> list[str]:
-        predictions = logits.argmax(dim=-1)
-        [phonemes] = self._tokenizer.batch_decode(predictions)
-        return phonemes.split()
-
     def compare_sequences(
         self,
-        aligned_sequence: list[str],
         predicted_sequence: list[str],
+        aligned_sequence: list[str],
     ) -> list[Difference]:
         editops = Levenshtein.editops(aligned_sequence, predicted_sequence)
         differences = [
             Difference(
-                cast(Literal["insert", "delete", "replace"], op),
-                dpos,
-                aligned_sequence[spos] if spos < len(aligned_sequence) else "",
-                predicted_sequence[dpos] if dpos < len(predicted_sequence) else "",
+                type=cast(Literal["insert", "delete", "replace"], op),
+                position=dpos,
+                predicted=predicted_sequence[dpos] if dpos < len(predicted_sequence) else "",
+                expected=aligned_sequence[spos] if spos < len(aligned_sequence) else "",
             )
             for op, spos, dpos in editops
         ]
@@ -91,14 +91,14 @@ class PhonemeAligner:
 
     def __call__(self, waveform: torch.Tensor, transcript: Transcript) -> Phonemes:
         logits = self.perform_inference(waveform)
-        aligned_phonemes = self.align_phonemes(logits, transcript)
         predicted_phonemes = self.predict_phonemes(logits)
+        aligned_phonemes = self.align_phonemes(logits, transcript)
         differences = self.compare_sequences(
-            [p.token for p in aligned_phonemes],
             predicted_phonemes,
+            [p.token for p in aligned_phonemes],
         )
         return Phonemes(
-            aligned_phonemes,
-            predicted_phonemes,
-            differences,
+            predictions=predicted_phonemes,
+            alignments=aligned_phonemes,
+            differences=differences,
         )
