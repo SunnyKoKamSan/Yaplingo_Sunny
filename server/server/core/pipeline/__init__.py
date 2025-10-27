@@ -6,9 +6,9 @@ from .aligner import PhonemeAligner, Phonemes
 from .processor import AudioProcessor
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class Result:
-    feedback: str | None
+    feedback: str
     phonemes: Phonemes
 
 
@@ -24,4 +24,5 @@ class Pipeline:
             return None
         phonemes = self.phoneme_aligner(waveform, transcript)
         feedback = self.feedback_generator(transcript, phonemes)
+        # score = sum(a.score for a in phonemes.alignments) / len(phonemes.alignments)
         return Result(feedback=feedback, phonemes=phonemes)

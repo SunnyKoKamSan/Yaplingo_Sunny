@@ -15,16 +15,18 @@ class Transcript:
     text: str
     _sequence: str = Field(exclude=True)
 
+    WordPhonemes = list[tuple[str, list[str]]]
+
     @computed_field
     @property
     def sequence(self) -> str:
         return self._sequence.replace("/", "")
 
     @property
-    def word_phonemes(self) -> list[tuple[str, list[str]]]:
+    def word_phonemes(self) -> WordPhonemes:
         trans = str.maketrans("", "", PUNCTUATION)
         sequence = self._sequence.translate(trans)
-        results: list[tuple[str, list[str]]] = []
+        results: Transcript.WordPhonemes = []
         for word, seq in zip(self.text.split(), sequence.split()):
             results.append((word.strip(PUNCTUATION), seq.split("/")))
         return results
@@ -33,7 +35,7 @@ class Transcript:
 class TranscriptGenerator(Generator):
     LANGUAGE = "English"
     LANG_CODE = "en-us"
-    PHONEMIZER_BACKEND = "espeak"
+
     SYSTEM_PROMPT = f"""
     You are an expert language teacher specializing in pronunciation for {LANGUAGE} learners.
     Generate exactly one sentence with the following context for pronunciation practice.
@@ -61,6 +63,6 @@ class TranscriptGenerator(Generator):
             preserve_punctuation=True,
             separator=Separator(phone="/", word=" "),
             language=TranscriptGenerator.LANG_CODE,
-            backend=TranscriptGenerator.PHONEMIZER_BACKEND,
+            backend="espeak",
         )
         return Transcript(id=ULID(), text=text, _sequence=str(sequence))

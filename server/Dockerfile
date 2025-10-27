@@ -7,7 +7,7 @@ RUN apt-get update && \
     # deepfilternet: requires maturin to build
     apt-get install python3-maturin -y --no-install-recommends
 
-WORKDIR /app
+WORKDIR /server
 
 COPY pyproject.toml uv.lock .
 COPY ./vendor ./vendor
@@ -17,8 +17,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     # kokoro: requires pip to install some packages
     uv pip install pip
 
-COPY ./app ./app
+COPY ./server ./server
 
 EXPOSE 8000
 ENV PYTHONUNBUFFERED=1
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uv", "run", "uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

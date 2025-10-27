@@ -3,19 +3,19 @@ name = "yaplingo"
 version = "0.1.0"
 requires-python = ">=3.10,<3.11"
 dependencies = [
-    "uvicorn>=0.35.0",
+    "uvicorn>=0.35.0",              # to actually run the server
     "fastapi>=0.116.1",
-    "python-multipart>=0.0.20",
+    "python-multipart>=0.0.20",     # support file upload in FastAPI
     "python-ulid[pydantic]>=3.1.0",
     "transformers==4.56.2",
     "torch==2.8.0",
     "torchaudio==2.8.0",
-    "soundfile>=0.13.1",
+    "soundfile>=0.13.1",            # backend for TorchAudio
     "levenshtein>=0.27.1",
     "deepfilternet>=0.5.6",
     "openai>=2.1.0",
     "kokoro>=0.9.4",
-    "protobuf>=6.33.0",
+    "protobuf>=6.33.0",             # transitive dependency of transformers
     "phonemizer",
 ]
 
