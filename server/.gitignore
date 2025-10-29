@@ -8,3 +8,8 @@
 
 *.py[oc]
 __pycache__/
+
+*.sqlite
+*.sqlite-journal
+
+*.hurl
