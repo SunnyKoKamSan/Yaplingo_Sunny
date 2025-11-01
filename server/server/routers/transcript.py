@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, status
+import base64
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from ulid import ULID
 
-from server.core import PipelineResult, Transcript
+from server.core import Transcript
 from server.dependencies import Yaplingo, current_user
+from server.schemas import TeachAudio, TeachResponse
 
 TRANSCRIPTS: dict[ULID, Transcript] = {}  # TODO: use Redis for storing temporary data
 
@@ -16,15 +19,6 @@ async def generate(yaplingo: Yaplingo) -> Transcript:
     return transcript
 
 
-@router.get("/{tid}.wav")
-async def get_pronunciation(tid: ULID, yaplingo: Yaplingo):
-    transcript = TRANSCRIPTS.get(tid)
-    if transcript is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    audio = yaplingo.get_pronunciation(transcript.text)
-    return Response(content=audio, media_type="audio/vnd.wav")
-
-
 @router.get("/{tid}")
 async def get(tid: ULID) -> Transcript:
     transcript = TRANSCRIPTS.get(tid)
@@ -36,11 +30,20 @@ async def get(tid: ULID) -> Transcript:
 @router.post("/{tid}")
 async def teach(
     tid: ULID,
-    audio: UploadFile,
+    audio: TeachAudio,
     yaplingo: Yaplingo,
-) -> PipelineResult | None:
+) -> TeachResponse | None:
     transcript = TRANSCRIPTS.get(tid)
     if transcript is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    data = await audio.read()
-    return yaplingo.analyze(data, transcript)
+    result = yaplingo.analyze(audio.audio, transcript)
+    if result is None:
+        return None
+    tts = yaplingo.get_text_to_speech(result.feedback)
+    return TeachResponse(
+        feedback=TeachResponse.Feedback(
+            text=result.feedback,
+            audio=base64.b64encode(tts),
+        ),
+        phonemes=result.phonemes,
+    )

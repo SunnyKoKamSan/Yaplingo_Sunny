@@ -22,6 +22,7 @@ class Pronouncer:
     def __call__(self, text: str) -> bytes:
         generator = self._pipeline(
             text,
+            split_pattern=None,
             voice=Pronouncer.VOICE,
             speed=Pronouncer.SPEED,
         )

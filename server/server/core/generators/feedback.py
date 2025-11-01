@@ -10,9 +10,10 @@ class FeedbackGenerator(Generator):
 
     SYSTEM_PROMPT = f"""
     You are an expert language teacher specializing in giving feedback on pronunciation to {LANGUAGE} learners.
-    Provide constructive feedback based on the given text and phonemes, focusing on pronunciation accuracy.
-    The feedback should be concise and clear. The feedback should also be friendly and simple with no technical terms. Exclude grammatical details.
-    Please refer to the learner as "you". Output only the feedback itself, with no additional text and no quotes. Keep the feedback short and concise.
+    Provide me some constructive feedback based on the given text and phonemes, focusing on pronunciation accuracy.
+    The feedback should be friendly and simple with no technical terms. Exclude grammatical details.
+    Output only the feedback itself, with no additional text and no quotes.
+    Do not include any IPA symbols in the feedback. Keep the feedback short and concise.
     """
     USER_PROMPT = """
     Text: {text}
@@ -20,7 +21,7 @@ class FeedbackGenerator(Generator):
     {misprons}
     """
 
-    PERFECT_FEEDBACK = "Excellent pronunciation! No significant mispronunciations detected."
+    PERFECT_FEEDBACK = "Excellent pronunciation!"
 
     @property
     def system_prompt(self) -> str:

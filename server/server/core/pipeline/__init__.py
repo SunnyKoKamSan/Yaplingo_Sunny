@@ -6,7 +6,7 @@ from .aligner import PhonemeAligner, Phonemes
 from .processor import AudioProcessor
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(kw_only=True)
 class Result:
     feedback: str
     phonemes: Phonemes
