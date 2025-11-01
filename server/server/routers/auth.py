@@ -15,13 +15,19 @@ TOKEN_TTL = timedelta(days=7)
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def generate_token(user: User) -> str:
+    expiration = datetime.now(timezone.utc) + TOKEN_TTL
+    claims = {"sub": str(user.id), "exp": expiration}
+    return jwt.encode(claims, settings.secret, algorithm="HS256")
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(user_creation: UserCreation, repository: Repository):
     try:
         user = repository.create_user(user_creation)
     except EntityExistsError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User Already Exists")
-    return user
+    return {"token": generate_token(user)}
 
 
 @router.post("/login")
@@ -29,9 +35,7 @@ def login(user_credentials: UserCredentials, repository: Repository):
     user = repository.check_user(user_credentials)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    expiration = datetime.now(timezone.utc) + TOKEN_TTL
-    claims = {"sub": str(user.id), "exp": expiration}
-    return {"token": jwt.encode(claims, settings.secret, algorithm="HS256")}
+    return {"token": generate_token(user)}
 
 
 @router.get("/me", response_model=UserResponse)

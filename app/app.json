@@ -13,15 +13,12 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#ffffff",
-          "image": "./assets/icon.png",
-          "dark": {
-            "backgroundColor": "#000000",
-            "image": "./assets/icon.png"
-          },
-          "imageWidth": 128
+          "backgroundColor": "#00c951",
+          "image": "./assets/splash.png",
+          "imageWidth": 256
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": false,

@@ -1,5 +1,3 @@
-import base64
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from ulid import ULID
 
@@ -39,11 +37,10 @@ async def teach(
     result = yaplingo.analyze(audio.audio, transcript)
     if result is None:
         return None
-    tts = yaplingo.get_text_to_speech(result.feedback)
     return TeachResponse(
         feedback=TeachResponse.Feedback(
             text=result.feedback,
-            audio=base64.b64encode(tts),
+            audio=yaplingo.get_text_to_speech(result.feedback),
         ),
         phonemes=result.phonemes,
     )
