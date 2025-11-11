@@ -13,8 +13,8 @@ class Result:
 
 
 class Pipeline:
-    def __init__(self):
-        self.audio_processor = AudioProcessor()
+    def __init__(self, do_noise_filter: bool = True):
+        self.audio_processor = AudioProcessor(use_df=do_noise_filter)
         self.phoneme_aligner = PhonemeAligner()
         self.feedback_generator = FeedbackGenerator()
 
@@ -24,5 +24,4 @@ class Pipeline:
             return None
         phonemes = self.phoneme_aligner(waveform, transcript)
         feedback = self.feedback_generator(transcript, phonemes)
-        # score = sum(a.score for a in phonemes.alignments) / len(phonemes.alignments)
         return Result(feedback=feedback, phonemes=phonemes)
