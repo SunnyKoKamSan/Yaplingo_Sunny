@@ -26,7 +26,7 @@ export default function AccountLoginScreen() {
     mutation.mutate(credentials, {
       onSuccess: () => router.replace("/main"),
       onError: ({ status }) => {
-        const message = status === 401 ? "Invalid username or password." : "Please try again later.";
+        const message = status === 401 ? "Incorrect username or password." : "Please try again later.";
         Alert.alert("Login Failed", message);
       },
     });
@@ -44,7 +44,6 @@ export default function AccountLoginScreen() {
         <View style={tw`w-full`}>
           <TextInput
             Icon={UserIcon}
-            autoFocus={true}
             autoCorrect={false}
             autoCapitalize="none"
             selectTextOnFocus={true}
@@ -52,7 +51,7 @@ export default function AccountLoginScreen() {
             textContentType="username"
             placeholder="username"
             placeholderTextColor={tw.color("neutral-500/50")}
-            style={tw`rounded-b-0 rounded-lg border-2 border-neutral-500/50 bg-neutral-200/50`}
+            style={tw`rounded-b-0`}
             value={credentials.username}
             onChangeText={(text) => dispatch({ field: "username", value: text.trim() })}
             disabled={mutation.isPending}
@@ -65,7 +64,7 @@ export default function AccountLoginScreen() {
             textContentType="password"
             placeholder="password"
             placeholderTextColor={tw.color("neutral-500/50")}
-            style={tw`rounded-t-0 rounded-lg border-2 border-t-0 border-neutral-500/50 bg-neutral-200/50`}
+            style={tw`rounded-t-0 border-t-0`}
             value={credentials.password}
             onChangeText={(value) => dispatch({ field: "password", value })}
             disabled={mutation.isPending}
@@ -80,7 +79,11 @@ export default function AccountLoginScreen() {
               (pressed || !valid || mutation.isPending) && "opacity-50",
             )
           }>
-          {mutation.isPending ? <Spinner /> : <Text style={tw`text-base font-bold text-white`}>SIGN IN</Text>}
+          {mutation.isPending ? (
+            <Spinner color="white" />
+          ) : (
+            <Text style={tw`text-base font-bold text-white`}>SIGN IN</Text>
+          )}
         </Pressable>
       </View>
     </KeyboardAvoidingView>

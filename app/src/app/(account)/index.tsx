@@ -18,7 +18,7 @@ export default function AccountIndexScreen() {
           style={({ pressed }) =>
             tw.style("h-12 items-center justify-center rounded-xl bg-green-500", pressed && "opacity-50")
           }>
-          <Text style={tw`text-base font-bold text-white`}>GET STARTED</Text>
+          <Text style={tw`text-base font-bold text-white dark:text-black`}>GET STARTED</Text>
         </Pressable>
         <Pressable
           onPress={() => router.navigate("/(account)/login")}

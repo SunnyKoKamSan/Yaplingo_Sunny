@@ -19,7 +19,15 @@ export default function AccountRegisterScreen() {
     Keyboard.dismiss();
     mutation.mutate(form, {
       onSuccess: () => router.replace("/main"),
-      onError: () => Alert.alert("Register Failed", "Please try again later."),
+      onError: ({ status }) => {
+        const message =
+          status === 409
+            ? "Username already taken."
+            : status === 400
+              ? "Invalid username or password."
+              : "Please try again later.";
+        Alert.alert("Register Failed", message);
+      },
     });
   };
 
@@ -36,7 +44,6 @@ export default function AccountRegisterScreen() {
         <View style={tw`gap-2`}>
           <Text style={tw`text-sm font-bold text-neutral-500`}>USERNAME</Text>
           <TextInput
-            autoFocus={true}
             autoCorrect={false}
             autoCapitalize="none"
             selectTextOnFocus={true}
@@ -44,7 +51,6 @@ export default function AccountRegisterScreen() {
             textContentType="username"
             placeholder="username"
             placeholderTextColor={tw.color("neutral-500/50")}
-            style={tw`rounded-lg border-2 border-neutral-500/50 bg-neutral-200/50`}
             value={form.username}
             onChangeText={(text) => dispatch({ field: "username", value: text.trim() })}
             disabled={mutation.isPending}
@@ -60,7 +66,7 @@ export default function AccountRegisterScreen() {
               textContentType="password"
               placeholder="new password"
               placeholderTextColor={tw.color("neutral-500/50")}
-              style={tw`rounded-b-0 rounded-lg border-2 border-neutral-500/50 bg-neutral-200/50`}
+              style={tw`rounded-b-0`}
               value={form.password}
               onChangeText={(value) => dispatch({ field: "password", value })}
               disabled={mutation.isPending}
@@ -72,7 +78,7 @@ export default function AccountRegisterScreen() {
               textContentType="password"
               placeholder="confirm password"
               placeholderTextColor={tw.color("neutral-500/50")}
-              style={tw`rounded-t-0 rounded-lg border-2 border-t-0 border-neutral-500/50 bg-neutral-200/50`}
+              style={tw`rounded-t-0 border-t-0`}
               value={form.passwordConfirm}
               onChangeText={(value) => dispatch({ field: "passwordConfirm", value })}
               disabled={mutation.isPending}
@@ -88,7 +94,11 @@ export default function AccountRegisterScreen() {
               (pressed || !valid || mutation.isPending) && "opacity-50",
             )
           }>
-          {mutation.isPending ? <Spinner /> : <Text style={tw`text-base font-bold text-white`}>SIGN UP</Text>}
+          {mutation.isPending ? (
+            <Spinner color="white" />
+          ) : (
+            <Text style={tw`text-base font-bold text-white`}>SIGN UP</Text>
+          )}
         </Pressable>
       </View>
       <Text style={tw`text-sm font-medium text-neutral-500`}>

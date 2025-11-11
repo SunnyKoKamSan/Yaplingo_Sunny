@@ -1,8 +1,9 @@
 import React from "react";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import { LoaderCircleIcon } from "lucide-react-native";
+import tw from "twrnc";
 
-export default function Spinner({ size = 24, color = "white" }: { size?: number; color?: string }) {
+export default function Spinner({ size = 24, color = tw.color("green-500/50") }: { size?: number; color?: string }) {
   const rotation = useSharedValue(0);
 
   const style = useAnimatedStyle(() => ({
