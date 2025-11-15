@@ -1,15 +1,23 @@
 from abc import ABC, abstractmethod
 
 from openai import OpenAI
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_id: str = "ai/llama3.1"
+    base_url: str = "http://model-runner.docker.internal/engines/v1"
+    api_key: str = ""
+
+    model_config = SettingsConfigDict(env_prefix="llm_")
+
+
+settings = Settings.model_validate({})
 
 
 class Generator(ABC):
-    MODEL_ID = "ai/llama3.1"
-
-    BASE_URL = "http://model-runner.docker.internal/engines/v1"
-
     def __init__(self):
-        self._client = OpenAI(base_url=Generator.BASE_URL, api_key="")
+        self._client = OpenAI(base_url=settings.base_url, api_key=settings.api_key)
 
     @property
     @abstractmethod
@@ -18,7 +26,7 @@ class Generator(ABC):
 
     def __call__(self, prompt: str, **kwargs) -> str:
         completion = self._client.chat.completions.create(
-            model=Generator.MODEL_ID,
+            model=settings.model_id,
             messages=[
                 {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": prompt},

@@ -62,12 +62,11 @@ class Transcript:
 class TranscriptGenerator(Generator):
     # TODO: refine this prompt
     SYSTEM_PROMPT = """
-    You are an expert language teacher specializing in pronunciation for English learners.
+    You are an expert language coach specializing in English pronunciation.
     Generate exactly one sentence with the following context for pronunciation practice.
-    - Scenario: extracted from a casual conversation
-    - Difficulty: suitable for intermediate learners
+    - Scenario: a casual conversation
+    - Difficulty: intermediate level
     Output only the sentence itself, with no additional text and no quotes.
-    The sentence should be fresh and should not have been generated previously.
     """
 
     @property
@@ -77,9 +76,9 @@ class TranscriptGenerator(Generator):
     def __call__(self) -> Transcript:
         text = super().__call__(
             "",
-            top_p=0.9,
-            temperature=0.8,
-            frequency_penalty=0.1,
+            temperature=1.0,
+            frequency_penalty=2.0,
+            presence_penalty=2.0,
         )
         text = text.strip().split("\n")[-1]  # safeguard to trim preamable if any
         return Transcript.from_text(text)
