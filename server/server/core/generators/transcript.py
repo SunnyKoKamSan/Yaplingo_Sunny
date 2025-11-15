@@ -4,10 +4,12 @@ from functools import cached_property
 from phonemizer import phonemize
 from phonemizer.punctuation import Punctuation
 from phonemizer.separator import Separator
+from pydantic import computed_field
 from pydantic.dataclasses import dataclass
 from ulid import ULID
 
 from ...utils import cached_method
+from ..textspeech import gtts
 from . import Generator
 
 PHONEMIZER_SEPARATOR = Separator(phone="/", word=" ")
@@ -36,6 +38,11 @@ class Transcript:
     def phonemes(self) -> list[str]:
         sequence = Punctuation().remove(self.sequence)
         return re.split(r"[/ ]+", str(sequence).strip())
+
+    @computed_field
+    @cached_property
+    def audio(self) -> str:
+        return gtts(self.text)
 
     @cached_method
     def get_word_boundaries(self) -> list[tuple[str, int, int]]:

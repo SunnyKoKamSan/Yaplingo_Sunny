@@ -5,7 +5,7 @@ from pydantic.dataclasses import dataclass
 
 from ..generators.transcript import Transcript
 from ..pipeline.aligner import Pronunciation
-from ..textspeech import KokoroTextSpeech
+from ..textspeech import ktts
 from . import Generator
 
 
@@ -16,7 +16,7 @@ class Feedback:
     @computed_field
     @cached_property
     def audio(self) -> str:
-        return KokoroTextSpeech()(self.text)  # FIXME: use singleton?
+        return ktts(self.text)
 
 
 class FeedbackGenerator(Generator):
