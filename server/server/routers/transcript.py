@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from ulid import ULID
 
-from server.core import Transcript
+from server.core import Result, Transcript
 from server.dependencies import Yaplingo, current_user
-from server.schemas import TeachAudio, TeachResponse
+from server.schemas import TeachAudio
 
-TRANSCRIPTS: dict[ULID, Transcript] = {}  # TODO: use Redis for storing temporary data
+TRANSCRIPTS: dict[ULID, Transcript] = {}  # TODO: use Redis for storing ephemeral data
 
 router = APIRouter(dependencies=[Depends(current_user)])
 
@@ -30,17 +30,8 @@ async def teach(
     tid: ULID,
     audio: TeachAudio,
     yaplingo: Yaplingo,
-) -> TeachResponse | None:
+) -> Result | None:
     transcript = TRANSCRIPTS.get(tid)
     if transcript is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    result = yaplingo.analyze(audio.audio, transcript)
-    if result is None:
-        return None
-    return TeachResponse(
-        feedback=TeachResponse.Feedback(
-            text=result.feedback,
-            audio=yaplingo.get_text_to_speech(result.feedback),
-        ),
-        phonemes=result.phonemes,
-    )
+    return yaplingo.analyze_audio(audio.audio, transcript)

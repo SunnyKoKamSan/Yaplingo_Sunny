@@ -1,21 +1,14 @@
-from typing import Literal, cast
-
-import Levenshtein
 import torch
 import torchaudio
 from pydantic.dataclasses import dataclass
 from transformers import Wav2Vec2ForCTC, Wav2Vec2PhonemeCTCTokenizer, Wav2Vec2Processor
 
+from ...utils import cached_method
 from ..generators.transcript import Transcript
+from ..levenshtein import OperationCode, levenshtein
 from .processor import AudioProcessor
 
-
-@dataclass(frozen=True, kw_only=True)
-class Difference:
-    type: Literal["insert", "delete", "replace"]
-    position: int  # wrt predictions
-    predicted: str
-    expected: str
+CONFIDENCE_THRESHOLD = 0.75  # for filtering out differences with high enough confidence
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -26,25 +19,67 @@ class Alignment:
 
 
 @dataclass(frozen=True, kw_only=True)
-class Phonemes:
-    predictions: list[str]
+class Difference:
+    word: str
+    operation: OperationCode
+
+    expected: str | None
+    predicted: str | None
+
+    def __str__(self) -> str:
+        match self.operation:
+            case "~":
+                operation = "replace"
+            case "+":
+                operation = "insert"
+            case "-":
+                operation = "delete"
+        return "\t".join([f'"{self.word}"', operation, f"{self.expected or '∅'} → {self.predicted or '∅'}"])
+
+
+@dataclass(frozen=True, kw_only=True)
+class Pronunciation:
+    transcript: Transcript
+    phonemes: list[str]  # predictions
     alignments: list[Alignment]
-    differences: list[Difference]
+
+    @cached_method
+    def get_differences(self) -> list[Difference]:
+        differences = []
+        boundaries = self.transcript.get_word_boundaries()
+        _, _, operations = levenshtein(self.transcript.phonemes, self.phonemes)
+        for opcode, i, j in operations:
+            if self.alignments[i].score >= CONFIDENCE_THRESHOLD:
+                continue  # skip phonemes with high enough confidence (consider them as correct)
+            for word, start, end in boundaries:
+                if start <= i < end:
+                    differences.append(
+                        Difference(
+                            word=word,
+                            operation=opcode,
+                            expected=self.transcript.phonemes[i] if opcode != "+" else None,
+                            predicted=self.phonemes[j] if opcode != "-" else None,
+                        )
+                    )
+                    break
+            else:
+                raise RuntimeError("could not match word boundary for difference")
+        return differences
 
 
-class PhonemeAligner:
+class PronunciationAligner:
     MODEL_ID = "facebook/wav2vec2-lv-60-espeak-cv-ft"
 
     def __init__(self):
-        self._model = Wav2Vec2ForCTC.from_pretrained(PhonemeAligner.MODEL_ID)
-        self._processor = Wav2Vec2Processor.from_pretrained(PhonemeAligner.MODEL_ID)
-        self._tokenizer = Wav2Vec2PhonemeCTCTokenizer.from_pretrained(PhonemeAligner.MODEL_ID)
+        self._model = Wav2Vec2ForCTC.from_pretrained(PronunciationAligner.MODEL_ID)
+        self._processor = Wav2Vec2Processor.from_pretrained(PronunciationAligner.MODEL_ID)
+        self._tokenizer = Wav2Vec2PhonemeCTCTokenizer.from_pretrained(PronunciationAligner.MODEL_ID)
 
     def perform_inference(self, waveform: torch.Tensor) -> torch.Tensor:
         inputs = self._processor(
             waveform,
-            sampling_rate=AudioProcessor.SR,  # type: ignore[arg-type]
-            return_tensors="pt",  # essential # type: ignore[arg-type]
+            sampling_rate=AudioProcessor.SR,
+            return_tensors="pt",  # required
         )
         with torch.inference_mode():
             return self._model(**inputs).logits
@@ -72,33 +107,15 @@ class PhonemeAligner:
             for s in spans
         ]
 
-    def compare_sequences(
-        self,
-        predicted_sequence: list[str],
-        aligned_sequence: list[str],
-    ) -> list[Difference]:
-        editops = Levenshtein.editops(aligned_sequence, predicted_sequence)
-        differences = [
-            Difference(
-                type=cast(Literal["insert", "delete", "replace"], op),
-                position=dpos,
-                predicted=predicted_sequence[dpos] if dpos < len(predicted_sequence) else "",
-                expected=aligned_sequence[spos] if spos < len(aligned_sequence) else "",
-            )
-            for op, spos, dpos in editops
-        ]
-        return differences
-
-    def __call__(self, waveform: torch.Tensor, transcript: Transcript) -> Phonemes:
+    def __call__(self, waveform: torch.Tensor, transcript: Transcript) -> Pronunciation:
         logits = self.perform_inference(waveform)
         predicted_phonemes = self.predict_phonemes(logits)
         aligned_phonemes = self.align_phonemes(logits, transcript)
-        differences = self.compare_sequences(
-            predicted_phonemes,
-            [p.token for p in aligned_phonemes],
+        assert len(aligned_phonemes) == len(transcript.phonemes), (
+            "alignment output must have the same length with the transcript"
         )
-        return Phonemes(
-            predictions=predicted_phonemes,
+        return Pronunciation(
+            transcript=transcript,
+            phonemes=predicted_phonemes,
             alignments=aligned_phonemes,
-            differences=differences,
         )

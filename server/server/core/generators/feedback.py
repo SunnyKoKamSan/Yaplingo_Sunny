@@ -1,58 +1,53 @@
+from functools import cached_property
+
+from pydantic import computed_field
+from pydantic.dataclasses import dataclass
+
 from ..generators.transcript import Transcript
-from ..pipeline.aligner import Alignment, Phonemes
+from ..pipeline.aligner import Pronunciation
+from ..textspeech import KokoroTextSpeech
 from . import Generator
 
-SCORE_THRESHOLD = 0.5
+
+@dataclass(frozen=True, kw_only=True)
+class Feedback:
+    text: str
+
+    @computed_field
+    @cached_property
+    def audio(self) -> str:
+        return KokoroTextSpeech()(self.text)  # FIXME: use singleton?
 
 
 class FeedbackGenerator(Generator):
-    LANGUAGE = "English"
-
-    SYSTEM_PROMPT = f"""
-    You are an expert language teacher specializing in giving feedback on pronunciation to {LANGUAGE} learners.
-    Provide me some constructive feedback based on the given text and phonemes, focusing on pronunciation accuracy.
-    The feedback should be friendly and simple with no technical terms. Exclude grammatical details.
-    Output only the feedback itself, with no additional text and no quotes.
-    Do not include any IPA symbols in the feedback. Keep the feedback short and concise.
+    SYSTEM_PROMPT = """
+    You are a friendly pronunciation coach specializing in English IPA phonemes.
+    Your goal is to give concise, encouraging feedback based on the phoneme errors provided.
+    Each error is formatted as: '[word]' \\t [operation] \\t [canonical] → [observed]
+    where operation is one of: replace, insert, delete.
+    Use Google's Pronunciation Respelling instead of IPA to represent phonemes in your feedback.
     """
     USER_PROMPT = """
-    Text: {text}
-    Phonemes with low scores:
-    {misprons}
+    Analyze the following pronunciation attempt.
+    Text: "{text}"
+    Errors: \n{errors}
     """
-
-    PERFECT_FEEDBACK = "Excellent pronunciation!"
+    PERFECT_FEEDBACK = "Excellent pronunciation! You made no mistakes."
 
     @property
     def system_prompt(self) -> str:
         return FeedbackGenerator.SYSTEM_PROMPT
 
-    Mispronunciations = dict[tuple[str, str], list[Alignment]]
-
-    def extract_mispronunciations(self, transcript: Transcript, phonemes: Phonemes) -> Mispronunciations | None:
-        misses = [(i, a) for i, a in enumerate(phonemes.alignments) if a.score < SCORE_THRESHOLD]
-        if not misses:
-            return None
-        word_misses: FeedbackGenerator.Mispronunciations = {}
-        for i, a in misses:
-            index = 0
-            for word, phones in transcript.word_phonemes:
-                if i >= index and i < index + len(phones):
-                    prons = "".join(phones)
-                    word_misses.setdefault((word, prons), []).append(a)
-                index += len(phones)
-        return word_misses
-
-    def __call__(self, transcript: Transcript, phonemes: Phonemes) -> str:
-        misprons = self.extract_mispronunciations(transcript, phonemes)
-        if not misprons:
-            return FeedbackGenerator.PERFECT_FEEDBACK
-        return super().__call__(
-            FeedbackGenerator.USER_PROMPT.format(
-                text=transcript.text,
-                misprons="\n".join(
-                    f"- {prons} ({word}): {' , '.join([m.token for m in misses])}"
-                    for (word, prons), misses in misprons.items()
-                ),
-            )
+    def __call__(self, transcript: Transcript, pronunciation: Pronunciation) -> Feedback:
+        differences = pronunciation.get_differences()
+        if not differences:
+            return Feedback(text=FeedbackGenerator.PERFECT_FEEDBACK)
+        prompt = FeedbackGenerator.USER_PROMPT.format(
+            text=transcript.text,
+            errors="\n".join([f"\t- {d}" for d in differences]),
         )
+        print(prompt)  # DEBUG
+        print("/".join(transcript.phonemes))  # DEBUG
+        print("/".join(pronunciation.phonemes))  # DEBUG
+        text = super().__call__(prompt, temperature=0)
+        return Feedback(text=text.strip())
