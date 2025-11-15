@@ -10,7 +10,6 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from "expo-audio";
-import * as Speech from "expo-speech";
 import { AudioLinesIcon, MicIcon, Repeat2Icon, Volume2Icon } from "lucide-react-native";
 import tw from "twrnc";
 
@@ -62,7 +61,6 @@ export default function MainLearnScreen() {
   const handleStartRecording = async () => {
     mutation.reset();
     player.replace("");
-    await Speech.stop();
     {
       await setAudioModeAsync({
         allowsRecording: true,
@@ -86,8 +84,7 @@ export default function MainLearnScreen() {
       mutation.mutate(audio, {
         onSuccess: (data) => {
           if (!data) return player.replace("");
-          const base64 = data.feedback.audio;
-          player.replace(`data:audio/wav;base64,${base64}`);
+          player.replace(data.feedback.audio);
         },
         onError: (error) => Alert.alert(error.message),
       });
@@ -95,20 +92,17 @@ export default function MainLearnScreen() {
   };
 
   const handlePronounce = async () => {
-    player.replace("");
-    await Speech.stop();
-    Speech.speak(transcript!.text);
+    player.replace(transcript!.audio);
   };
 
   const handleNext = () => {
     player.replace("");
-    Speech.stop();
     mutation.reset();
     query.refetch();
   };
 
   const calculateScorePercentage = (result: Result) => {
-    const scores = result.phonemes.alignments.map((a) => a.score);
+    const scores = result.pronunciation.alignments.map((a) => a.score);
     const total = scores.reduce((a, b) => a + b, 0);
     return Math.round((total / scores.length) * 100);
   };
@@ -132,7 +126,7 @@ export default function MainLearnScreen() {
                 <Text selectable={true} style={tw`text-center text-3xl font-medium`}>
                   {transcript!.text}
                 </Text>
-                <Text style={tw`text-center text-2xl font-medium`}>{transcript!.sequence}</Text>
+                <Text style={tw`text-center text-2xl font-medium`}>{transcript!.sequence.replaceAll("/", "")}</Text>
               </View>
             )}
             {mutation.isSuccess && mutation.data && (

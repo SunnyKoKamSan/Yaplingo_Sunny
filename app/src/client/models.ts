@@ -6,6 +6,7 @@ export type User = {
 export type Transcript = {
   id: string;
   text: string;
+  audio: string;
   sequence: string;
 };
 
@@ -14,13 +15,12 @@ export type Result = {
     text: string;
     audio: string;
   };
-  phonemes: {
+  pronunciation: {
     alignments: {
       token: string;
       score: number;
       interval: [number, number];
     }[];
-    predictions: string[];
-    differences: unknown[]; // TODO: type this properly
+    phonemes: string[];
   };
 };
