@@ -1,15 +1,12 @@
 import React from "react";
-import { Alert, Pressable } from "react-native";
-import { useNavigation } from "expo-router";
+import { Alert, View } from "react-native";
 import { useSetAtom } from "jotai";
-import { LogOutIcon } from "lucide-react-native";
 import tw from "twrnc";
 
+import { Button, Text } from "~/components";
 import { $authed, $token } from "~/store";
 
 export default function MainProfileScreen() {
-  const navigation = useNavigation();
-
   const setToken = useSetAtom($token);
   const setAuthed = useSetAtom($authed);
 
@@ -30,15 +27,14 @@ export default function MainProfileScreen() {
     ]);
   }, [setToken, setAuthed]);
 
-  React.useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Pressable onPress={handleLogout} style={({ pressed }) => tw.style(pressed && "opacity-50")}>
-          <LogOutIcon size={26} color={tw.color("red-500")} />
-        </Pressable>
-      ),
-    });
-  }, [navigation, handleLogout]);
-
-  return <></>;
+  return (
+    <View style={tw`flex-1 items-center justify-center`}>
+      <Button
+        onPress={handleLogout}
+        style={tw`border-transparent bg-red-500 px-6 py-2`}
+        shadowColor={tw.color("red-400")}>
+        <Text style={tw`text-base font-medium`}>SIGN OUT</Text>
+      </Button>
+    </View>
+  );
 }

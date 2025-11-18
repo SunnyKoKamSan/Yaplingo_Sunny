@@ -1,53 +1,58 @@
 import React from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "@react-navigation/native";
+import { Image, ImageRequireSource, View } from "react-native";
 import { Tabs } from "expo-router";
-import { BookOpenTextIcon, HomeIcon, ShapesIcon, UserIcon } from "lucide-react-native";
 import tw from "twrnc";
 
-const TABS = {
+type Tab = {
+  href: string;
+  title: string;
+  icon: ImageRequireSource;
+};
+
+const TABS: Record<string, Tab> = {
   index: {
+    href: "./",
     title: "Home",
-    Icon: HomeIcon,
+    icon: require("@/icons/tabs/home.png"),
   },
   learn: {
+    href: "./learn",
     title: "Learn",
-    Icon: BookOpenTextIcon,
+    icon: require("@/icons/tabs/learn.png"),
   },
   community: {
+    href: "./community",
     title: "Community",
-    Icon: ShapesIcon,
+    icon: require("@/icons/tabs/community.png"),
   },
   profile: {
+    href: "./profile",
     title: "Profile",
-    Icon: UserIcon,
+    icon: require("@/icons/tabs/profile.png"),
   },
 };
 
+const TabBarIcon = ({ tab, focused }: { tab: Tab; focused: boolean }) => (
+  <View style={tw.style("rounded-xl border-2 border-transparent p-1.5", focused && "border-sky-500/50 bg-sky-500/10")}>
+    <Image source={tab.icon} style={tw`size-7`} />
+  </View>
+);
+
 export default function MainLayout() {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { height: insets.top + 55 },
-        headerTintColor: theme.colors.primary,
-        headerTitleAlign: "left",
-        headerTitleStyle: {
-          fontSize: 32,
-          fontWeight: "bold",
-          fontFamily: "Feather-Bold",
-        },
+        headerShown: false,
         tabBarShowLabel: false,
-        tabBarStyle: tw`pt-1.5`,
+        tabBarStyle: tw`h-22 border-t-2 pt-4`,
       }}>
-      {Object.entries(TABS).map(([name, { title, Icon }]) => (
+      {Object.entries(TABS).map(([name, tab]) => (
         <Tabs.Screen
           key={name}
           name={name}
           options={{
-            headerTitle: title,
-            tabBarIcon: ({ color }) => <Icon color={color} size={26} />,
+            headerTitle: tab.title,
+            tabBarIcon: ({ focused }) => <TabBarIcon tab={tab} focused={focused} />,
           }}
         />
       ))}

@@ -24,8 +24,8 @@ export default function TextInput({
         style={[
           tw.style(
             "w-full rounded-lg border-2 p-2.5 text-lg leading-[0]",
-            "border-neutral-500/50 bg-neutral-200/50 dark:bg-neutral-800/50",
-            { color: theme.colors.text },
+            "border-zinc-500/50 bg-zinc-100/50 dark:bg-zinc-800/50",
+            { color: theme.colors.text, fontFamily: "DINNextRoundedLTW01-Regular" },
             Icon && "pl-10",
           ),
           style,

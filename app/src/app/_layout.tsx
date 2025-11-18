@@ -19,10 +19,10 @@ const DefaultTheme = {
   ...NavigationDefaultTheme,
   colors: {
     primary: tw.color("green-500")!,
-    background: tw.color("white")!,
-    card: tw.color("neutral-50")!,
-    text: tw.color("black")!,
-    border: tw.color("neutral-200")!,
+    background: tw.color("zinc-50")!,
+    card: tw.color("zinc-100")!,
+    text: tw.color("black/80")!,
+    border: tw.color("zinc-500/50")!,
     notification: tw.color("sky-500")!,
   },
 };
@@ -31,10 +31,10 @@ const DarkTheme = {
   ...NavigationDarkTheme,
   colors: {
     primary: tw.color("green-500")!,
-    background: tw.color("slate-950")!,
-    card: tw.color("slate-950")!,
-    text: tw.color("neutral-50")!,
-    border: tw.color("neutral-800")!,
+    background: tw.color("zinc-900")!,
+    card: tw.color("zinc-950")!,
+    text: tw.color("white/80")!,
+    border: tw.color("zinc-500/50")!,
     notification: tw.color("sky-500")!,
   },
 };
@@ -48,6 +48,10 @@ const Layout = () => {
 
   const [loaded] = useFonts({
     "Feather-Bold": require("@/fonts/Feather-Bold.otf"),
+    "DINNextRoundedLTW01-Light": require("@/fonts/DINNextRoundedLTW01-Light.otf"),
+    "DINNextRoundedLTW01-Regular": require("@/fonts/DINNextRoundedLTW01-Regular.otf"),
+    "DINNextRoundedLTW01-Medium": require("@/fonts/DINNextRoundedLTW01-Medium.otf"),
+    "DINNextRoundedLTW01-Bold": require("@/fonts/DINNextRoundedLTW01-Bold.otf"),
   });
 
   const [checking, error] = useAuthCheck();
@@ -69,6 +73,7 @@ const Layout = () => {
 
   return (
     <Stack
+      key={tw.memoBuster}
       screenOptions={{
         headerShown: false,
         animation: "fade",

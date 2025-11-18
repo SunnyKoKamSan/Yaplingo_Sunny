@@ -10,7 +10,6 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const client = axios.create({
   baseURL: API_URL,
   responseType: "json",
-  timeout: 5000,
 });
 
 // attach token to every request
@@ -32,7 +31,7 @@ export const useAuthQuery = () =>
   useQuery<User, AxiosError>({
     queryKey: ["auth", "me"],
     queryFn: async () => {
-      const response = await client.get("/auth/me");
+      const response = await client.get("/auth/me", { timeout: 5000 });
       return response.data;
     },
     retry: false,
@@ -96,7 +95,7 @@ export const useTeachMutation = (transcript?: Transcript) =>
   useMutation<Result | null, AxiosError, string>({
     mutationFn: async (audio: string) => {
       if (!transcript) return null;
-      const response = await client.post<Result | null>(`/transcript/${transcript.id}`, { audio }, { timeout: 60000 });
+      const response = await client.post<Result | null>(`/transcript/${transcript.id}`, { audio });
       return response.data;
     },
   });
