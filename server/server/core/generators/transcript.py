@@ -1,5 +1,6 @@
 import re
 from functools import cached_property
+from pathlib import Path
 
 from phonemizer import phonemize
 from phonemizer.punctuation import Punctuation
@@ -60,18 +61,10 @@ class Transcript:
 
 
 class TranscriptGenerator(Generator):
-    # TODO: refine this prompt
-    SYSTEM_PROMPT = """
-    You are an expert language coach specializing in English pronunciation.
-    Generate exactly one sentence with the following context for pronunciation practice.
-    - Scenario: a casual conversation
-    - Difficulty: intermediate level
-    Output only the sentence itself, with no additional text and no quotes.
-    """
-
-    @property
+    @property  # FIXME: use `@cached_property` in production
     def system_prompt(self) -> str:
-        return TranscriptGenerator.SYSTEM_PROMPT
+        path = Path(__file__).parent / "prompts" / "transcript.md"
+        return path.read_text(encoding="utf-8").strip()
 
     def __call__(self) -> Transcript:
         text = super().__call__(
@@ -80,5 +73,7 @@ class TranscriptGenerator(Generator):
             frequency_penalty=2.0,
             presence_penalty=2.0,
         )
-        text = text.strip().split("\n")[-1]  # safeguard to trim preamable if any
-        return Transcript.from_text(text)
+        print(text)  # DEBUG
+        sentences = [re.sub(r"^\s?[-–*]\s?", "", s.strip()) for s in text.split("\n")]
+        transcripts = [Transcript.from_text(s) for s in sentences if s]
+        return transcripts[-1]

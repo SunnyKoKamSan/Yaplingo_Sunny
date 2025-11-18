@@ -1,4 +1,5 @@
 from functools import cached_property
+from pathlib import Path
 
 from pydantic import computed_field
 from pydantic.dataclasses import dataclass
@@ -20,34 +21,22 @@ class Feedback:
 
 
 class FeedbackGenerator(Generator):
-    SYSTEM_PROMPT = """
-    You are a friendly pronunciation coach specializing in English IPA phonemes.
-    Your goal is to give concise, encouraging feedback based on the phoneme errors provided.
-    Each error is formatted as: '[word]' \\t [operation] \\t [canonical] → [observed]
-    where operation is one of: replace, insert, delete.
-    Use Google's Pronunciation Respelling instead of IPA to represent phonemes in your feedback.
-    """
-    USER_PROMPT = """
-    Analyze the following pronunciation attempt.
-    Text: "{text}"
-    Errors: \n{errors}
-    """
-    PERFECT_FEEDBACK = "Excellent pronunciation! You made no mistakes."
-
-    @property
+    @property  # FIXME: use `@cached_property` in production
     def system_prompt(self) -> str:
-        return FeedbackGenerator.SYSTEM_PROMPT
+        path = Path(__file__).parent / "prompts" / "feedback.md"
+        return path.read_text(encoding="utf-8").strip()
 
     def __call__(self, transcript: Transcript, pronunciation: Pronunciation) -> Feedback:
         differences = pronunciation.get_differences()
-        if not differences:
-            return Feedback(text=FeedbackGenerator.PERFECT_FEEDBACK)
-        prompt = FeedbackGenerator.USER_PROMPT.format(
-            text=transcript.text,
-            errors="\n".join([f"\t- {d}" for d in differences]),
-        )
+        errors = "\n".join([f"\t- {d}" for d in differences]) if differences else "None"
+        prompt = f"""
+        Now roast this attempt:
+        Text: "{transcript.text}"
+        Errors: \n{errors}
+        """
         print(prompt)  # DEBUG
         print("/".join(transcript.phonemes))  # DEBUG
         print("/".join(pronunciation.phonemes))  # DEBUG
         text = super().__call__(prompt, temperature=0)
+        print(text)  # DEBUG
         return Feedback(text=text.strip())
