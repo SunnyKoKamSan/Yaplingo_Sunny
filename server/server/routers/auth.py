@@ -5,7 +5,7 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from server.dependencies import Repository, current_user
-from server.repository.exceptions import EntityExistsError
+from server.repository import EntityExistsError
 from server.repository.models import User
 from server.schemas import UserCreation, UserCredentials, UserResponse
 from server.settings import settings

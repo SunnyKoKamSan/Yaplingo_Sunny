@@ -1,10 +1,10 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class RepositorySettings(BaseSettings):
-    url: str = "sqlite://"
+class Settings(BaseSettings):
+    url: str
 
     model_config = SettingsConfigDict(env_prefix="db_")
 
 
-settings = RepositorySettings.model_validate({})
+settings = Settings.model_validate({})

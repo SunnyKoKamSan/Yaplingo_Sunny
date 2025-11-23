@@ -1,4 +1,4 @@
-from pydantic import Base64Bytes, BaseModel, Field
+from pydantic import BaseModel, Field
 from ulid import ULID
 
 from server.repository.models import Language
@@ -19,7 +19,3 @@ class UserResponse(BaseModel):
 class UserCredentials(BaseModel):
     name: str
     password: str
-
-
-class TeachAudio(BaseModel):
-    audio: Base64Bytes

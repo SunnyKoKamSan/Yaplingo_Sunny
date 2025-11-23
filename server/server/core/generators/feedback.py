@@ -1,13 +1,16 @@
 from functools import cached_property
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import computed_field
 from pydantic.dataclasses import dataclass
 
 from ..generators.transcript import Transcript
-from ..pipeline.aligner import Pronunciation
 from ..textspeech import ktts
 from . import Generator
+
+if TYPE_CHECKING:
+    from ..pipeline.aligner import Pronunciation
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -26,7 +29,7 @@ class FeedbackGenerator(Generator):
         path = Path(__file__).parent / "prompts" / "feedback.md"
         return path.read_text(encoding="utf-8").strip()
 
-    def __call__(self, transcript: Transcript, pronunciation: Pronunciation) -> Feedback:
+    def __call__(self, transcript: Transcript, pronunciation: "Pronunciation") -> Feedback:
         differences = pronunciation.get_differences()
         errors = "\n".join([f"\t- {d}" for d in differences]) if differences else "None"
         prompt = f"""

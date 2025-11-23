@@ -1,4 +1,5 @@
-from .generators.transcript import Transcript, TranscriptGenerator
+from .generators.feedback import Feedback
+from .generators.transcript import Transcript, TranscriptGenerator, Transcripts
 from .pipeline import Pipeline, Result
 
 
@@ -10,8 +11,8 @@ class Yaplingo:
     def analyze_audio(self, audio: bytes, transcript: Transcript) -> Result | None:
         return self._pipeline(audio, transcript)
 
-    def generate_transcript(self) -> Transcript:
+    def generate_transcripts(self) -> Transcripts:
         return self._transcript_generator()
 
 
-__all__ = ["Yaplingo", "Transcript", "Result"]
+__all__ = ["Yaplingo", "Result", "Transcript", "Transcripts", "Feedback"]

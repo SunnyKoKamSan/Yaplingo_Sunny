@@ -2,29 +2,24 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, SQLModel, StaticPool, select
+from sqlmodel import Session, SQLModel, select
 from ulid import ULID
 
-from server.repository.exceptions import EntityExistsError
 from server.schemas import UserCreation, UserCredentials
 
 from .models import User
 from .settings import settings
 
 
+class EntityExistsError(Exception):
+    def __init__(self):
+        super().__init__("Entity already exists.")
+
+
 class Repository:
     def __init__(self):
         self._hasher = PasswordHasher()
-        self._engine = (
-            create_engine(
-                settings.url,
-                echo=True,
-                poolclass=StaticPool,
-                connect_args={"check_same_thread": False},
-            )
-            if settings.url == "sqlite://"
-            else create_engine(settings.url)
-        )
+        self._engine = create_engine(settings.url)
         SQLModel.metadata.create_all(self._engine)
 
     def dispose(self):

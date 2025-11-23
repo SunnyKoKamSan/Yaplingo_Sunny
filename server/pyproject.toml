@@ -11,6 +11,7 @@ dependencies = [
     "argon2-cffi>=25.1.0",
     "pyjwt>=2.10.1",
     "sqlmodel>=0.0.27",
+    "psycopg[binary]>=2.9.11",
     "transformers==4.56.2",
     "torch==2.8.0",
     "torchaudio==2.8.0",
@@ -18,8 +19,8 @@ dependencies = [
     "deepfilternet>=0.5.6",
     "openai>=2.1.0",
     "kokoro>=0.9.4",
-    "phonemizer",
     "gtts>=2.5.4",
+    "phonemizer",
 ]
 
 [tool.ruff]
