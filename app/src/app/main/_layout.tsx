@@ -1,32 +1,26 @@
-import React from "react";
 import { Image, ImageRequireSource, View } from "react-native";
 import { Tabs } from "expo-router";
 import tw from "twrnc";
 
 type Tab = {
-  href: string;
   title: string;
   icon: ImageRequireSource;
 };
 
 const TABS: Record<string, Tab> = {
   index: {
-    href: "./",
     title: "Home",
     icon: require("@/icons/tabs/home.png"),
   },
   learn: {
-    href: "./learn",
     title: "Learn",
     icon: require("@/icons/tabs/learn.png"),
   },
   community: {
-    href: "./community",
     title: "Community",
     icon: require("@/icons/tabs/community.png"),
   },
   profile: {
-    href: "./profile",
     title: "Profile",
     icon: require("@/icons/tabs/profile.png"),
   },

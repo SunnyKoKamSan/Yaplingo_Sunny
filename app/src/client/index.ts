@@ -2,8 +2,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
 import { useSetAtom } from "jotai";
 
-import store, { $authed, $token } from "../store";
-import type { Result, Transcript, User } from "./models";
+import store, { $token } from "../store";
+import type { Result, Transcripts, User } from "./models";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -22,24 +22,28 @@ client.interceptors.request.use((config) => {
 // log error responses globally
 client.interceptors.response.use(undefined, (error) => {
   if (error instanceof AxiosError) {
+    if (error.status === 401) store.set($token, ""); // clear token on unauthorized
     console.error(`${error.message}: ${error.response?.data as string}`);
   }
   return Promise.reject(error);
 });
 
-export const useAuthQuery = () =>
+export const useAuthedUserQuery = () =>
   useQuery<User, AxiosError>({
     queryKey: ["auth", "me"],
     queryFn: async () => {
-      const response = await client.get("/auth/me", { timeout: 5000 });
+      const response = await client.get("/auth/me", {
+        timeout: 5000,
+        validateStatus: (status) => [200, 401, 403].includes(status),
+      });
       return response.data;
     },
-    retry: false,
+    retry: true,
+    staleTime: Infinity,
   });
 
 export const useLoginMutation = () => {
   const setToken = useSetAtom($token);
-  const setAuthed = useSetAtom($authed);
 
   type Data = { token: string };
   type Variables = { username: string; password: string };
@@ -52,16 +56,12 @@ export const useLoginMutation = () => {
       });
       return response.data;
     },
-    onSuccess: ({ token }) => {
-      setToken(token);
-      setAuthed(true);
-    },
+    onSuccess: ({ token }) => setToken(token),
   });
 };
 
 export const useRegisterMutation = () => {
   const setToken = useSetAtom($token);
-  const setAuthed = useSetAtom($authed);
 
   type Data = { token: string };
   type Variables = { username: string; password: string };
@@ -75,29 +75,44 @@ export const useRegisterMutation = () => {
       });
       return response.data;
     },
-    onSuccess: ({ token }) => {
-      setToken(token);
-      setAuthed(true);
-    },
+    onSuccess: ({ token }) => setToken(token),
   });
 };
 
-export const useTranscriptQuery = (id?: string) =>
-  useQuery<Transcript, AxiosError>({
-    queryKey: ["transcript", id],
+export const useEchoTranscriptsQuery = () =>
+  useQuery<Transcripts, AxiosError>({
+    queryKey: ["echo", "transcripts"],
     queryFn: async () => {
-      const response = await client.get<Transcript>(`/transcript/${id ?? ""}`);
+      const response = await client.get<Transcripts>(`/echo/transcripts`);
+      return response.data;
+    },
+    enabled: false,
+    staleTime: Infinity,
+  });
+
+export const useEchoMutation = (tid?: string) =>
+  useMutation<Result | null, AxiosError, string>({
+    mutationFn: async (audio: string) => {
+      if (!tid) return null;
+      const response = await client.post<Result | null>(`/echo/${tid}`, { audio });
       return response.data;
     },
   });
 
-export const useTeachMutation = (transcript?: Transcript) =>
-  useMutation<Result | null, AxiosError, string>({
-    mutationFn: async (audio: string) => {
-      if (!transcript) return null;
-      const response = await client.post<Result | null>(`/transcript/${transcript.id}`, { audio });
-      return response.data;
+export const useEchoResultQuery = (tid?: string) =>
+  useQuery<Result | null, AxiosError>({
+    queryKey: ["echo", tid, "result"],
+    queryFn: async () => {
+      while (true) {
+        const response = await client.get<Result | null>(`/echo/${tid}/result`, {
+          validateStatus: (status) => [200, 425].includes(status),
+        });
+        if (response.status === 200) return response.data;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
     },
+    enabled: !!tid,
+    staleTime: Infinity,
   });
 
 export default client;

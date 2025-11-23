@@ -1,4 +1,4 @@
-import React from "react";
+import { useEffect } from "react";
 import { Alert, useColorScheme } from "react-native";
 import {
   DarkTheme as NavigationDarkTheme,
@@ -6,13 +6,14 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AudioModule } from "expo-audio";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useAtomValue } from "jotai";
 import tw, { useDeviceContext } from "twrnc";
 
-import { useAuthCheck } from "~/hooks";
+import { useAuthedUserQuery } from "~/client";
 import { $authed } from "~/store";
 
 const DefaultTheme = {
@@ -54,22 +55,26 @@ const Layout = () => {
     "DINNextRoundedLTW01-Bold": require("@/fonts/DINNextRoundedLTW01-Bold.otf"),
   });
 
-  const [checking, error] = useAuthCheck();
-  const isValidError = error === null || error.status === 401 || error.status === 403;
+  const check = useAuthedUserQuery();
 
-  React.useEffect(() => {
-    if (loaded && !checking && isValidError) {
+  useEffect(() => {
+    if (loaded && check.isSuccess) {
       SplashScreen.hide();
     }
-  }, [loaded, checking, isValidError]);
+  }, [loaded, check.isSuccess]);
 
-  React.useEffect(() => {
-    if (!isValidError) {
-      Alert.alert(error.message);
-    }
-  }, [error, isValidError]);
+  useEffect(() => {
+    if (check.error) Alert.alert(check.error.message);
+  }, [check.error]);
 
-  if (!loaded || checking || !isValidError) return <></>;
+  useEffect(() => {
+    (async () => {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) return Alert.alert("Permission Denied");
+    })();
+  }, []);
+
+  if (!loaded || !check.isSuccess) return <></>;
 
   return (
     <Stack

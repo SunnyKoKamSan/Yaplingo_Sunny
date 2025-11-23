@@ -10,6 +10,13 @@ export type Transcript = {
   sequence: string;
 };
 
+export type Transcripts = {
+  id: string;
+  topic: string;
+  scenario: string;
+  items: Transcript[];
+};
+
 export type Result = {
   feedback: {
     text: string;

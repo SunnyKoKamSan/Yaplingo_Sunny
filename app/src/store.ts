@@ -20,6 +20,6 @@ const atomWithSecureStore = <T>(key: string, initialValue: T, { getOnInit = fals
 
 export const $token = atomWithSecureStore("token", "", { getOnInit: true });
 
-export const $authed = atom(false);
+export const $authed = atom((get) => !!get($token));
 
 export default store;

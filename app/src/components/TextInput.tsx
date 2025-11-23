@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import { TextInput as _TextInput, Pressable, View, type TextInputProps } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { EyeIcon, EyeOffIcon, LucideIcon } from "lucide-react-native";
@@ -16,7 +16,7 @@ export default function TextInput({
   disabled?: boolean;
 }) {
   const theme = useTheme();
-  const [plain, setPlain] = React.useState(false);
+  const [plain, setPlain] = useState(false);
   const RightIcon = plain ? EyeIcon : EyeOffIcon;
   return (
     <View style={tw`relative justify-center`}>

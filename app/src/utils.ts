@@ -1,4 +1,4 @@
-import React from "react";
+import { useReducer } from "react";
 import axios from "axios";
 
 export const getLocalFileBase64 = async (uri: string): Promise<string> => {
@@ -13,7 +13,7 @@ export const getLocalFileBase64 = async (uri: string): Promise<string> => {
 };
 
 export const useFormReducer = <T>(init: T) =>
-  React.useReducer<T, [{ field: keyof T; value: T[keyof T] }]>((state, action) => {
+  useReducer<T, [{ field: keyof T; value: T[keyof T] }]>((state, action) => {
     if (action === null) return init;
     const { field, value } = action;
     return { ...state, [field]: value };

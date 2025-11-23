@@ -1,16 +1,18 @@
-import React from "react";
+import { useCallback } from "react";
 import { Alert, View } from "react-native";
 import { useSetAtom } from "jotai";
 import tw from "twrnc";
 
+import { useAuthedUserQuery } from "~/client";
 import { Button, Text } from "~/components";
-import { $authed, $token } from "~/store";
+import { $token } from "~/store";
 
 export default function MainProfileScreen() {
   const setToken = useSetAtom($token);
-  const setAuthed = useSetAtom($authed);
 
-  const handleLogout = React.useCallback(() => {
+  const { data: user } = useAuthedUserQuery();
+
+  const handleLogout = useCallback(() => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       {
         text: "Cancel",
@@ -19,16 +21,14 @@ export default function MainProfileScreen() {
       {
         text: "Logout",
         style: "destructive",
-        onPress: () => {
-          setToken("");
-          setAuthed(false);
-        },
+        onPress: () => setToken(""),
       },
     ]);
-  }, [setToken, setAuthed]);
+  }, [setToken]);
 
   return (
-    <View style={tw`flex-1 items-center justify-center`}>
+    <View style={tw`flex-1 items-center justify-center gap-5`}>
+      {!!user && <Text style={tw`text-lg`}>{user.name}</Text>}
       <Button
         onPress={handleLogout}
         style={tw`border-transparent bg-red-500 px-6 py-2`}

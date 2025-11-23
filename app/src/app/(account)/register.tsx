@@ -1,20 +1,34 @@
+import { useEffect } from "react";
 import { Alert, Keyboard, KeyboardAvoidingView, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { ArrowLeftIcon } from "lucide-react-native";
+import { useNavigation, useRouter } from "expo-router";
 import tw from "twrnc";
 
 import { useRegisterMutation } from "~/client";
 import { Spinner, Text, TextInput } from "~/components/";
 import { useFormReducer } from "~/utils";
 
+const Header = () => (
+  <View style={tw`bg-green-500 p-6`}>
+    <Text style={tw`text-4xl font-bold text-white`}>SIGN UP</Text>
+    <Text style={tw`text-xl font-bold text-white`}>to start your learning journey</Text>
+  </View>
+);
+
 export default function AccountRegisterScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
   const mutation = useRegisterMutation();
 
   const [form, dispatch] = useFormReducer({ username: "", password: "", passwordConfirm: "" });
+
+  useEffect(() => {
+    navigation.setOptions({
+      header: () => <Header />,
+    });
+  }, [navigation]);
 
   const handleRegister = () => {
     Keyboard.dismiss();
@@ -35,21 +49,7 @@ export default function AccountRegisterScreen() {
   const valid = !!form.username && !!form.password && form.password === form.passwordConfirm;
 
   return (
-    <View style={tw.style("flex-1", { paddingBottom: insets.bottom })}>
-      <View style={tw`h-1/6 justify-end bg-green-500 p-4`}>
-        <View style={tw`flex-row items-center gap-4`}>
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={{ top: 48, bottom: 48, left: 16, right: 16 }}
-            style={({ pressed }) => tw.style(pressed && "opacity-50")}>
-            <ArrowLeftIcon color={tw.color("white")} size={24} strokeWidth={4} />
-          </Pressable>
-          <View>
-            <Text style={tw.style("text-4xl font-bold text-white")}>SIGN UP</Text>
-            <Text style={tw`text-xl font-bold text-white`}>to start your learning journey</Text>
-          </View>
-        </View>
-      </View>
+    <View style={[tw`flex-1`, { paddingBottom: insets.bottom }]}>
       <KeyboardAvoidingView behavior="padding" style={tw`flex-grow justify-center gap-4 p-4`}>
         <View style={tw`gap-6`}>
           <View style={tw`gap-2`}>
@@ -63,7 +63,7 @@ export default function AccountRegisterScreen() {
               placeholder="username"
               placeholderTextColor={tw.color("neutral-500/50")}
               value={form.username}
-              onChangeText={(text) => dispatch({ field: "username", value: text.trim() })}
+              onChangeText={(text) => dispatch({ field: "username", value: text.trim().toLowerCase() })}
               disabled={mutation.isPending}
             />
             <Text style={tw`text-sm font-medium text-neutral-500`}>

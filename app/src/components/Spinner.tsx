@@ -1,4 +1,4 @@
-import React from "react";
+import { useEffect } from "react";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import { LoaderCircleIcon } from "lucide-react-native";
 import tw from "twrnc";
@@ -10,7 +10,7 @@ export default function Spinner({ size = 24, color = tw.color("zinc-500/50")! }:
     transform: [{ rotateZ: `${rotation.value}deg` }],
   }));
 
-  React.useEffect(() => {
+  useEffect(() => {
     rotation.value = withRepeat(
       withTiming(360, {
         duration: 1000,

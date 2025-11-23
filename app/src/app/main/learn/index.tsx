@@ -38,8 +38,8 @@ const ModeCard = ({ mode }: { mode: Mode }) => {
   return (
     <View style={tw`rounded-2xl border-2 border-zinc-500/50`}>
       <View style={tw`w-5/6 gap-2 p-4`}>
-        <Text style={[tw`text-3xl font-bold tracking-wider`]}>{mode.title}</Text>
-        <Text style={tw`text-xl font-semibold leading-tight`}>{mode.description}</Text>
+        <Text style={tw`text-3xl font-bold tracking-wider`}>{mode.title}</Text>
+        <Text style={tw`text-xl leading-tight`}>{mode.description}</Text>
       </View>
       <Image source={mode.icon} style={tw`absolute right-4 top-4 size-16`} />
       <Button style={tw`m-4 bg-zinc-100 dark:bg-zinc-800`} onPress={() => router.navigate(mode.href)}>
@@ -53,9 +53,13 @@ export default function MainLearnIndexScreen() {
   const insets = useSafeAreaInsets();
   return (
     <View style={tw`flex-1`}>
-      <View style={[tw`relative flex-row bg-green-50 p-6 dark:bg-green-950`, { paddingTop: insets.top + 16 }]}>
+      <View
+        style={[
+          tw`relative flex-row border-b border-zinc-500/50 bg-green-50 p-6 dark:bg-green-950`,
+          { paddingTop: insets.top + 16 },
+        ]}>
         <View>
-          <Text style={tw.style("text-4xl font-bold text-green-500")}>LEARN</Text>
+          <Text style={tw`text-4xl font-bold text-green-500`}>LEARN</Text>
           <Text style={tw`text-xl font-bold`}>choose your practice mode</Text>
         </View>
         <Image source={require("@/icons/tabs/learn.png")} style={[tw`absolute right-0 size-24`, { top: insets.top }]} />
