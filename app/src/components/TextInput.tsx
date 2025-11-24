@@ -11,10 +11,10 @@ export default function TextInput({
   clearButtonMode,
   secureTextEntry,
   ...props
-}: TextInputProps & {
+}: {
   Icon?: LucideIcon;
   disabled?: boolean;
-}) {
+} & TextInputProps) {
   const theme = useTheme();
   const [plain, setPlain] = useState(false);
   const RightIcon = plain ? EyeIcon : EyeOffIcon;

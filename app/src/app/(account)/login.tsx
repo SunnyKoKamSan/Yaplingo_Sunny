@@ -1,13 +1,12 @@
-import { useEffect } from "react";
 import { Alert, Keyboard, KeyboardAvoidingView, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { LockIcon, UserIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 import { useLoginMutation } from "~/client";
 import { Spinner, Text, TextInput } from "~/components/";
-import { useFormReducer } from "~/utils";
+import { useFormReducer, useNavigationOptions } from "~/hooks";
 
 const Header = () => (
   <View style={tw`bg-sky-500 p-6`}>
@@ -18,7 +17,6 @@ const Header = () => (
 
 export default function AccountLoginScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
   const mutation = useLoginMutation();
@@ -26,12 +24,6 @@ export default function AccountLoginScreen() {
   const [credentials, dispatch] = useFormReducer({ username: "", password: "" });
 
   const valid = !!credentials.username && !!credentials.password;
-
-  useEffect(() => {
-    navigation.setOptions({
-      header: () => <Header />,
-    });
-  }, [navigation]);
 
   const handleLogin = async () => {
     Keyboard.dismiss();
@@ -43,6 +35,8 @@ export default function AccountLoginScreen() {
       },
     });
   };
+
+  useNavigationOptions({ header: () => <Header /> });
 
   return (
     <View style={[tw`flex-1`, { paddingBottom: insets.bottom }]}>

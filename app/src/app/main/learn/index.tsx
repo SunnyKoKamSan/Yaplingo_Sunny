@@ -1,9 +1,11 @@
 import { Image, ScrollView, View, type ImageRequireSource } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import tw from "twrnc";
 
 import { Button, Text } from "~/components";
+import { useNavigationOptions } from "~/hooks";
 
 type Mode = {
   href: string;
@@ -49,26 +51,31 @@ const ModeCard = ({ mode }: { mode: Mode }) => {
   );
 };
 
-export default function MainLearnIndexScreen() {
+const Header = () => {
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    <View style={tw`flex-1`}>
-      <View
-        style={[
-          tw`relative flex-row border-b border-zinc-500/50 bg-green-50 p-6 dark:bg-green-950`,
-          { paddingTop: insets.top + 16 },
-        ]}>
-        <View>
-          <Text style={tw`text-4xl font-bold text-green-500`}>LEARN</Text>
-          <Text style={tw`text-xl font-bold`}>choose your practice mode</Text>
-        </View>
-        <Image source={require("@/icons/tabs/learn.png")} style={[tw`absolute right-0 size-24`, { top: insets.top }]} />
+    <View
+      style={[
+        tw`relative flex-row border-b bg-green-50 p-6 dark:bg-green-950`,
+        { paddingTop: insets.top + 16, borderColor: theme.colors.border },
+      ]}>
+      <View>
+        <Text style={tw`text-4xl font-bold text-green-500`}>LEARN</Text>
+        <Text style={tw`text-xl font-bold`}>choose your practice mode</Text>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`flex-grow gap-4 px-4 py-6`}>
-        {MODES.map((mode) => (
-          <ModeCard key={mode.title} mode={mode} />
-        ))}
-      </ScrollView>
+      <Image source={require("@/icons/tabs/learn.png")} style={[tw`absolute right-0 size-24`, { top: insets.top }]} />
     </View>
+  );
+};
+
+export default function MainLearnIndexScreen() {
+  useNavigationOptions({ header: () => <Header /> });
+  return (
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`flex-1 gap-4 px-4 py-6`}>
+      {MODES.map((mode) => (
+        <ModeCard key={mode.title} mode={mode} />
+      ))}
+    </ScrollView>
   );
 }

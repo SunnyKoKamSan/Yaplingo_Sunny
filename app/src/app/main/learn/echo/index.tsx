@@ -11,13 +11,14 @@ import {
   useAudioRecorderState,
   type RecordingOptions,
 } from "expo-audio";
-import { useNavigation, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { ArrowRightIcon, AudioLinesIcon, CheckIcon, FlagTriangleRightIcon, MicIcon, XIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 import { useEchoMutation, useEchoResultQuery, useEchoTranscriptsQuery } from "~/client";
 import type { Transcript } from "~/client/models";
 import { Spinner, Text } from "~/components";
+import { useNavigationOptions } from "~/hooks";
 import { getLocalFileBase64 } from "~/utils";
 
 const RECORDING_OPTIONS: RecordingOptions = {
@@ -105,9 +106,8 @@ const Header = ({
 };
 
 // FIXME: handle query/mutation errors
-export default function MainLearnIndexScreen() {
+export default function MainLearnEchoScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
   const player = useAudioPlayer();
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder);
@@ -150,18 +150,16 @@ export default function MainLearnIndexScreen() {
     }
   };
 
-  useEffect(() => {
-    navigation.setOptions({
-      header: () => (
-        <Header
-          attempted={queryResult.isSuccess}
-          transcript={transcript}
-          progress={progress}
-          onProgress={handleProgress}
-          disableProgress={queryTranscripts.isFetching || queryResult.isLoading || recorderState.isRecording}
-        />
-      ),
-    });
+  useNavigationOptions({
+    header: () => (
+      <Header
+        attempted={queryResult.isSuccess}
+        transcript={transcript}
+        progress={progress}
+        onProgress={handleProgress}
+        disableProgress={queryTranscripts.isFetching || queryResult.isLoading || recorderState.isRecording}
+      />
+    ),
   });
 
   // fetch transcripts on mount

@@ -7,7 +7,13 @@ export default function MainLearnLayout() {
         headerShown: false,
         presentation: "fullScreenModal",
       }}>
-      <Stack.Screen name="index" options={{ presentation: "card" }} />
+      <Stack.Screen
+        name="index"
+        options={{
+          headerShown: true,
+          presentation: "card",
+        }}
+      />
       <Stack.Screen name="echo" />
       <Stack.Screen name="yap" />
       <Stack.Screen name="chat" />

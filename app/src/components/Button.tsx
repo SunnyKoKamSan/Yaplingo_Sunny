@@ -1,4 +1,4 @@
-import { ColorValue, Pressable, PressableProps, StyleProp, StyleSheet, ViewStyle } from "react-native";
+import { Pressable, StyleSheet, ViewStyle, type ColorValue, type PressableProps } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import tw from "twrnc";
 
@@ -11,14 +11,14 @@ export default function Button({
   shadowColor,
   scaleDown = 0.95,
   ...props
-}: Omit<PressableProps, "style"> & {
-  style?: StyleProp<ViewStyle>;
+}: {
+  style?: ViewStyle;
   shadowWidth?: number;
   shadowColor?: ColorValue;
   scaleDown?: number;
-}) {
+} & Omit<PressableProps, "style">) {
   const {
-    borderColor = tw.color("neutral-500/50")!,
+    borderColor = tw.color("zinc-500/50")!,
     borderWidth = 2,
     borderBottomWidth = borderWidth,
     ...styles

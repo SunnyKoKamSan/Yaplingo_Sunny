@@ -5,7 +5,8 @@ import tw from "twrnc";
 import { useEchoResultQuery } from "~/client";
 import { Text } from "~/components";
 
-export default function MainLearnFeedbackScreen() {
+// TODO: to be implemented
+export default function MainLearnEchoFeedbackScreen() {
   const { tid } = useLocalSearchParams<{ tid: string }>();
   const { data: result, ...query } = useEchoResultQuery(tid);
 

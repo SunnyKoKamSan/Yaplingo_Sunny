@@ -3,6 +3,7 @@ import { Tabs } from "expo-router";
 import tw from "twrnc";
 
 type Tab = {
+  header?: boolean;
   title: string;
   icon: ImageRequireSource;
 };
@@ -13,6 +14,7 @@ const TABS: Record<string, Tab> = {
     icon: require("@/icons/tabs/home.png"),
   },
   learn: {
+    header: false,
     title: "Learn",
     icon: require("@/icons/tabs/learn.png"),
   },
@@ -36,7 +38,6 @@ export default function MainLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: tw`h-22 border-t-2 pt-4`,
       }}>
@@ -46,6 +47,7 @@ export default function MainLayout() {
           name={name}
           options={{
             headerTitle: tab.title,
+            headerShown: tab.header ?? true,
             tabBarIcon: ({ focused }) => <TabBarIcon tab={tab} focused={focused} />,
           }}
         />

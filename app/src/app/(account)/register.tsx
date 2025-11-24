@@ -1,12 +1,11 @@
-import { useEffect } from "react";
 import { Alert, Keyboard, KeyboardAvoidingView, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import tw from "twrnc";
 
 import { useRegisterMutation } from "~/client";
 import { Spinner, Text, TextInput } from "~/components/";
-import { useFormReducer } from "~/utils";
+import { useFormReducer, useNavigationOptions } from "~/hooks";
 
 const Header = () => (
   <View style={tw`bg-green-500 p-6`}>
@@ -17,18 +16,11 @@ const Header = () => (
 
 export default function AccountRegisterScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
   const mutation = useRegisterMutation();
 
   const [form, dispatch] = useFormReducer({ username: "", password: "", passwordConfirm: "" });
-
-  useEffect(() => {
-    navigation.setOptions({
-      header: () => <Header />,
-    });
-  }, [navigation]);
 
   const handleRegister = () => {
     Keyboard.dismiss();
@@ -47,6 +39,8 @@ export default function AccountRegisterScreen() {
   };
 
   const valid = !!form.username && !!form.password && form.password === form.passwordConfirm;
+
+  useNavigationOptions({ header: () => <Header /> });
 
   return (
     <View style={[tw`flex-1`, { paddingBottom: insets.bottom }]}>
