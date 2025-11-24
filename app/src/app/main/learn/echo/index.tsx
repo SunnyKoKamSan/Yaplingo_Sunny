@@ -128,7 +128,7 @@ export default function MainLearnEchoScreen() {
 
   const handleNext = () => {
     if (progress < transcripts!.items.length - 1) {
-      player.pause();
+      player.replace("");
       mutation.reset();
       flipped.value = false;
       setProgress((prev) => prev + 1);
@@ -180,20 +180,14 @@ export default function MainLearnEchoScreen() {
     }
   }, [router, transcript, queryResult.isSuccess]);
 
-  // load transcript audio when changed
-  useEffect(() => {
-    if (transcript) player.replace(transcript.audio);
-  }, [player, transcript]);
-
   const handlePronounce = () => {
-    if (player.isLoaded) {
-      player.seekTo(0);
-      player.play();
-    }
+    player.replace(transcript!.audio);
+    player.seekTo(0);
+    player.play();
   };
 
   const handleStartRecording = async () => {
-    player.pause();
+    player.replace("");
     {
       await setAudioModeAsync({
         allowsRecording: true,
