@@ -13,14 +13,14 @@ const Header = () => {
   return (
     <View
       style={[
-        tw`border-b pb-2`,
+        tw`border-b-[0.5px] pb-2`,
         {
           paddingTop: insets.top,
           borderColor: theme.colors.border,
           backgroundColor: theme.colors.card,
         },
       ]}>
-      <View style={tw`h-8 flex-row items-center justify-between px-4`}>
+      <View style={tw`h-10 flex-row items-center justify-between px-4`}>
         <View style={tw`flex-row items-center gap-1.5`}>
           <CalendarIcon size={18} strokeWidth={2.5} color={theme.colors.text} />
           <Text style={tw`text-lg font-medium`}>
@@ -28,7 +28,7 @@ const Header = () => {
           </Text>
         </View>
         <View style={tw`absolute inset-x-0 items-center justify-center`}>
-          <Text style={[tw`text-2xl leading-[0] text-green-500`, { fontFamily: "Feather-Bold" }]}>yaplingo</Text>
+          <Text style={[tw`text-3xl leading-[0] text-green-500`, { fontFamily: "Feather-Bold" }]}>yaplingo</Text>
         </View>
         <View style={tw`flex-row items-center gap-1.5`}>
           <ZapIcon size={18} color={tw.color("sky-500")} fill={tw.color("sky-500")} />

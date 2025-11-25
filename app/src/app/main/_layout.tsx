@@ -40,6 +40,7 @@ export default function MainLayout() {
       screenOptions={{
         tabBarShowLabel: false,
         tabBarStyle: tw`h-22 border-t-2 pt-4`,
+        headerTitleStyle: [tw`text-2xl tracking-tight`, { fontFamily: "DINNextRoundedLTW01-Medium" }],
       }}>
       {Object.entries(TABS).map(([name, tab]) => (
         <Tabs.Screen

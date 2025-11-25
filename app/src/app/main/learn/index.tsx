@@ -8,6 +8,7 @@ import { Button, Text } from "~/components";
 import { useNavigationOptions } from "~/hooks";
 
 type Mode = {
+  disabled?: boolean;
   href: string;
   title: string;
   description: string;
@@ -22,12 +23,14 @@ const MODES: Mode[] = [
     icon: require("@/icons/modes/echo.png"),
   },
   {
+    disabled: true,
     href: "/main/learn/yap",
     title: "YAP",
     description: "Speak freely on a selected topic without a script.",
     icon: require("@/icons/modes/yap.png"),
   },
   {
+    disabled: true,
     href: "/main/learn/chat",
     title: "CHAT",
     description: "Engage in a conversation with Yappie based on a selected scenario.",
@@ -44,8 +47,11 @@ const ModeCard = ({ mode }: { mode: Mode }) => {
         <Text style={tw`text-xl leading-tight`}>{mode.description}</Text>
       </View>
       <Image source={mode.icon} style={tw`absolute right-4 top-4 size-16`} />
-      <Button style={tw`m-4 bg-zinc-100 dark:bg-zinc-800`} onPress={() => router.navigate(mode.href)}>
-        <Text style={tw`text-center text-base font-medium`}>START</Text>
+      <Button
+        disabled={mode.disabled}
+        onPress={() => router.navigate(mode.href)}
+        style={tw`m-4 bg-zinc-100 dark:bg-zinc-800`}>
+        <Text style={tw`text-center text-base font-medium`}>{mode.disabled ? "COMING SOON" : "START"}</Text>
       </Button>
     </View>
   );
@@ -57,7 +63,7 @@ const Header = () => {
   return (
     <View
       style={[
-        tw`relative flex-row border-b bg-green-50 p-6 dark:bg-green-950`,
+        tw`relative flex-row border-b-[0.5px] bg-green-50 p-6 dark:bg-green-950`,
         { paddingTop: insets.top + 16, borderColor: theme.colors.border },
       ]}>
       <View>

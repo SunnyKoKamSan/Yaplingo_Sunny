@@ -17,13 +17,14 @@ export default function Meter({
   color?: ColorValue;
   children?: React.ReactNode;
 }) {
+  const theme = useTheme();
+
   const center = size / 2;
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
 
   const progress = Math.min(Math.max(percentage, 0), 100);
   const length = ((circumference / 2) * progress) / 100;
-  const theme = useTheme();
 
   return (
     <View style={tw`items-center`}>

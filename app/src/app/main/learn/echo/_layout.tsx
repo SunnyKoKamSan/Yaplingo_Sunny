@@ -9,8 +9,8 @@ export default function MainLearnEchoLayout() {
         options={{
           headerShown: false,
           presentation: "formSheet",
-          sheetGrabberVisible: true,
-          sheetAllowedDetents: [0.7],
+          sheetGrabberVisible: false,
+          sheetAllowedDetents: [0.5],
           sheetExpandsWhenScrolledToEdge: false,
         }}
       />

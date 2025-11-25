@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { Dimensions, Pressable, ScrollView, ScrollViewProps, View } from "react-native";
 import tw from "twrnc";
 
-import { Text } from "~/components";
+import Text from "~/components/Text";
 
 const WINDOW_WIDTH = Dimensions.get("window").width;
 

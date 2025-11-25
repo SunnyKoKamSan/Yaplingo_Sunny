@@ -28,12 +28,12 @@ export default function MainProfileScreen() {
 
   return (
     <View style={tw`flex-1 items-center justify-center gap-5`}>
-      {!!user && <Text style={tw`text-lg`}>{user.name}</Text>}
+      {!!user && <Text style={tw`text-lg`}>@{user.name}</Text>}
       <Button
         onPress={handleLogout}
         style={tw`border-transparent bg-red-500 px-6 py-2`}
         shadowColor={tw.color("red-400")}>
-        <Text style={tw`text-base font-medium`}>SIGN OUT</Text>
+        <Text style={tw`text-base font-medium text-white`}>SIGN OUT</Text>
       </Button>
     </View>
   );

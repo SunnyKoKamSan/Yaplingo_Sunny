@@ -38,7 +38,12 @@ export default function Button({
 
   return (
     <AnimatedPressable
-      style={[tw`items-center rounded-xl py-2`, { borderColor, borderWidth, borderBottomWidth }, styles, astyle]}
+      style={[
+        tw.style("items-center rounded-xl py-2", props.disabled && "opacity-50"),
+        { borderColor, borderWidth, borderBottomWidth },
+        styles,
+        astyle,
+      ]}
       onPressIn={() => {
         if (props.disabled) return;
         _scale.value = withTiming(scaleDown, { duration: 100 });
