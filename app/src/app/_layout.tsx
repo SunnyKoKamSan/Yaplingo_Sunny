@@ -10,6 +10,7 @@ import { AudioModule } from "expo-audio";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { PortalProvider } from "@gorhom/portal";
 import { useAtomValue } from "jotai";
 import tw, { useDeviceContext } from "twrnc";
 
@@ -102,7 +103,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={theme}>
       <QueryClientProvider client={client}>
-        <Layout />
+        <PortalProvider>
+          <Layout />
+        </PortalProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

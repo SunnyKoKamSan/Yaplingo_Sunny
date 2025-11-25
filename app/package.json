@@ -10,6 +10,7 @@
     "checklint": "tsc --noEmit & eslint"
   },
   "dependencies": {
+    "@gorhom/portal": "^1.0.14",
     "@react-navigation/elements": "^2.8.1",
     "@tanstack/react-query": "^5.90.2",
     "axios": "^1.12.2",

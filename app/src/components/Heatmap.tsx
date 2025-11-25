@@ -1,55 +1,53 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { Dimensions, Pressable, ScrollView, View, type ScrollViewProps } from "react-native";
+import { ScrollView, View, type ScrollViewProps } from "react-native";
 import tw from "twrnc";
 
 import Text from "~/components/Text";
 
-const WINDOW_WIDTH = Dimensions.get("window").width;
+import Tooltip from "./Tooltip";
 
 type Entry = { date: Date; count: number };
 
 export default function Heatmap({
   entries = [],
-  weeksShown = 20,
   squareGap = 4,
-  squareSize = (WINDOW_WIDTH - 40) / weeksShown - squareGap,
-  onCellPress,
+  squareSize = 16,
   ...props
 }: {
   entries?: Entry[];
-  weeksShown?: number;
   squareGap?: number;
   squareSize?: number;
-  onCellPress?: (entry: Entry) => void;
 } & ScrollViewProps) {
   const ref = useRef<ScrollView>(null);
 
   const weeks = useMemo(() => {
     const today = new Date();
-    const saturday = new Date(today);
-    saturday.setDate(today.getDate() + (6 - today.getDay()));
-    const weeks = [];
-    for (let w = 0; w < weeksShown; w++) {
-      const weekSaturday = new Date(saturday);
-      weekSaturday.setDate(saturday.getDate() - w * 7);
-      const sunday = new Date(weekSaturday);
-      sunday.setDate(weekSaturday.getDate() - 6);
+    const start = new Date(today.getFullYear(), 0, 1);
+    const sunday = new Date(start);
+    sunday.setDate(start.getDate() - start.getDay());
 
+    const weeks = [];
+    const weekstart = new Date(sunday);
+
+    while (weekstart <= today) {
+      const weekend = new Date(weekstart);
+      weekend.setDate(weekstart.getDate() + 6);
       const week: { month: string; days: Entry[] } = {
-        month: weekSaturday.toLocaleDateString("en-GB", { month: "short" }),
+        month: weekend.toLocaleDateString("en-GB", { month: "short" }),
         days: [],
       };
       for (let d = 0; d < 7; d++) {
-        const date = new Date(sunday);
-        date.setDate(sunday.getDate() + d);
+        const date = new Date(weekstart);
+        date.setDate(weekstart.getDate() + d);
         if (date.getTime() > today.getTime()) break;
         const entry = entries.find((e) => e.date.toDateString() === date.toDateString());
         week.days.push({ date, count: entry?.count ?? 0 });
       }
-      weeks.unshift(week);
+      weeks.push(week);
+      weekstart.setDate(weekstart.getDate() + 7);
     }
     return weeks;
-  }, [entries, weeksShown]);
+  }, [entries]);
 
   useEffect(() => ref.current?.scrollToEnd({ animated: false }), []);
 
@@ -63,15 +61,23 @@ export default function Heatmap({
                 const intensity = Math.min(Math.ceil(day.count / 2) * 100, 900);
                 const color = tw.color(`emerald-${intensity || 100}`);
                 return (
-                  <Pressable
-                    onPress={() => onCellPress?.(day)}
+                  <Tooltip
                     key={day.date.getTime()}
-                    style={[
-                      tw`rounded-sm bg-zinc-200 dark:bg-zinc-800`,
-                      { width: squareSize, height: squareSize },
-                      day.count > 0 && { backgroundColor: color },
-                    ]}
-                  />
+                    content={`${day.date.toLocaleDateString("en-GB", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    })}\n${day.count} activities`}>
+                    {(enabled) => (
+                      <View
+                        style={[
+                          tw.style("rounded-sm bg-zinc-200 dark:bg-zinc-800", enabled && "border border-zinc-500/50"),
+                          { width: squareSize, height: squareSize },
+                          day.count > 0 && { backgroundColor: color },
+                        ]}
+                      />
+                    )}
+                  </Tooltip>
                 );
               })}
             </View>
