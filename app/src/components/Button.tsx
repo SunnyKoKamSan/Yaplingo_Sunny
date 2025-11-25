@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, ViewStyle, type ColorValue, type PressableProps } from "react-native";
+import { Pressable, StyleSheet, type ColorValue, type PressableProps, type ViewStyle } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import tw from "twrnc";
 

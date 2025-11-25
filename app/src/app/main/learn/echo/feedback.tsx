@@ -41,7 +41,7 @@ export default function MainLearnEchoFeedbackScreen() {
     return "Keep practicing!";
   }, [percentage]);
 
-  if (!query.isSuccess) return null;
+  if (!query.isSuccess || result === null) return null;
 
   return (
     <View style={tw`flex-1 gap-8 p-4`}>

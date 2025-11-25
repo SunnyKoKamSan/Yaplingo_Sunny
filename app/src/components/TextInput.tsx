@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { TextInput as _TextInput, Pressable, View, type TextInputProps } from "react-native";
 import { useTheme } from "@react-navigation/native";
-import { EyeIcon, EyeOffIcon, LucideIcon } from "lucide-react-native";
+import { EyeIcon, EyeOffIcon, type LucideIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 export default function TextInput({

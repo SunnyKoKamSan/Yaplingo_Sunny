@@ -1,4 +1,4 @@
-import { Image, ImageRequireSource, View } from "react-native";
+import { Image, View, type ImageRequireSource } from "react-native";
 import { Tabs } from "expo-router";
 import tw from "twrnc";
 

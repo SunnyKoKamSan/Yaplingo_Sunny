@@ -1,5 +1,5 @@
 import React from "react";
-import { ColorValue, View } from "react-native";
+import { View, type ColorValue } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { useTheme } from "@react-navigation/native";
 import tw from "twrnc";
@@ -31,7 +31,7 @@ export default function Meter({
       <Svg width={size} height={center + thickness}>
         <Path
           fill="transparent"
-          stroke={theme.dark ? tw.color("zinc-800") : tw.color("zinc-200")}
+          stroke={tw.color(theme.dark ? "zinc-800" : "zinc-200")}
           strokeWidth={thickness}
           strokeLinecap="round"
           d={`M ${thickness / 2}, ${center}

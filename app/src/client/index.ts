@@ -1,4 +1,5 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
 import { useSetAtom } from "jotai";
 
@@ -86,21 +87,22 @@ export const useEchoTranscriptsQuery = () =>
       const response = await client.get<Transcripts>(`/echo/transcripts`);
       return response.data;
     },
-    enabled: false,
     staleTime: Infinity,
+    refetchOnMount: "always", // important
   });
 
 export const useEchoMutation = (tid?: string) =>
-  useMutation<Result | null, AxiosError, string>({
+  useMutation<void, AxiosError, string>({
     mutationFn: async (audio: string) => {
-      if (!tid) return null;
-      const response = await client.post<Result | null>(`/echo/${tid}`, { audio });
-      return response.data;
+      if (!tid) return;
+      await client.post<void>(`/echo/${tid}`, { audio });
     },
   });
 
-export const useEchoResultQuery = (tid?: string) =>
-  useQuery<Result | null, AxiosError>({
+export const useEchoResultQuery = (tid?: string) => {
+  const qclient = useQueryClient();
+
+  const query = useQuery<Result | null, AxiosError>({
     queryKey: ["echo", tid, "result"],
     queryFn: async () => {
       while (true) {
@@ -114,5 +116,14 @@ export const useEchoResultQuery = (tid?: string) =>
     enabled: !!tid,
     staleTime: Infinity,
   });
+
+  useEffect(() => {
+    if (query.isSuccess && query.data === null) {
+      qclient.removeQueries({ queryKey: ["echo", tid, "result"] });
+    }
+  }, [tid, qclient, query.isSuccess, query.data]);
+
+  return query;
+};
 
 export default client;

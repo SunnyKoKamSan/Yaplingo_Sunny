@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { Dimensions, Pressable, ScrollView, ScrollViewProps, View } from "react-native";
+import { Dimensions, Pressable, ScrollView, View, type ScrollViewProps } from "react-native";
 import tw from "twrnc";
 
 import Text from "~/components/Text";

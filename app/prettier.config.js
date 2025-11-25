@@ -11,15 +11,5 @@ module.exports = {
   ],
   tailwindAttributes: ["style"],
   tailwindFunctions: ["tw", "tw.color", "tw.style"],
-  tailwindPreserveWhitespace: false,
-  importOrder: [
-    "^react",
-    "^@(react|(.+)/react)",
-    "^expo",
-    "<THIRD_PARTY_MODULES>",
-    "",
-    "^~/(.*)$",
-    "",
-    "^[./]",
-  ],
+  importOrder: ["^react", "^@(react|(.+)/react)", "^expo", "<THIRD_PARTY_MODULES>", "", "^~/(.*)$", "", "^[./]"],
 };

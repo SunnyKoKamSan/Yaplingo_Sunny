@@ -40,6 +40,7 @@
   "devDependencies": {
     "@babel/core": "~7.20.0",
     "@ianvs/prettier-plugin-sort-imports": "^4.4.2",
+    "@tanstack/eslint-plugin-query": "^5.91.2",
     "@types/react": "~19.0.10",
     "eslint": "^9.25.1",
     "eslint-config-expo": "^9.2.0",

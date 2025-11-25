@@ -1,4 +1,4 @@
-import { ColorValue, View, ViewProps } from "react-native";
+import { View, type ColorValue, type ViewProps } from "react-native";
 import tw from "twrnc";
 
 export default function Progress({
