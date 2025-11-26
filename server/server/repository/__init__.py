@@ -1,12 +1,12 @@
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, SQLModel, select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import SQLModel, select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from ulid import ULID
 
-from server.schemas import UserCreation, UserCredentials
-
+from ..schemas import UserCreation, UserCredentials
 from .models import User
 from .settings import settings
 
@@ -17,23 +17,31 @@ class EntityExistsError(Exception):
 
 
 class Repository:
+    _hasher = PasswordHasher()
+
     def __init__(self):
-        self._hasher = PasswordHasher()
-        self._engine = create_engine(settings.url)
-        SQLModel.metadata.create_all(self._engine)
+        self._engine = create_async_engine(settings.url, echo=True, future=True)
+        self.session = async_sessionmaker(self._engine, class_=AsyncSession, expire_on_commit=False)
 
-    def dispose(self):
-        self._engine.dispose()
+    @classmethod
+    async def create(cls):
+        self = cls()
+        async with self._engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.create_all)
+        return self
 
-    def get_user(self, id: ULID) -> User | None:
-        with Session(self._engine) as session:
-            user = session.get(User, str(id))
+    async def dispose(self):
+        await self._engine.dispose()
+
+    async def get_user(self, id: ULID) -> User | None:
+        async with self.session() as session:
+            user = await session.get(User, id)
         return user
 
-    def check_user(self, credentials: UserCredentials) -> User | None:
-        with Session(self._engine) as session:
+    async def check_user(self, credentials: UserCredentials) -> User | None:
+        async with self.session() as session:
             query = select(User).where(User.name == credentials.name)
-            user = session.exec(query).one_or_none()
+            user = (await session.exec(query)).one_or_none()
         if user is None:
             return None
         try:
@@ -42,17 +50,16 @@ class Repository:
             return None
         return user
 
-    def create_user(self, data: UserCreation) -> User:
+    async def create_user(self, data: UserCreation) -> User:
         # hash password before storing into database
         data.password = self._hasher.hash(data.password)
         # auto map UserCreate (DTO) to User (DO) model
         user = User.model_validate(data)
         # perform database operation
         try:
-            with Session(self._engine) as session:
-                session.add(user)
-                session.commit()
-                session.refresh(user)
+            async with self.session() as session:
+                async with session.begin():
+                    session.add(user)
         except IntegrityError:
             raise EntityExistsError()
         return user

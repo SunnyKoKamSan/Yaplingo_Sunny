@@ -13,9 +13,9 @@ from server.routers import auth, echo
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.yaplingo = Yaplingo()  # initialize the Yaplingo singleton instance
-    app.state.repository = Repository()
+    app.state.repository = await Repository.create()
     yield
-    app.state.repository.dispose()
+    await app.state.repository.dispose()
 
 
 app = FastAPI(lifespan=lifespan)

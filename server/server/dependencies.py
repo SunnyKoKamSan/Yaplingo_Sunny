@@ -35,7 +35,7 @@ async def current_user(credentials: Credentials, repository: Repository) -> User
     uid = claims.get("sub")
     if uid is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Token")
-    user = repository.get_user(uid)  # TODO: cache this to avoid database hit on every protected endpoint
+    user = await repository.get_user(uid)  # TODO: cache this to avoid database hit on every protected endpoint
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Not Found")
     return user

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from openai import OpenAI
+from openai import OpenAI  # TODO: can be made async
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

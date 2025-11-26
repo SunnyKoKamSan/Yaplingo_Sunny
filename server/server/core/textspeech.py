@@ -16,7 +16,7 @@ class BaseTextSpeech(ABC):
 
 class GoogleTextSpeech(BaseTextSpeech):
     def __init__(self):
-        self._gtts = partial(gTTS, lang="en", slow=False)
+        self._gtts = partial(gTTS, lang="en", tld="us", slow=False)
 
     def __call__(self, text: str) -> str:
         buffer = io.BytesIO()

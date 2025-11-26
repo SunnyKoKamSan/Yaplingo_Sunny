@@ -22,22 +22,22 @@ def generate_token(user: User) -> str:
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(user_creation: UserCreation, repository: Repository):
+async def register(user_creation: UserCreation, repository: Repository):
     try:
-        user = repository.create_user(user_creation)
+        user = await repository.create_user(user_creation)
     except EntityExistsError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User Already Exists")
     return {"token": generate_token(user)}
 
 
 @router.post("/login")
-def login(user_credentials: UserCredentials, repository: Repository):
-    user = repository.check_user(user_credentials)
+async def login(user_credentials: UserCredentials, repository: Repository):
+    user = await repository.check_user(user_credentials)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return {"token": generate_token(user)}
 
 
 @router.get("/me", response_model=UserResponse)
-def me(current_user: Annotated[User, Depends(current_user)]) -> User:
+async def me(current_user: Annotated[User, Depends(current_user)]) -> User:
     return current_user
