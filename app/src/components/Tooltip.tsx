@@ -4,7 +4,7 @@ import { useTheme } from "@react-navigation/native";
 import { Portal } from "@gorhom/portal";
 import tw from "twrnc";
 
-import { Text } from "~/components";
+import Text from "./Text";
 
 const GAP = 8;
 
@@ -22,12 +22,12 @@ export default function Tooltip({
 
   const ref = useRef<View>(null);
 
-  const [visible, setVisible] = useState(false);
+  const [active, setActive] = useState(false);
   const [position, setPosition] = useState<{ top: number; left?: number; right?: number } | null>(null);
 
   const handlePress = () => {
     ref.current?.measure((_x, _y, width, height, pageX, pageY) => {
-      setVisible(true);
+      setActive(true);
       setPosition({
         top: pageY + height + GAP,
         left: pageX <= (WINDOW_WIDTH * 2) / 3 ? pageX - width / 2 : undefined,
@@ -37,16 +37,16 @@ export default function Tooltip({
   };
 
   const handleClose = () => {
-    setVisible(false);
+    setActive(false);
     setPosition(null);
   };
 
   return (
     <>
       <Pressable ref={ref} onPress={handlePress}>
-        {children(visible)}
+        {children(active)}
       </Pressable>
-      {visible && position && (
+      {active && position && (
         <Portal>
           <Pressable style={tw`absolute inset-0`} onPressIn={handleClose}>
             <View

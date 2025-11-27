@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { ScrollView, View, type ScrollViewProps } from "react-native";
 import tw from "twrnc";
 
-import Text from "~/components/Text";
-
+import Text from "./Text";
 import Tooltip from "./Tooltip";
 
 type Entry = { date: Date; count: number };
@@ -68,10 +67,10 @@ export default function Heatmap({
                       month: "short",
                       day: "numeric",
                     })}\n${day.count} activities`}>
-                    {(enabled) => (
+                    {(active) => (
                       <View
                         style={[
-                          tw.style("rounded-sm bg-zinc-200 dark:bg-zinc-800", enabled && "border border-zinc-500/50"),
+                          tw.style("rounded bg-zinc-200 dark:bg-zinc-800", active && "border-2 border-zinc-500/50"),
                           { width: squareSize, height: squareSize },
                           day.count > 0 && { backgroundColor: color },
                         ]}
