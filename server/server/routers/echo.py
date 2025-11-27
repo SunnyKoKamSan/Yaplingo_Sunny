@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from pydantic import Base64Bytes, BaseModel
 from ulid import ULID
 
@@ -56,7 +56,7 @@ async def post_transcript(
 
 
 @router.get("/{tid}/result")
-async def get_transcript_result(tid: ULID) -> Result | None:
+async def get_transcript_result(tid: ULID, response: Response) -> Result | None:
     if tid not in TRANSCRIPTS:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     if tid not in RESULTS or RESULTS[tid].pending:
@@ -64,4 +64,6 @@ async def get_transcript_result(tid: ULID) -> Result | None:
     result = RESULTS[tid].result
     if isinstance(result, Exception):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if result is None:
+        response.status_code = status.HTTP_204_NO_CONTENT
     return result

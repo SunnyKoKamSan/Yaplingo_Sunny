@@ -106,10 +106,10 @@ export const useEchoResultQuery = (tid?: string) => {
     queryKey: ["echo", tid, "result"],
     queryFn: async () => {
       while (true) {
-        const response = await client.get<Result | null>(`/echo/${tid}/result`, {
-          validateStatus: (status) => [200, 425].includes(status),
+        const { status, data } = await client.get<Result | null>(`/echo/${tid}/result`, {
+          validateStatus: (status) => [200, 204, 425].includes(status),
         });
-        if (response.status === 200) return response.data;
+        if (status !== 425) return status === 200 ? data : null;
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     },
