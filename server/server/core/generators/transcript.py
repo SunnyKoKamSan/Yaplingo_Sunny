@@ -1,3 +1,4 @@
+import random
 import re
 from functools import cached_property
 from pathlib import Path
@@ -68,26 +69,26 @@ class Transcripts:
 
 
 class TranscriptGenerator(Generator):
+    TOPICS = ["food", "culture", "travel", "business", "technology"]
+
     @property  # FIXME: use `@cached_property` in production
     def system_prompt(self) -> str:
         path = Path(__file__).parent / "prompts" / "transcript.md"
         return path.read_text(encoding="utf-8").strip()
 
     def __call__(self) -> Transcripts:
+        topic = random.choice(self.TOPICS)
         text = super().__call__(
-            "Now generate one new set following all rules and format exactly.",
-            temperature=1.0,
-            frequency_penalty=2.0,
-            presence_penalty=2.0,
+            f"Topic: {topic}",
+            temperature=1.25,
+            # frequency_penalty=2.0,
+            # presence_penalty=2.0,
         )
-        print("=" * 10)  # DEBUG
-        print(text)  # DEBUG
-        print("=" * 10)  # DEBUG
+        print(f"{'=' * 10}\n@ {topic}\n{text}\n{'=' * 10}")  # DEBUG
         lines = list(filter(bool, [s.strip() for s in text.splitlines()]))
-        if len(lines) < 7:
+        if len(lines) < 6:
             return self()  # FIXME: retry on invalid output
-        topic = re.split(r"^\s?[@]\s?", lines[0], maxsplit=1)[-1].strip()
-        scenario = re.split(r"^\s?[+]\s?", lines[1], maxsplit=1)[-1].strip()
-        sentences = [re.split(r"^\s?[-–*]\s?", line, maxsplit=1)[-1].strip() for line in lines[2:]]
+        scenario = re.split(r"^\s?[+]\s?", lines[0], maxsplit=1)[-1].strip()
+        sentences = [re.split(r"^\s?[-–*]\s?", line, maxsplit=1)[-1].strip() for line in lines[1:]]
         items = [Transcript.from_text(s) for s in sentences]
         return Transcripts(topic=topic, scenario=scenario, items=items)

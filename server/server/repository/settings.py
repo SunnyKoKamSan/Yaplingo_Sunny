@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     url: str
 
-    model_config = SettingsConfigDict(env_prefix="db_")
+    model_config = SettingsConfigDict(env_prefix="database_")
 
     @field_validator("url")
     @classmethod
