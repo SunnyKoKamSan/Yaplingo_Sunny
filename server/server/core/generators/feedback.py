@@ -33,7 +33,6 @@ class FeedbackGenerator(Generator):
         differences = pronunciation.get_differences()
         errors = "\n".join([f"\t- {d}" for d in differences]) if differences else "None"
         prompt = f"""
-        Now roast this attempt:
         Text: "{transcript.text}"
         Errors: \n{errors}
         """
