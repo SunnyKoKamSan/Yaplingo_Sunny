@@ -18,10 +18,10 @@ class Pipeline:
         self.pronunciation_aligner = PronunciationAligner()
         self.feedback_generator = FeedbackGenerator()
 
-    def __call__(self, audio: bytes, transcript: Transcript) -> Result | None:
+    async def __call__(self, audio: bytes, transcript: Transcript) -> Result | None:
         waveform = self.audio_processor(audio)
         if waveform is None:
             return None
         pronunciation = self.pronunciation_aligner(waveform, transcript)
-        feedback = self.feedback_generator(transcript, pronunciation)
+        feedback = await self.feedback_generator(transcript, pronunciation)
         return Result(feedback=feedback, pronunciation=pronunciation)

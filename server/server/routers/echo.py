@@ -27,7 +27,7 @@ router = APIRouter(dependencies=[Depends(current_user)])
 
 @router.get("/transcripts")
 async def get_transcripts(yaplingo: Yaplingo) -> Transcripts:
-    transcripts = yaplingo.generate_transcripts()
+    transcripts = await yaplingo.generate_transcripts()
     for item in transcripts.items:
         TRANSCRIPTS[item.id] = item
     return transcripts
@@ -44,10 +44,10 @@ async def post_transcript(
     if transcript is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    def analyze_audio():
+    async def analyze_audio():
         RESULTS[tid] = TaskResult()
         try:
-            result = yaplingo.analyze_audio(echo.audio, transcript)
+            result = await yaplingo.analyze_audio(echo.audio, transcript)
         except Exception as e:
             result = e
         RESULTS[tid] = TaskResult(pending=False, result=result)

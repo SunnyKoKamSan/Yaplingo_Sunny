@@ -8,11 +8,11 @@ class Yaplingo:
         self._pipeline = Pipeline()
         self._transcript_generator = TranscriptGenerator()
 
-    def analyze_audio(self, audio: bytes, transcript: Transcript) -> Result | None:
-        return self._pipeline(audio, transcript)
+    async def analyze_audio(self, audio: bytes, transcript: Transcript) -> Result | None:
+        return await self._pipeline(audio, transcript)
 
-    def generate_transcripts(self) -> Transcripts:
-        return self._transcript_generator()
+    async def generate_transcripts(self) -> Transcripts:
+        return await self._transcript_generator()
 
 
 __all__ = ["Yaplingo", "Result", "Transcript", "Transcripts", "Feedback"]

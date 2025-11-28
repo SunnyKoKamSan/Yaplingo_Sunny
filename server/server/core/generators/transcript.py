@@ -75,9 +75,9 @@ class TranscriptGenerator(Generator):
         path = Path(__file__).parent / "prompts" / "transcript.md"
         return path.read_text(encoding="utf-8").strip()
 
-    def __call__(self) -> Transcripts:
+    async def __call__(self) -> Transcripts:
         topic = random.choice(self.TOPICS)
-        text = super().__call__(
+        text = await super().__call__(
             f"Topic: {topic}",
             temperature=1.25,
             # frequency_penalty=2.0,
@@ -86,7 +86,7 @@ class TranscriptGenerator(Generator):
         print(f"{'=' * 10} TRANSCRIPTS {'=' * 10}\n@ {topic}\n{text}\n{'=' * 30}")  # DEBUG
         lines = list(filter(bool, [s.strip() for s in text.splitlines()]))
         if len(lines) < 6:
-            return self()  # FIXME: retry on invalid output
+            return await self()  # FIXME: retry on invalid output
         scenario = re.split(r"^\s?[+]\s?", lines[0], maxsplit=1)[-1].strip()
         sentences = [re.split(r"^\s?[-–*]\s?", line, maxsplit=1)[-1].strip() for line in lines[1:]]
         items = [Transcript.from_text(s) for s in sentences]

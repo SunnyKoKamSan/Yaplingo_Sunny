@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from openai import OpenAI  # TODO: can be made async
+from openai import AsyncOpenAI
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,15 +17,15 @@ settings = Settings.model_validate({})
 
 class Generator(ABC):
     def __init__(self):
-        self._client = OpenAI(base_url=settings.base_url, api_key=settings.api_key)
+        self._client = AsyncOpenAI(base_url=settings.base_url, api_key=settings.api_key)
 
     @property
     @abstractmethod
     def system_prompt(self) -> str:
         raise NotImplementedError
 
-    def __call__(self, prompt: str, **kwargs) -> str:
-        completion = self._client.chat.completions.create(
+    async def __call__(self, prompt: str, **kwargs) -> str:
+        completion = await self._client.chat.completions.create(
             model=settings.model_id,
             messages=[
                 {"role": "system", "content": self.system_prompt},
