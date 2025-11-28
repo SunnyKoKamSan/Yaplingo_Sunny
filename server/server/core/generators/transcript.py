@@ -14,7 +14,8 @@ from ...utils import cached_method
 from ..textspeech import gtts
 from . import Generator
 
-PHONEMIZER_SEPARATOR = Separator(phone="/", word=" ")
+SEPARATOR = Separator(phone="/", word=" ")
+PUNCTUATION = Punctuation()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -30,7 +31,7 @@ class Transcript:
             strip=True,
             with_stress=False,
             preserve_punctuation=True,
-            separator=PHONEMIZER_SEPARATOR,
+            separator=SEPARATOR,
             language="en-us",
             backend="espeak",
         )
@@ -48,12 +49,10 @@ class Transcript:
 
     @cached_method
     def get_word_boundaries(self) -> list[tuple[str, int, int]]:
-        boundaries = []
         index = 0
-        text = Punctuation().remove(self.text)
-        words = str(text).split()
-        sequence = Punctuation().remove(self.sequence)
-        phonemes = str(sequence).split()
+        boundaries = []
+        words = str(PUNCTUATION.remove(self.text)).split()
+        phonemes = str(PUNCTUATION.remove(self.sequence)).split()
         for word, phones in zip(words, phonemes):
             start = index
             index += len(phones.split("/"))
@@ -84,7 +83,7 @@ class TranscriptGenerator(Generator):
             # frequency_penalty=2.0,
             # presence_penalty=2.0,
         )
-        print(f"{'=' * 10}\n@ {topic}\n{text}\n{'=' * 10}")  # DEBUG
+        print(f"{'=' * 10} TRANSCRIPTS {'=' * 10}\n@ {topic}\n{text}\n{'=' * 30}")  # DEBUG
         lines = list(filter(bool, [s.strip() for s in text.splitlines()]))
         if len(lines) < 6:
             return self()  # FIXME: retry on invalid output

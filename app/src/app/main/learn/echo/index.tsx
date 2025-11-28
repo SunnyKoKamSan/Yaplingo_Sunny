@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 import Animated, {
   interpolate,
   runOnJS,
@@ -128,6 +128,7 @@ const Header = ({
 // FIXME: handle query/mutation errors
 export default function MainLearnEchoScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const player = useAudioPlayer();
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder);
@@ -150,7 +151,7 @@ export default function MainLearnEchoScreen() {
   );
 
   const { reset: resetMutation, ...mutation } = useEchoMutation(transcript?.id);
-  const queryResult = useEchoResultQuery(mutation.isSuccess ? transcript?.id : undefined);
+  const { data: result, ...queryResult } = useEchoResultQuery(mutation.isSuccess ? transcript?.id : undefined);
 
   const handleNext = () => {
     if (progress < transcripts!.items.length - 1) {
@@ -185,7 +186,9 @@ export default function MainLearnEchoScreen() {
         transcript={transcript}
         progress={progress}
         onProgress={handleProgress}
-        disableProgress={queryTranscripts.isFetching || queryResult.isLoading || recorderState.isRecording}
+        disableProgress={
+          queryTranscripts.isFetching || mutation.isPending || queryResult.isLoading || recorderState.isRecording
+        }
       />
     ),
   });
@@ -193,20 +196,16 @@ export default function MainLearnEchoScreen() {
   // handle result once available
   useEffect(() => {
     if (queryResult.isSuccess) {
-      if (queryResult.data == null) {
+      if (result === null) {
         resetMutation();
         Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
       } else {
-        router.navigate(
-          {
-            pathname: "./feedback",
-            params: { tid: transcript?.id },
-          },
-          { relativeToDirectory: true },
-        );
+        player.replace(result!.feedback.audio);
+        player.seekTo(0);
+        player.play();
       }
     }
-  }, [router, transcript, queryResult.isSuccess, queryResult.data, resetMutation]);
+  }, [router, player, transcript, result, queryResult.isSuccess, resetMutation]);
 
   const handlePronounce = () => {
     player.replace(transcript!.audio);
@@ -255,20 +254,59 @@ export default function MainLearnEchoScreen() {
 
   const card = [
     {
-      text: transcript?.text,
+      text: result
+        ? result.pronunciation.words.map(([word, alignments], key) => {
+            const score = alignments.reduce((a, b) => a + b.score, 0) / alignments.length;
+            let color = tw.color("red-500");
+            if (score >= 0.75) color = tw.color("green-500");
+            else if (score >= 0.5) color = tw.color("yellow-500");
+            return (
+              <Text key={key} style={{ color, fontFamily: "" }}>
+                {`${word} `}
+              </Text>
+            );
+          })
+        : transcript?.text,
       style: frontCardAnimatedStyle,
     },
     {
-      text: transcript?.sequence.replaceAll("/", ""),
+      text: result
+        ? result.pronunciation.words.map(([, alignments]) => {
+            return alignments.map(({ score, token }, key) => {
+              let color = tw.color("red-500");
+              if (score >= 0.75) color = tw.color("green-500");
+              else if (score >= 0.5) color = tw.color("yellow-500");
+              return (
+                <Text key={key} style={{ color, fontFamily: "" }}>
+                  {token}
+                  {key + 1 === alignments.length ? " " : null}
+                </Text>
+              );
+            });
+          })
+        : transcript?.sequence.replaceAll("/", ""),
       style: backCardAnimatedStyle,
     },
   ];
 
+  const score = useMemo(() => {
+    if (!result) return undefined;
+    const scores = result.pronunciation.alignments.map((a) => a.score);
+    const total = scores.reduce((a, b) => a + b, 0);
+    const percentage = Math.round((total / scores.length) * 100);
+    if (percentage >= 75) return { percentage, color: tw.color("green-500"), message: "slayed" };
+    if (percentage >= 50) return { percentage, color: tw.color("yellow-500"), message: "mid" };
+    return { percentage, color: tw.color("red-500"), message: "cooked" };
+  }, [result]);
+
   return (
-    <View style={tw`flex-1 items-center justify-between p-4`}>
+    <View style={[tw`flex-1 items-center justify-between gap-4 p-4`, { paddingBottom: insets.bottom }]}>
       {queryTranscripts.isFetching ? (
-        <View style={tw`w-full flex-grow items-center justify-center gap-4`}>
+        <View style={tw`w-4/6 flex-grow items-center justify-center gap-8`}>
           <Spinner size={48} />
+          <Text style={tw`text-center text-base font-medium leading-tight text-zinc-500`}>
+            Please ensure you are in a quiet environment for the best experience.
+          </Text>
         </View>
       ) : (
         queryTranscripts.isSuccess && (
@@ -276,8 +314,16 @@ export default function MainLearnEchoScreen() {
             <View style={tw`rounded-xl border-2 border-zinc-500/50 p-2.5`}>
               <Text style={tw`text-lg font-medium leading-tight`}>{transcripts!.scenario}</Text>
             </View>
+            {result && (
+              <View style={tw`mt-8 items-center justify-center gap-2`}>
+                <Text style={[tw`text-center text-5xl font-bold tracking-tighter`, { color: score?.color }]}>
+                  {score?.percentage}%
+                </Text>
+                <Text style={[tw`text-center text-2xl font-medium`, { color: score?.color }]}>{score?.message}</Text>
+              </View>
+            )}
             <View style={tw`w-full flex-grow items-center justify-center`}>
-              <View style={tw`relative items-center justify-center bg-blue-500`}>
+              <View style={tw`relative items-center justify-center`}>
                 {card.map(({ text, style }, index) => (
                   <AnimatedPressable
                     key={index}
@@ -301,53 +347,67 @@ export default function MainLearnEchoScreen() {
                   </AnimatedPressable>
                 ))}
               </View>
-              <View style={[tw`mt-5 items-center justify-center`, { top: height / 2 }]}>
-                <View style={tw`flex-row items-center gap-1`}>
-                  <FlipHorizontalIcon size={14} color={tw.color("zinc-500")} />
-                  <Text style={tw`text-sm font-medium text-zinc-500`}>
-                    Tap to see {_flipped ? "text" : "IPA"} transcript
-                  </Text>
+              {queryResult.isPending && (
+                <View style={[tw`mt-5 items-center justify-center`, { top: height / 2 }]}>
+                  <View style={tw`flex-row items-center gap-1`}>
+                    <FlipHorizontalIcon size={14} color={tw.color("zinc-500")} />
+                    <Text style={tw`text-sm font-medium text-zinc-500`}>
+                      Tap to see {_flipped ? "text" : "IPA"} transcript
+                    </Text>
+                  </View>
+                  <View style={tw`flex-row items-center gap-1`}>
+                    <EarIcon size={14} color={tw.color("zinc-500")} />
+                    <Text style={tw`text-sm font-medium text-zinc-500`}>
+                      Long Press to play reference pronunciation
+                    </Text>
+                  </View>
                 </View>
-                <View style={tw`flex-row items-center gap-1`}>
-                  <EarIcon size={14} color={tw.color("zinc-500")} />
-                  <Text style={tw`text-sm font-medium text-zinc-500`}>Long Press to play reference pronunciation</Text>
-                </View>
-              </View>
-            </View>
-            <View style={tw`h-1/6 w-full items-center justify-center px-8`}>
-              {queryResult.isLoading ? (
-                <View style={tw`flex-row items-center gap-2`}>
-                  <Spinner />
-                  <Text style={tw`font-medium text-neutral-500`}>Analyzing your pronunciation...</Text>
-                </View>
-              ) : (
-                mutation.isIdle && (
-                  <>
-                    {!recorderState.isRecording && (
-                      <Text style={tw`absolute -top-2 text-sm font-medium`}>Hold to Speak</Text>
-                    )}
-                    <Pressable
-                      style={({ pressed }) =>
-                        tw.style(
-                          "mx-auto rounded-full p-6",
-                          pressed && "opacity-80",
-                          recorderState.isRecording ? "bg-red-500" : "bg-green-500",
-                        )
-                      }
-                      onLongPress={handleStartRecording}
-                      onPressOut={handleStopRecording}>
-                      {recorderState.isRecording ? (
-                        <AudioLinesIcon color="white" size={32} />
-                      ) : (
-                        <MicIcon color="white" size={32} />
-                      )}
-                    </Pressable>
-                  </>
-                )
               )}
             </View>
+            {queryResult.isPending && (
+              <View style={tw`h-1/6 w-full items-center justify-center px-8`}>
+                {mutation.isPending || queryResult.isLoading ? (
+                  <View style={tw`flex-row items-center gap-2`}>
+                    <Spinner />
+                    <Text style={tw`font-medium text-neutral-500`}>Analyzing your pronunciation...</Text>
+                  </View>
+                ) : (
+                  mutation.isIdle && (
+                    <>
+                      {!recorderState.isRecording && (
+                        <Text style={tw`absolute -top-2 text-sm font-medium`}>Hold to Speak</Text>
+                      )}
+                      <Pressable
+                        style={({ pressed }) =>
+                          tw.style(
+                            "mx-auto rounded-full p-6",
+                            pressed && "opacity-80",
+                            recorderState.isRecording ? "bg-red-500" : "bg-green-500",
+                          )
+                        }
+                        onLongPress={handleStartRecording}
+                        onPressOut={handleStopRecording}>
+                        {recorderState.isRecording ? (
+                          <AudioLinesIcon color="white" size={32} />
+                        ) : (
+                          <MicIcon color="white" size={32} />
+                        )}
+                      </Pressable>
+                    </>
+                  )
+                )}
+              </View>
+            )}
           </>
         )
+      )}
+      {result && (
+        <View style={tw`gap-2`}>
+          <Text style={tw`text-base font-medium text-zinc-500`}>FEEDBACK</Text>
+          <ScrollView style={tw`max-h-52 rounded-2xl border-2 border-zinc-500/50`} contentContainerStyle={tw`p-4`}>
+            <Text style={tw`text-lg`}>{result?.feedback.text}</Text>
+          </ScrollView>
+        </View>
       )}
     </View>
   );

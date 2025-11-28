@@ -1,5 +1,8 @@
+from functools import cached_property
+
 import torch
 import torchaudio
+from pydantic import computed_field
 from pydantic.dataclasses import dataclass
 from transformers import Wav2Vec2ForCTC, Wav2Vec2PhonemeCTCTokenizer, Wav2Vec2Processor
 
@@ -42,6 +45,15 @@ class Pronunciation:
     transcript: Transcript
     phonemes: list[str]  # predictions
     alignments: list[Alignment]
+
+    @computed_field
+    @cached_property
+    def words(self) -> list[tuple[str, list[Alignment]]]:
+        alignments = []
+        boundaries = self.transcript.get_word_boundaries()
+        for word, start, end in boundaries:
+            alignments.append((word, self.alignments[start:end]))
+        return alignments
 
     @cached_method
     def get_differences(self) -> list[Difference]:

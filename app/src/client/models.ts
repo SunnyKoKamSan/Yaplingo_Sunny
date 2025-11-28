@@ -17,17 +17,20 @@ export type Transcripts = {
   items: Transcript[];
 };
 
+type Alignment = {
+  token: string;
+  score: number;
+  interval: [number, number];
+};
+
 export type Result = {
   feedback: {
     text: string;
     audio: string;
   };
   pronunciation: {
-    alignments: {
-      token: string;
-      score: number;
-      interval: [number, number];
-    }[];
     phonemes: string[];
+    alignments: Alignment[];
+    words: [string, Alignment[]][];
   };
 };

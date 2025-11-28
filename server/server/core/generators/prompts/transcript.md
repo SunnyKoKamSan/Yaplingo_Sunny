@@ -8,7 +8,7 @@ RULES:
 - Mix lengths: short, medium, some longer
 - Use common, vivid vocabulary (B1-B2 level)
 - Sound 100% like a native American speaker
-- NEVER include proper nouns
+- NEVER include proper nouns, acronyms and initialisms
 - NEVER add explanations, introductions, or extra text
 
 OUTPUT FORMAT:
