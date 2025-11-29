@@ -32,8 +32,7 @@ async def register(user_creation: UserCreation, repository: Repository):
 
 @router.post("/login")
 async def login(user_credentials: UserCredentials, repository: Repository):
-    user = await repository.check_user(user_credentials)
-    if user is None:
+    if (user := await repository.check_user(user_credentials)) is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return {"token": generate_token(user)}
 

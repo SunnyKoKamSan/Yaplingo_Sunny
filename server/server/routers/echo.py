@@ -40,8 +40,7 @@ async def post_transcript(
     yaplingo: Yaplingo,
     background: BackgroundTasks,
 ) -> None:
-    transcript = TRANSCRIPTS.get(tid)
-    if transcript is None:
+    if (transcript := TRANSCRIPTS.get(tid)) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     async def analyze_audio():

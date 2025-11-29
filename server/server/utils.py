@@ -8,8 +8,7 @@ def cached_method(f):
     def wrapper(self):
         if hasattr(self, attr):
             return object.__getattribute__(self, attr)
-        result = f(self)
-        object.__setattr__(self, attr, result)
+        object.__setattr__(self, attr, result := f(self))
         return result
 
     return wrapper
