@@ -8,6 +8,7 @@ from server.core import Yaplingo as _Yaplingo
 from server.repository import Repository as _Repository
 from server.repository.models import User
 from server.settings import settings
+from server.store import Store as _Store
 
 
 async def yaplingo(request: Request) -> _Yaplingo:
@@ -18,8 +19,13 @@ async def repository(request: Request) -> _Repository:
     return request.app.state.repository
 
 
+async def store(request: Request) -> _Store:
+    return request.app.state.store
+
+
 Yaplingo = Annotated[_Yaplingo, Depends(yaplingo)]
 Repository = Annotated[_Repository, Depends(repository)]
+Store = Annotated[_Store, Depends(store)]
 
 security = HTTPBearer(auto_error=False)  # handle errors ourselves
 Credentials = Annotated[HTTPAuthorizationCredentials | None, Depends(security)]

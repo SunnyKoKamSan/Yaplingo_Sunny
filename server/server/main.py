@@ -8,14 +8,17 @@ from starlette.exceptions import HTTPException
 from server.core import Yaplingo
 from server.repository import Repository
 from server.routers import auth, echo
+from server.store import Store
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.yaplingo = Yaplingo()  # initialize the Yaplingo singleton instance
+    app.state.yaplingo = Yaplingo()
     app.state.repository = await Repository.create()
+    app.state.store = await Store.create()
     yield
     await app.state.repository.dispose()
+    await app.state.store.dispose()
 
 
 app = FastAPI(lifespan=lifespan)

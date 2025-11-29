@@ -7,6 +7,7 @@ from pathlib import Path
 from phonemizer import phonemize
 from phonemizer.punctuation import Punctuation
 from phonemizer.separator import Separator
+from pydantic import Field
 from pydantic.dataclasses import dataclass
 from ulid import ULID
 
@@ -20,7 +21,7 @@ PUNCTUATION = Punctuation()
 
 @dataclass(frozen=True, kw_only=True)
 class Transcript:
-    id: ULID
+    id: ULID = Field(default_factory=ULID)
     text: str
     sequence: str
     audio: str
@@ -37,7 +38,7 @@ class Transcript:
             backend="espeak",
         )
         audio = await gtts(text)
-        return cls(id=ULID(), text=text, sequence=str(sequence), audio=audio)
+        return cls(text=text, sequence=str(sequence), audio=audio)
 
     @cached_property
     def phonemes(self) -> list[str]:

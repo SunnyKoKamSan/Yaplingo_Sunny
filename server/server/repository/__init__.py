@@ -20,7 +20,7 @@ class Repository:
     _hasher = PasswordHasher()
 
     def __init__(self):
-        self._engine = create_async_engine(settings.url, echo=False, future=True)
+        self._engine = create_async_engine(str(settings.url), echo=False, future=True)
         self.session = async_sessionmaker(self._engine, class_=AsyncSession, expire_on_commit=False)
 
     @classmethod

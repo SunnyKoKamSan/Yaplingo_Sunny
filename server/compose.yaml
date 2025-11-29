@@ -2,6 +2,7 @@ name: yaplingo
 
 services:
   server:
+    image: yaplingo-server:latest
     build: .
     env_file: .env
     ports:
@@ -9,8 +10,12 @@ services:
     volumes:
       - ./server:/server/server
     depends_on:
-      - database
-      - store
+      database:
+        condition: service_healthy
+      store:
+        condition: service_healthy
+      worker:
+        condition: service_started
     models:
       - llm
     tty: true
@@ -23,6 +28,12 @@ services:
     volumes:
       - postgres:/var/lib/postgresql
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   store:
     image: redis:latest
@@ -32,6 +43,24 @@ services:
     volumes:
       - redis:/data
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  worker:
+    image: yaplingo-server:latest
+    command: uv run --no-sync rq worker
+    env_file: .env
+    volumes:
+      - ./server:/server/server
+    depends_on:
+      store:
+        condition: service_healthy
+    deploy:
+      replicas: 4
 
 volumes:
   postgres:

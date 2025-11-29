@@ -1,11 +1,12 @@
+import asyncio
 from dataclasses import dataclass
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from pydantic import Base64Bytes, BaseModel
 from ulid import ULID
 
-from server.core import Result, Transcript, Transcripts
-from server.dependencies import Yaplingo, current_user
+from server.core import Result, Transcripts
+from server.dependencies import Store, Yaplingo, current_user
 
 
 class Echo(BaseModel):
@@ -18,18 +19,15 @@ class TaskResult:
     result: Result | Exception | None = None
 
 
-# TODO: use Redis for storing ephemeral data
-TRANSCRIPTS: dict[ULID, Transcript] = {}
 RESULTS: dict[ULID, TaskResult] = {}
 
 router = APIRouter(dependencies=[Depends(current_user)])
 
 
 @router.get("/transcripts")
-async def get_transcripts(yaplingo: Yaplingo) -> Transcripts:
+async def get_transcripts(yaplingo: Yaplingo, store: Store) -> Transcripts:
     transcripts = await yaplingo.generate_transcripts()
-    for item in transcripts.items:
-        TRANSCRIPTS[item.id] = item
+    asyncio.gather(*[store.save_transcript(item) for item in transcripts.items])
     return transcripts
 
 
@@ -38,9 +36,10 @@ async def post_transcript(
     tid: ULID,
     echo: Echo,
     yaplingo: Yaplingo,
+    store: Store,
     background: BackgroundTasks,
 ) -> None:
-    if (transcript := TRANSCRIPTS.get(tid)) is None:
+    if (transcript := await store.get_transcript(tid)) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     async def analyze_audio():
@@ -55,8 +54,8 @@ async def post_transcript(
 
 
 @router.get("/{tid}/result")
-async def get_transcript_result(tid: ULID, response: Response) -> Result | None:
-    if tid not in TRANSCRIPTS:
+async def get_transcript_result(tid: ULID, response: Response, store: Store) -> Result | None:
+    if await store.get_transcript(tid) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     if tid not in RESULTS or RESULTS[tid].pending:
         raise HTTPException(status_code=status.HTTP_425_TOO_EARLY)
