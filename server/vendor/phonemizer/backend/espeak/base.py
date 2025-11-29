@@ -16,7 +16,7 @@
 
 import abc
 from logging import Logger
-from typing import Optional, Union, Pattern
+from typing import Optional, Pattern, Union
 
 from phonemizer.backend.base import BaseBackend
 from phonemizer.backend.espeak.wrapper import EspeakWrapper

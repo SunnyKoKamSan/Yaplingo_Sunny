@@ -24,7 +24,7 @@ import sys
 import tempfile
 from logging import Logger
 from pathlib import Path
-from typing import Optional, Dict, List, IO, Union, Pattern
+from typing import IO, Dict, List, Optional, Pattern, Union
 
 from phonemizer.backend.base import BaseBackend
 from phonemizer.backend.festival import lispy
@@ -168,7 +168,6 @@ class FestivalBackend(BaseBackend):
         """
         return {"en-us": "english-us"}
 
-    # pylint: disable=unused-argument
     def _phonemize_aux(self, text: List[str], offset: int, separator: Separator, strip: bool) -> List[str]:
         """Return a phonemized version of `text` with festival
 

@@ -14,12 +14,11 @@
 # along with phonemizer. If not, see <http://www.gnu.org/licenses/>.
 """Provides utility functions for the phonemizer"""
 
+import importlib
 import os
 from numbers import Number
 from pathlib import Path
-from typing import Union, List, Tuple, Iterable
-
-import importlib
+from typing import Iterable, List, Tuple, Union
 
 
 def cumsum(iterable: Iterable[Number]) -> List[Number]:

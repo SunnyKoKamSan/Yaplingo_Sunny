@@ -25,21 +25,17 @@ name = "phonemizer"
 version = "3.3.0"
 description = "Simple text to phones converter for multiple languages"
 authors = [
-    {name = "Mathieu Bernard", email = "mathieu.bernard.2@cnrs.fr"},
-    {name = "Hadrien Titeux"}]
+    { name = "Mathieu Bernard", email = "mathieu.bernard.2@cnrs.fr" },
+    { name = "Hadrien Titeux" },
+]
 readme = "README.md"
-license = {file = "LICENSE"}
-keywords = [
-    "linguistics",
-    "G2P",
-    "phone",
-    "espeak",
-    "festival",
-    "TTS"]
+license = { file = "LICENSE" }
+keywords = ["linguistics", "G2P", "phone", "espeak", "festival", "TTS"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
-    "Operating System :: OS Independent"]
+    "Operating System :: OS Independent",
+]
 
 requires-python = ">= 3.8"
 dependencies = [
@@ -47,7 +43,8 @@ dependencies = [
     "segments",
     "attrs>=18.1",
     "dlinfo",
-    "typing-extensions"]
+    "typing-extensions",
+]
 
 [project.optional-dependencies]
 test = ["pytest>=6.0", "pytest-cov", "coverage[toml]"]
@@ -67,17 +64,16 @@ minversion = "6.0"
 testpaths = "test"
 python_files = ["test/*.py"]
 filterwarnings = [
-     # ignore some deprecation warnings (on regexp escape sequence) for segments
-     # module and its dependencies
-     "ignore::DeprecationWarning:.*segments.*",
-     "ignore::DeprecationWarning:.*csvw.*",
-     "ignore::DeprecationWarning:.*clldutils.*",
-     # ignore a warning issued by joblib about multithreading
-     "ignore:This process (.*) is multi-threaded.*:DeprecationWarning:joblib"]
+    # ignore some deprecation warnings (on regexp escape sequence) for segments
+    # module and its dependencies
+    "ignore::DeprecationWarning:.*segments.*",
+    "ignore::DeprecationWarning:.*csvw.*",
+    "ignore::DeprecationWarning:.*clldutils.*",
+    # ignore a warning issued by joblib about multithreading
+    "ignore:This process (.*) is multi-threaded.*:DeprecationWarning:joblib",
+]
 addopts = "--cov=phonemizer"
 
 [tool.coverage.report]
-exclude_lines = [
-    "pragma: nocover",
-    "@abc.abstractmethod"]
+exclude_lines = ["pragma: nocover", "@abc.abstractmethod"]
 skip_covered = true

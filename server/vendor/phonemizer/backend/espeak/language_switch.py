@@ -38,7 +38,8 @@ import abc
 import re
 from logging import Logger
 from typing import List, Tuple
-from typing_extensions import TypeAlias, Literal
+
+from typing_extensions import Literal, TypeAlias
 
 LanguageSwitch: TypeAlias = Literal["keep-flags", "remove-flags", "remove-utterance"]
 

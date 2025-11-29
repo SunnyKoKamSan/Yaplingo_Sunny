@@ -17,11 +17,11 @@
 import itertools
 import re
 from logging import Logger
-from typing import Optional, Tuple, List, Union, Pattern
+from typing import List, Optional, Pattern, Tuple, Union
 
 from phonemizer.backend.espeak.base import BaseEspeakBackend
-from phonemizer.backend.espeak.language_switch import get_language_switch_processor, LanguageSwitch, BaseLanguageSwitch
-from phonemizer.backend.espeak.words_mismatch import get_words_mismatch_processor, WordMismatch, BaseWordsMismatch
+from phonemizer.backend.espeak.language_switch import BaseLanguageSwitch, LanguageSwitch, get_language_switch_processor
+from phonemizer.backend.espeak.words_mismatch import BaseWordsMismatch, WordMismatch, get_words_mismatch_processor
 from phonemizer.backend.espeak.wrapper import EspeakWrapper
 from phonemizer.separator import Separator
 

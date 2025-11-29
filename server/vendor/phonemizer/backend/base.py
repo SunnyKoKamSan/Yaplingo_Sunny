@@ -17,7 +17,7 @@
 import abc
 import itertools
 from logging import Logger
-from typing import Optional, List, Any, Dict, Tuple, Union, Pattern
+from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
 
 import joblib
 

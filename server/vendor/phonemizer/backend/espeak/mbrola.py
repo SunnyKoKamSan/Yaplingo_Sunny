@@ -19,7 +19,7 @@ import shutil
 import sys
 from logging import Logger
 from pathlib import Path
-from typing import Union, Optional, List, Dict
+from typing import Dict, List, Optional, Union
 
 from phonemizer.backend.espeak.base import BaseEspeakBackend
 from phonemizer.backend.espeak.wrapper import EspeakWrapper

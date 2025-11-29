@@ -16,7 +16,7 @@
 
 import pathlib
 from logging import Logger
-from typing import Optional, Dict, List, Union, Pattern
+from typing import Dict, List, Optional, Pattern, Union
 
 import segments
 

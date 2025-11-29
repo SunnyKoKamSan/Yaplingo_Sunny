@@ -16,10 +16,10 @@
 
 import collections
 import re
-from typing import List, Union, Tuple, Pattern
+from typing import List, Pattern, Tuple, Union
 
-from phonemizer.utils import str2list
 from phonemizer.separator import Separator
+from phonemizer.utils import str2list
 
 # The punctuation marks considered by default.
 _DEFAULT_MARKS = ';:,.!?¡¿—…"«»“”(){}[]'

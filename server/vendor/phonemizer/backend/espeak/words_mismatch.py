@@ -19,10 +19,9 @@ import re
 from logging import Logger
 from typing import List, Tuple
 
-from typing_extensions import TypeAlias, Literal, Union
+from typing_extensions import Literal, TypeAlias, Union
 
 from phonemizer.separator import Separator
-
 
 WordMismatch: TypeAlias = Literal["warn", "ignore"]
 

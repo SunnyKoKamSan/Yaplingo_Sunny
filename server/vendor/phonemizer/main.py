@@ -17,10 +17,10 @@
 
 import argparse
 import os
-import sys
 import re
+import sys
 
-from phonemizer import phonemize, separator, version, logger, punctuation
+from phonemizer import logger, phonemize, punctuation, separator, version
 from phonemizer.backend import BACKENDS
 
 
@@ -361,7 +361,6 @@ def get_logger(verbose, quiet):
 def setup_stream(stream, mode):
     """If `stream` is a filename, open it as a file"""
     if isinstance(stream, str):
-        # pylint: disable=consider-using-with
         return open(stream, mode, encoding="utf8")
     return stream  # pragma: nocover
 
