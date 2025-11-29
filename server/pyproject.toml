@@ -21,7 +21,7 @@ dependencies = [
     "deepfilternet>=0.5.6",
     "openai>=2.1.0",
     "kokoro>=0.9.4",
-    "gtts>=2.5.4",
+    "gtts",
     "phonemizer",
 ]
 
@@ -29,4 +29,5 @@ dependencies = [
 line-length = 120
 
 [tool.uv.sources]
+gtts = { path = "vendor/gtts", editable = true }
 phonemizer = { path = "vendor/phonemizer", editable = true }

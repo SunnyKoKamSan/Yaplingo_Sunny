@@ -1,3 +1,4 @@
+import asyncio
 import random
 import re
 from functools import cached_property
@@ -6,7 +7,6 @@ from pathlib import Path
 from phonemizer import phonemize
 from phonemizer.punctuation import Punctuation
 from phonemizer.separator import Separator
-from pydantic import computed_field
 from pydantic.dataclasses import dataclass
 from ulid import ULID
 
@@ -23,9 +23,10 @@ class Transcript:
     id: ULID
     text: str
     sequence: str
+    audio: str
 
     @classmethod
-    def from_text(cls, text: str):
+    async def from_text(cls, text: str) -> "Transcript":
         sequence = phonemize(
             text,
             strip=True,
@@ -35,17 +36,13 @@ class Transcript:
             language="en-us",
             backend="espeak",
         )
-        return cls(id=ULID(), text=text, sequence=str(sequence))
+        audio = await gtts(text)
+        return cls(id=ULID(), text=text, sequence=str(sequence), audio=audio)
 
     @cached_property
     def phonemes(self) -> list[str]:
         sequence = Punctuation().remove(self.sequence)
         return re.split(r"[/ ]+", str(sequence).strip())
-
-    @computed_field
-    @cached_property
-    def audio(self) -> str:
-        return gtts(self.text)
 
     @cached_method
     def get_word_boundaries(self) -> list[tuple[str, int, int]]:
@@ -89,5 +86,5 @@ class TranscriptGenerator(Generator):
             return await self()  # FIXME: retry on invalid output
         scenario = re.split(r"^\s?[+]\s?", lines[0], maxsplit=1)[-1].strip()
         sentences = [re.split(r"^\s?[-–*]\s?", line, maxsplit=1)[-1].strip() for line in lines[1:]]
-        items = [Transcript.from_text(s) for s in sentences]
+        items = await asyncio.gather(*[Transcript.from_text(s) for s in sentences])
         return Transcripts(topic=topic, scenario=scenario, items=items)

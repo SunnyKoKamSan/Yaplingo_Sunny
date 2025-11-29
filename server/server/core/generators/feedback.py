@@ -1,8 +1,6 @@
-from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pydantic import computed_field
 from pydantic.dataclasses import dataclass
 
 from ..generators.transcript import Transcript
@@ -16,11 +14,12 @@ if TYPE_CHECKING:
 @dataclass(frozen=True, kw_only=True)
 class Feedback:
     text: str
+    audio: str
 
-    @computed_field
-    @cached_property
-    def audio(self) -> str:
-        return ktts(self.text)
+    @classmethod
+    async def from_text(cls, text: str) -> "Feedback":
+        audio = await ktts(text)
+        return cls(text=text, audio=audio)
 
 
 class FeedbackGenerator(Generator):
@@ -41,4 +40,4 @@ class FeedbackGenerator(Generator):
         print("/".join(pronunciation.phonemes))  # DEBUG
         text = await super().__call__(prompt, temperature=0)
         print(text)  # DEBUG
-        return Feedback(text=text.strip())
+        return await Feedback.from_text(text.strip())
