@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
 import { useSetAtom } from "jotai";
 
@@ -30,13 +29,16 @@ client.interceptors.response.use(undefined, (error) => {
 });
 
 export const useAuthedUserQuery = () =>
-  useQuery<User, AxiosError>({
+  useQuery<User | null, AxiosError>({
     queryKey: ["auth", "me"],
     queryFn: async () => {
       const response = await client.get("/auth/me", {
         timeout: 5000,
         validateStatus: (status) => [200, 401, 403].includes(status),
       });
+      if (response.status === 401) {
+        store.set($token, "");
+      }
       return response.data;
     },
     retry: true,
@@ -99,31 +101,26 @@ export const useEchoMutation = (tid?: string) =>
     },
   });
 
-export const useEchoResultQuery = (tid?: string) => {
-  const qclient = useQueryClient();
-
-  const query = useQuery<Result | null, AxiosError>({
+export const useEchoResultQuery = (tid?: string) =>
+  useQuery<Result | null, AxiosError>({
     queryKey: ["echo", tid, "result"],
-    queryFn: async () => {
+    queryFn: async ({ client: qclient }) => {
       while (true) {
         const { status, data } = await client.get<Result | null>(`/echo/${tid}/result`, {
           validateStatus: (status) => [200, 204, 425].includes(status),
         });
-        if (status !== 425) return status === 200 ? data : null;
+        if (status !== 425) {
+          if (status === 204) {
+            qclient.removeQueries({ queryKey: ["echo", tid, "result"] });
+            return null;
+          }
+          return data;
+        }
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     },
     enabled: !!tid,
     staleTime: Infinity,
   });
-
-  useEffect(() => {
-    if (query.isSuccess && query.data === null) {
-      qclient.removeQueries({ queryKey: ["echo", tid, "result"] });
-    }
-  }, [tid, qclient, query.isSuccess, query.data]);
-
-  return query;
-};
 
 export default client;

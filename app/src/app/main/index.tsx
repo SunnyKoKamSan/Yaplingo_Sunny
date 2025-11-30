@@ -13,7 +13,7 @@ const Header = () => {
   return (
     <View
       style={[
-        tw`border-b-[0.5px] pb-2`,
+        tw`border-b pb-2`,
         {
           paddingTop: insets.top,
           borderColor: theme.colors.border,
@@ -67,10 +67,7 @@ const WelcomeMessage = () => {
   const message = WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)];
   return (
     <View style={tw`mx-4 items-center`}>
-      <Text style={tw`text-xl font-bold`}>
-        {"📢  "}
-        {message}
-      </Text>
+      <Text style={tw`text-center text-xl font-bold leading-tight`}>{`📢  ${message}`}</Text>
     </View>
   );
 };

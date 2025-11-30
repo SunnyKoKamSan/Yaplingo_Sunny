@@ -63,7 +63,7 @@ const Header = () => {
   return (
     <View
       style={[
-        tw`relative flex-row border-b-[0.5px] bg-green-50 p-6 dark:bg-green-950`,
+        tw`relative flex-row border-b bg-green-50 p-6 dark:bg-green-950`,
         { paddingTop: insets.top + 16, borderColor: theme.colors.border },
       ]}>
       <View>

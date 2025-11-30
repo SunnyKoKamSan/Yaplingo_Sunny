@@ -125,6 +125,12 @@ const Header = ({
   );
 };
 
+const getScoringColor = (x: number) => {
+  if (x >= 75) return tw.color("green-500");
+  if (x >= 50) return tw.color("yellow-500");
+  return tw.color("red-500");
+};
+
 // FIXME: handle query/mutation errors
 export default function MainLearnEchoScreen() {
   const router = useRouter();
@@ -252,41 +258,26 @@ export default function MainLearnEchoScreen() {
     return { transform: [{ rotateY: rotate }], backfaceVisibility: "hidden" };
   });
 
-  const card = [
-    {
-      text: result
-        ? result.pronunciation.words.map(([word, alignments], key) => {
-            const score = alignments.reduce((a, b) => a + b.score, 0) / alignments.length;
-            let color = tw.color("red-500");
-            if (score >= 0.75) color = tw.color("green-500");
-            else if (score >= 0.5) color = tw.color("yellow-500");
-            return (
-              <Text key={key} style={{ color, fontFamily: "" }}>
-                {`${word} `}
-              </Text>
-            );
-          })
-        : transcript?.text,
-      style: frontCardAnimatedStyle,
-    },
-    {
-      text: result
-        ? result.pronunciation.words.map(([, alignments]) => {
-            return alignments.map(({ score, token }, key) => {
-              let color = tw.color("red-500");
-              if (score >= 0.75) color = tw.color("green-500");
-              else if (score >= 0.5) color = tw.color("yellow-500");
-              return (
-                <Text key={key} style={{ color, fontFamily: "" }}>
-                  {token}
-                  {key + 1 === alignments.length ? " " : null}
-                </Text>
-              );
-            });
-          })
-        : transcript?.sequence.replaceAll("/", ""),
-      style: backCardAnimatedStyle,
-    },
+  const transcriptCard = [transcript?.text, transcript?.sequence.replaceAll("/", "")];
+
+  const resultCard = [
+    result?.pronunciation.words.map(([word, alignments], key) => {
+      const score = alignments.reduce((a, b) => a + b.score, 0) / alignments.length;
+      const color = getScoringColor(score * 100);
+      return (
+        <Text key={key} style={{ color, fontFamily: "" }}>
+          {`${word} `}
+        </Text>
+      );
+    }),
+    result?.pronunciation.words.map(([, alignments]) =>
+      alignments.map(({ score, token }, key) => (
+        <Text key={key} style={{ color: getScoringColor(score * 100), fontFamily: "" }}>
+          {token}
+          {key + 1 === alignments.length ? " " : null}
+        </Text>
+      )),
+    ),
   ];
 
   const score = useMemo(() => {
@@ -294,9 +285,13 @@ export default function MainLearnEchoScreen() {
     const scores = result.pronunciation.alignments.map((a) => a.score);
     const total = scores.reduce((a, b) => a + b, 0);
     const percentage = Math.round((total / scores.length) * 100);
-    if (percentage >= 75) return { percentage, color: tw.color("green-500"), message: "slayed" };
-    if (percentage >= 50) return { percentage, color: tw.color("yellow-500"), message: "mid" };
-    return { percentage, color: tw.color("red-500"), message: "cooked" };
+    const color = getScoringColor(percentage);
+    let message = "bruh";
+    if (percentage >= 90) message = "tuff";
+    else if (percentage >= 75) message = "bro slayed";
+    else if (percentage >= 50) message = "that's mid";
+    else if (percentage >= 25) message = "skill issue";
+    return { percentage, color, message };
   }, [result]);
 
   return (
@@ -316,15 +311,15 @@ export default function MainLearnEchoScreen() {
             </View>
             {result && (
               <View style={tw`mt-8 items-center justify-center gap-2`}>
-                <Text style={[tw`text-center text-5xl font-bold tracking-tighter`, { color: score?.color }]}>
-                  {score?.percentage}%
+                <Text style={[tw`text-center text-5xl font-bold tracking-tighter`, { color: score!.color }]}>
+                  {score!.percentage}%
                 </Text>
-                <Text style={[tw`text-center text-2xl font-medium`, { color: score?.color }]}>{score?.message}</Text>
+                <Text style={[tw`text-center text-2xl font-medium`, { color: score!.color }]}>{score!.message}</Text>
               </View>
             )}
             <View style={tw`w-full flex-grow items-center justify-center`}>
               <View style={tw`relative items-center justify-center`}>
-                {card.map(({ text, style }, index) => (
+                {(result ? resultCard : transcriptCard).map((c, index) => (
                   <AnimatedPressable
                     key={index}
                     onPress={() => (flipped.value = !flipped.value)}
@@ -334,7 +329,7 @@ export default function MainLearnEchoScreen() {
                         "absolute items-center justify-center rounded-3xl border-2 border-zinc-500/50",
                         "bg-zinc-100 p-8 dark:bg-zinc-950",
                       ),
-                      style,
+                      index === 0 ? frontCardAnimatedStyle : backCardAnimatedStyle,
                     ]}
                     onLayout={({ nativeEvent }) => setHeight((height) => Math.max(height, nativeEvent.layout.height))}>
                     <Text
@@ -342,7 +337,7 @@ export default function MainLearnEchoScreen() {
                         tw`text-center text-3xl font-medium leading-normal`,
                         { fontFamily: "" }, // use default font for transcript text
                       ]}>
-                      {text}
+                      {c}
                     </Text>
                   </AnimatedPressable>
                 ))}
@@ -402,9 +397,12 @@ export default function MainLearnEchoScreen() {
         )
       )}
       {result && (
-        <View style={tw`gap-2`}>
+        <View style={tw`w-full gap-2`}>
           <Text style={tw`text-base font-medium text-zinc-500`}>FEEDBACK</Text>
-          <ScrollView style={tw`max-h-52 rounded-2xl border-2 border-zinc-500/50`} contentContainerStyle={tw`p-4`}>
+          <ScrollView
+            alwaysBounceVertical={false}
+            style={tw`max-h-52 rounded-2xl border-2 border-zinc-500/50`}
+            contentContainerStyle={tw`p-4`}>
             <Text style={tw`text-lg`}>{result?.feedback.text}</Text>
           </ScrollView>
         </View>
