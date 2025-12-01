@@ -14,8 +14,6 @@ services:
         condition: service_healthy
       store:
         condition: service_healthy
-      worker:
-        condition: service_started
     models:
       - llm
     tty: true
@@ -49,18 +47,6 @@ services:
       timeout: 3s
       retries: 10
       start_period: 5s
-
-  worker:
-    image: yaplingo-server:latest
-    command: uv run --no-sync rq worker
-    env_file: .env
-    volumes:
-      - ./server:/server/server
-    depends_on:
-      store:
-        condition: service_healthy
-    deploy:
-      replicas: 4
 
 volumes:
   postgres:

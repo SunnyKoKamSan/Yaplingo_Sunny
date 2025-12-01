@@ -24,7 +24,6 @@ dependencies = [
     "kokoro>=0.9.4",
     "gtts",
     "phonemizer",
-    "rq>=2.6.1",
 ]
 
 [tool.ruff]

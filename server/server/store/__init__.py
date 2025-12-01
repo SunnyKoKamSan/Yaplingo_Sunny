@@ -2,9 +2,7 @@ from datetime import timedelta
 from typing import Awaitable, cast
 
 from pydantic import TypeAdapter
-from redis import Redis
 from redis.asyncio import Redis as AsyncRedis
-from rq import Queue
 from ulid import ULID
 
 from ..core.generators.transcript import Transcript
@@ -18,7 +16,6 @@ TRANSCRIPT_TTL = timedelta(hours=1)
 class Store:
     def __init__(self):
         self._client = AsyncRedis.from_url(str(settings.url), decode_responses=True)
-        self._queue = Queue("results", connection=Redis.from_url(str(settings.url), decode_responses=False))
 
     @classmethod
     async def create(cls):
