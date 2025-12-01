@@ -1,33 +1,16 @@
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from pydantic.dataclasses import dataclass
-
-from ..generators.transcript import Transcript
-from . import Generator
-
-if TYPE_CHECKING:
-    from ..pipeline.aligner import Pronunciation
+from ..models import Feedback, Pronunciation, Transcript
+from . import BaseGenerator
 
 
-@dataclass(frozen=True, kw_only=True)
-class Feedback:
-    text: str
-    audio: str
-
-    @classmethod
-    async def from_text(cls, text: str) -> "Feedback":
-        # audio = await ktts(text)
-        return cls(text=text, audio="")
-
-
-class FeedbackGenerator(Generator):
+class FeedbackGenerator(BaseGenerator):
     @property  # FIXME: use `@cached_property` in production
     def system_prompt(self) -> str:
         path = Path(__file__).parent / "prompts" / "feedback.md"
         return path.read_text(encoding="utf-8").strip()
 
-    async def __call__(self, transcript: Transcript, pronunciation: "Pronunciation") -> Feedback:
+    async def __call__(self, transcript: Transcript, pronunciation: Pronunciation) -> Feedback:
         differences = pronunciation.get_differences()
         errors = "\n".join([f"\t- {d}" for d in differences]) if differences else "None"
         prompt = f"""

@@ -3,12 +3,15 @@ from typing import Annotated
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
+from ulid import ULID
 
-from server.dependencies import Repository, current_user
 from server.repository import EntityExistsError
-from server.repository.models import User
-from server.schemas import UserCreation, UserCredentials, UserResponse
-from server.settings import settings
+from server.repository.models import Language, User
+from server.service.user import UserCreation, UserCredentials
+
+from ..dependencies import Service, current_user
+from ..settings import settings
 
 TOKEN_TTL = timedelta(days=7)
 
@@ -22,19 +25,25 @@ def generate_token(user: User) -> str:
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register(user_creation: UserCreation, repository: Repository):
+async def register(creation: UserCreation, service: Service):
     try:
-        user = await repository.create_user(user_creation)
+        user = await service.user.create(creation)
     except EntityExistsError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User Already Exists")
     return {"token": generate_token(user)}
 
 
 @router.post("/login")
-async def login(user_credentials: UserCredentials, repository: Repository):
-    if (user := await repository.check_user(user_credentials)) is None:
+async def login(credentials: UserCredentials, service: Service):
+    if (user := await service.user.verify(credentials)) is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return {"token": generate_token(user)}
+
+
+class UserResponse(BaseModel):
+    id: ULID
+    name: str
+    language: Language
 
 
 @router.get("/me", response_model=UserResponse)

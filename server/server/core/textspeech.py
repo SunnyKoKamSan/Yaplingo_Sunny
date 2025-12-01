@@ -22,11 +22,11 @@ class BaseTextSpeech(ABC):
 
 class GoogleTextSpeech(BaseTextSpeech):
     def __init__(self):
-        self._synthesize = partial(agTTS, lang="en", tld="us", slow=False)
+        self.synthesize = partial(agTTS, lang="en", tld="us", slow=False)
 
     async def __call__(self, text: str) -> str:
         buffer = io.BytesIO()
-        await self._synthesize(text).write_to_fp(buffer)
+        await self.synthesize(text).write_to_fp(buffer)
         data = buffer.getvalue()
         return data_urlencode(data, mime="audio/mpeg")
 
@@ -37,7 +37,7 @@ class KokoroTextSpeech(BaseTextSpeech):
             repo_id="hexgrad/Kokoro-82M",
             lang_code="en-us",
         )
-        self._generator = partial(
+        self.generator = partial(
             pipeline,
             split_pattern=None,
             voice="af_heart",
@@ -46,7 +46,7 @@ class KokoroTextSpeech(BaseTextSpeech):
 
     async def __call__(self, text: str) -> str:
         def _synthesize():
-            generator = self._generator(text)
+            generator = self.generator(text)
             with io.BytesIO() as buffer:
                 _, _, audio = next(generator)  # only yields the first sentence
                 soundfile.write(

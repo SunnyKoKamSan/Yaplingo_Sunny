@@ -5,20 +5,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 from starlette.exceptions import HTTPException
 
-from server.core import Yaplingo
-from server.repository import Repository
-from server.routers import auth, echo
-from server.store import Store
+from server.service import Service
+from server.web.routers import auth, echo
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.yaplingo = Yaplingo()
-    app.state.repository = await Repository.create()
-    app.state.store = await Store.create()
+    app.state.service = await Service.create()
     yield
-    await app.state.repository.dispose()
-    await app.state.store.dispose()
+    await app.state.service.dispose()
 
 
 app = FastAPI(lifespan=lifespan)

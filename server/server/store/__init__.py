@@ -1,40 +1,40 @@
 from datetime import timedelta
 from typing import Awaitable, cast
 
-from pydantic import TypeAdapter
 from redis.asyncio import Redis as AsyncRedis
 from ulid import ULID
 
-from ..core.generators.transcript import Transcript
-from .settings import settings
+from server.core import Transcript, Transcripts
 
-TranscriptModel = TypeAdapter(Transcript)
+from .settings import settings
 
 TRANSCRIPT_TTL = timedelta(hours=1)
 
 
 class Store:
     def __init__(self):
-        self._client = AsyncRedis.from_url(str(settings.url), decode_responses=True)
+        self.client = AsyncRedis.from_url(str(settings.url), decode_responses=True)
 
     @classmethod
     async def create(cls):
         return cls()
 
     async def dispose(self):
-        return await self._client.aclose()
+        await self.client.aclose()
 
-    async def save_transcript(self, transcript: Transcript):
-        # `mode="json"` ensures `id: ULID` is serialized as a string
-        mapping = TranscriptModel.dump_python(transcript, mode="json")
-        hsetex = self._client.hsetex(
-            f"transcript:{str(transcript.id)}",
-            ex=TRANSCRIPT_TTL,
-            mapping=mapping,
-        )
-        await cast(Awaitable[int], hsetex)
+    async def dump_transcripts(self, transcripts: Transcripts) -> None:
+        pipe = self.client.pipeline()
+        for transcript in transcripts.items:
+            # `mode="json"` ensures `id: ULID` is serialized as a string
+            mapping = transcript.model_dump(mode="json")  # dict
+            pipe.hsetex(
+                f"transcript:{str(transcript.id)}",
+                ex=TRANSCRIPT_TTL,
+                mapping=mapping,
+            )
+        await pipe.execute()
 
     async def get_transcript(self, tid: ULID) -> Transcript | None:
-        hgetall = self._client.hgetall(f"transcript:{str(tid)}")
+        hgetall = self.client.hgetall(f"transcript:{str(tid)}")
         mapping = await cast(Awaitable[dict], hgetall)
-        return TranscriptModel.validate_python(mapping) if mapping else None
+        return Transcript.model_validate(mapping) if mapping else None

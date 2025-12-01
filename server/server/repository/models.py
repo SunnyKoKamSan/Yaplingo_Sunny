@@ -1,5 +1,7 @@
 from enum import Enum
 
+import argon2
+from pydantic import field_validator
 from sqlalchemy import CHAR, TypeDecorator
 from sqlmodel import Field, SQLModel
 from ulid import ULID
@@ -20,9 +22,8 @@ class ULIDType(TypeDecorator):
         return str(ULID.from_str(value))  # try parsing from string
 
     def process_result_value(self, value, _):
-        if value is None:
-            return None
-        return ULID.from_str(value)
+        if value is not None:
+            return ULID.from_str(value)
 
 
 class Language(str, Enum):  # ISO 639-1 (alpha-2) code
@@ -34,3 +35,9 @@ class User(SQLModel, table=True):
     name: str = Field(unique=True)
     password: str
     language: Language
+
+    @field_validator("password")
+    @classmethod  # last wall of defense to ensure password is hashed before storing into database
+    def is_password_hashed(cls, password: str) -> str:
+        argon2.extract_parameters(password)  # will raise `InvalidHashError` if not hashed
+        return password

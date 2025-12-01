@@ -1,27 +1,25 @@
-from pydantic.dataclasses import dataclass
-
-from ..generators.feedback import Feedback, FeedbackGenerator
-from ..generators.transcript import Transcript
-from .aligner import Pronunciation, PronunciationAligner
+from ..generators.feedback import FeedbackGenerator
+from ..models import Result, Transcript
+from .aligner import PronunciationAligner
 from .processor import AudioProcessor
 
 
-@dataclass(kw_only=True)
-class Result:
-    feedback: Feedback
-    pronunciation: Pronunciation
-
-
 class Pipeline:
-    def __init__(self, do_noise_filter: bool = True):
-        self.audio_processor = AudioProcessor(use_df=do_noise_filter)
+    __instance = None
+
+    def __new__(cls):
+        if cls.__instance is None:
+            cls.__instance = super().__new__(cls)
+            cls.__instance.__initialize__()
+        return cls.__instance
+
+    def __initialize__(self):
+        self.audio_processor = AudioProcessor()
         self.pronunciation_aligner = PronunciationAligner()
         self.feedback_generator = FeedbackGenerator()
 
     async def __call__(self, audio: bytes, transcript: Transcript) -> Result | None:
-        waveform = self.audio_processor(audio)
-        if waveform is None:
-            return None
-        pronunciation = self.pronunciation_aligner(waveform, transcript)
-        feedback = await self.feedback_generator(transcript, pronunciation)
-        return Result(feedback=feedback, pronunciation=pronunciation)
+        if (waveform := self.audio_processor(audio)) is not None:
+            pronunciation = self.pronunciation_aligner(waveform, transcript)
+            feedback = await self.feedback_generator(transcript, pronunciation)
+            return Result(feedback=feedback, pronunciation=pronunciation)

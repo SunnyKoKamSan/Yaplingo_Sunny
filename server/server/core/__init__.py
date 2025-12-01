@@ -1,18 +1,17 @@
-from .generators.feedback import Feedback
-from .generators.transcript import Transcript, TranscriptGenerator, Transcripts
-from .pipeline import Pipeline, Result
+from .generators.transcript import TranscriptGenerator
+from .models import Alignment, Difference, Feedback, Pronunciation, Result, Transcript, Transcripts
+from .pipeline import Pipeline
 
-
-class Yaplingo:
-    def __init__(self):
-        self._pipeline = Pipeline()
-        self._transcript_generator = TranscriptGenerator()
-
-    async def analyze_audio(self, audio: bytes, transcript: Transcript) -> Result | None:
-        return await self._pipeline(audio, transcript)
-
-    async def generate_transcripts(self) -> Transcripts:
-        return await self._transcript_generator()
-
-
-__all__ = ["Yaplingo", "Result", "Transcript", "Transcripts", "Feedback"]
+__all__ = [
+    # Models
+    "Transcript",
+    "Transcripts",
+    "Alignment",
+    "Difference",
+    "Pronunciation",
+    "Feedback",
+    "Result",
+    # Components
+    "Pipeline",
+    "TranscriptGenerator",
+]
