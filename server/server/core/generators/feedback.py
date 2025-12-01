@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 from pydantic.dataclasses import dataclass
 
 from ..generators.transcript import Transcript
-from ..textspeech import ktts
 from . import Generator
 
 if TYPE_CHECKING:
@@ -18,8 +17,8 @@ class Feedback:
 
     @classmethod
     async def from_text(cls, text: str) -> "Feedback":
-        audio = await ktts(text)
-        return cls(text=text, audio=audio)
+        # audio = await ktts(text)
+        return cls(text=text, audio="")
 
 
 class FeedbackGenerator(Generator):

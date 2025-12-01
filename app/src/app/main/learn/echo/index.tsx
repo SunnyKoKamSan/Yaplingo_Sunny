@@ -206,9 +206,9 @@ export default function MainLearnEchoScreen() {
         resetMutation();
         Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
       } else {
-        player.replace(result!.feedback.audio);
-        player.seekTo(0);
-        player.play();
+        // player.replace(result!.feedback.audio);
+        // player.seekTo(0);
+        // player.play();
       }
     }
   }, [router, player, transcript, result, queryResult.isSuccess, resetMutation]);
