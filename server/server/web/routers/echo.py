@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import Base64Bytes, BaseModel
 from ulid import ULID
 
@@ -18,15 +18,14 @@ class Echo(BaseModel):
     audio: Base64Bytes
 
 
-@router.post("/{tid}", status_code=status.HTTP_201_CREATED)
+@router.post("/{tid}", status_code=status.HTTP_202_ACCEPTED)
 async def post_transcript(
     tid: ULID,
     echo: Echo,
     service: Service,
-    background: BackgroundTasks,
 ) -> None:
-    # TODO: handle non-existing transcript
-    background.add_task(service.echo.analyze, echo.audio, tid)
+    if not await service.echo.analyze(echo.audio, tid):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
 
 @router.get("/{tid}/result")
@@ -34,11 +33,11 @@ async def get_transcript_result(tid: ULID, response: Response, service: Service)
     result = await service.echo.result(tid)
     if result is False:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    if result is None or result.pending:
+    if result is True:
         raise HTTPException(status_code=status.HTTP_425_TOO_EARLY)
-    if isinstance(result.result, Exception):
+    if isinstance(result, BaseException):
         # FIXME: improve error handling
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    if result.result is None:
+    if result is None:
         response.status_code = status.HTTP_204_NO_CONTENT
-    return result.result
+    return result

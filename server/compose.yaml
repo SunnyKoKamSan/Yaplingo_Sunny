@@ -2,6 +2,7 @@ name: yaplingo
 
 services:
   server:
+    image: yaplingo-server:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -10,6 +11,25 @@ services:
       - "8000:8000"
     volumes:
       - ./server:/server/server
+      - cache:/root/.cache
+    depends_on:
+      database:
+        condition: service_healthy
+      store:
+        condition: service_healthy
+    models:
+      - llm
+    tty: true
+
+  worker:
+    image: yaplingo-server:latest
+    pull_policy: never
+    command:
+      ["uv", "run", "taskiq", "worker", "server:broker", "--use-process-pool"]
+    env_file: .env
+    volumes:
+      - ./server:/server/server
+      - cache:/root/.cache
     depends_on:
       database:
         condition: service_healthy
@@ -48,6 +68,7 @@ services:
 volumes:
   postgres:
   redis:
+  cache: # persist model cache between restarts
 
 models:
   llm:

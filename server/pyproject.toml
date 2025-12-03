@@ -3,14 +3,16 @@ name = "yaplingo"
 version = "0.1.0"
 requires-python = ">=3.10,<3.11"
 dependencies = [
-    "uvicorn>=0.35.0",              # tool to actually run the server
+    "uvicorn>=0.35.0",
     "fastapi>=0.116.1",
-    "python-multipart>=0.0.20",     # support file upload in FastAPI
+    "python-multipart>=0.0.20",
     "pydantic>=2.12.3",
     "python-ulid[pydantic]>=3.1.0",
     "pydantic-settings>=2.11.0",
     "argon2-cffi>=25.1.0",
     "pyjwt>=2.10.1",
+    "taskiq-redis",
+    "taskiq>=0.12.0",
     "redis>=7.1.0",
     "sqlalchemy[asyncio]>=2.0.44",
     "sqlmodel>=0.0.27",
@@ -32,3 +34,5 @@ line-length = 120
 [tool.uv.sources]
 gtts = { path = "vendor/gtts", editable = true }
 phonemizer = { path = "vendor/phonemizer", editable = true }
+# until https://github.com/taskiq-python/taskiq-redis/pull/106 is released
+taskiq-redis = { git = "https://github.com/taskiq-python/taskiq-redis.git", branch = "main" }
