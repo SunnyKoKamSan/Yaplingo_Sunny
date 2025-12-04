@@ -1,5 +1,4 @@
 import base64
-from typing import Annotated
 
 from taskiq import Context, TaskiqDepends
 
@@ -12,7 +11,7 @@ from . import broker
 async def analyze_echo(
     audio_b64: str,
     transcript: Transcript,
-    context: Annotated[Context, TaskiqDepends()],
+    context: Context = TaskiqDepends(),
 ) -> Result | None:
     audio = base64.b64decode(audio_b64)
     return await context.state.pipeline(audio, transcript)

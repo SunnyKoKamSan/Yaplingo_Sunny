@@ -24,7 +24,12 @@ class EchoService:
     async def analyze(self, audio: bytes, tid: ULID) -> bool:
         if (transcript := await self.store.get_transcript(tid)) is not None:
             audio_b64 = base64.b64encode(audio).decode("utf-8")
-            await self.broker.kickstart(analyze_echo, args=(audio_b64, transcript), id=tid)
+            await self.broker.kickstart(
+                analyze_echo,
+                id=tid,
+                audio_b64=audio_b64,
+                transcript=transcript,
+            )
             return True
         return False
 
