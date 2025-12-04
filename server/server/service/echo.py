@@ -3,10 +3,17 @@ import base64
 from ulid import ULID
 
 from server.broker import Broker
-from server.broker.tasks import analyze_echo
+from server.broker.tasks import analyze_echo, synthesize_tts
 from server.core import Result, TranscriptGenerator, Transcripts
 from server.repository import Repository
 from server.store import Store
+
+# class EchoResult(BaseModel):
+#     result: Result | None
+#     error: BaseException | None
+
+#     async def get_feedback_audio(self) -> str | None:
+#         await broker.run
 
 
 class EchoService:
@@ -42,3 +49,12 @@ class EchoService:
         if task.error is not None:
             return task.error
         return task.value
+
+    async def feedback_audio(self, tid: ULID) -> str | None:
+        result = await self.result(tid)
+        if isinstance(result, Result):
+            return await self.broker.run(
+                synthesize_tts,
+                model=None,
+                text=result.feedback,
+            )

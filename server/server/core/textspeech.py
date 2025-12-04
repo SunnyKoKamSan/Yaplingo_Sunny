@@ -15,23 +15,28 @@ def data_urlencode(data: bytes, mime: str) -> str:
 
 
 class BaseTextSpeech(ABC):
+    MIME: str
+
     @abstractmethod
-    async def __call__(self, text: str) -> str:
+    async def __call__(self, text: str) -> bytes:
         raise NotImplementedError
 
 
 class GoogleTextSpeech(BaseTextSpeech):
+    MIME = "audio/mpeg"
+
     def __init__(self):
         self.synthesize = partial(agTTS, lang="en", tld="us", slow=False)
 
-    async def __call__(self, text: str) -> str:
+    async def __call__(self, text: str) -> bytes:
         buffer = io.BytesIO()
         await self.synthesize(text).write_to_fp(buffer)
-        data = buffer.getvalue()
-        return data_urlencode(data, mime="audio/mpeg")
+        return buffer.getvalue()
 
 
 class KokoroTextSpeech(BaseTextSpeech):
+    MIME = "audio/wav"
+
     def __init__(self):
         pipeline = KPipeline(
             repo_id="hexgrad/Kokoro-82M",
@@ -44,7 +49,7 @@ class KokoroTextSpeech(BaseTextSpeech):
             speed=1.0,
         )
 
-    async def __call__(self, text: str) -> str:
+    async def __call__(self, text: str) -> bytes:
         def _synthesize():
             generator = self.generator(text)
             with io.BytesIO() as buffer:
@@ -55,8 +60,7 @@ class KokoroTextSpeech(BaseTextSpeech):
                     format="wav",
                     samplerate=24_000,  # Kokoro's fixed sample rate
                 )
-                data = buffer.getvalue()
-                return data_urlencode(data, mime="audio/wav")
+                return buffer.getvalue()
 
         return await asyncio.to_thread(_synthesize)
 

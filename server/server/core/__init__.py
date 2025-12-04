@@ -1,5 +1,5 @@
 from .generators.transcript import TranscriptGenerator
-from .models import Alignment, Difference, Feedback, Pronunciation, Result, Transcript, Transcripts
+from .models import Alignment, Difference, Pronunciation, Result, Transcript, Transcripts
 from .pipeline import Pipeline
 
 __all__ = [
@@ -9,7 +9,6 @@ __all__ = [
     "Alignment",
     "Difference",
     "Pronunciation",
-    "Feedback",
     "Result",
     # Components
     "Pipeline",

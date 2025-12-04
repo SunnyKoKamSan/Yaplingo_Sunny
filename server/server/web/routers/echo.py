@@ -36,8 +36,15 @@ async def get_transcript_result(tid: ULID, response: Response, service: Service)
     if result is True:
         raise HTTPException(status_code=status.HTTP_425_TOO_EARLY)
     if isinstance(result, BaseException):
-        # FIXME: improve error handling
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     if result is None:
         response.status_code = status.HTTP_204_NO_CONTENT
     return result
+
+
+@router.get("/{tid}/result/feedback.wav")
+async def get_transcript_feedback_audio(tid: ULID, service: Service) -> str:
+    audio = await service.echo.feedback_audio(tid)
+    if audio is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return audio

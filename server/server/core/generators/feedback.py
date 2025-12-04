@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ..models import Feedback, Pronunciation, Transcript
+from ..models import Pronunciation, Transcript
 from . import BaseGenerator
 
 
@@ -10,7 +10,7 @@ class FeedbackGenerator(BaseGenerator):
         path = Path(__file__).parent / "prompts" / "feedback.md"
         return path.read_text(encoding="utf-8").strip()
 
-    async def __call__(self, transcript: Transcript, pronunciation: Pronunciation) -> Feedback:
+    async def __call__(self, transcript: Transcript, pronunciation: Pronunciation) -> str:
         differences = pronunciation.get_differences()
         errors = "\n".join([f"\t- {d}" for d in differences]) if differences else "None"
         prompt = f"""
@@ -22,4 +22,4 @@ class FeedbackGenerator(BaseGenerator):
         print("/".join(pronunciation.phonemes))  # DEBUG
         text = await super().__call__(prompt, temperature=0)
         print(text)  # DEBUG
-        return await Feedback.from_text(text.strip())
+        return text.strip()

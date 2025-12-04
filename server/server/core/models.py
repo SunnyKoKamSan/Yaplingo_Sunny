@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, computed_field
 from ulid import ULID
 
 from .levenshtein import OperationCode, levenshtein
-from .textspeech import gtts
+from .textspeech import data_urlencode, gtts
 
 SEPARATOR = Separator(phone="/", word=" ")
 PUNCTUATION = Punctuation()
@@ -47,7 +47,7 @@ class Transcript(BaseModel):
             language="en-us",
             backend="espeak",
         )
-        audio = await gtts(text)
+        audio = data_urlencode(await gtts(text), gtts.MIME)
         return cls(text=text, sequence=str(sequence), audio=audio)
 
     @cached_property
@@ -136,19 +136,8 @@ class Pronunciation(BaseModel):
         return differences
 
 
-class Feedback(BaseModel):
-    text: str
-    audio: str
-
-    @classmethod
-    async def from_text(cls, text: str) -> "Feedback":
-        # DEBUG: disable TTS temporarily
-        # audio = await ktts(text)
-        return cls(text=text, audio="")
-
-
 class Result(BaseModel):
-    feedback: Feedback
+    feedback: str
     pronunciation: Pronunciation
 
 
@@ -158,6 +147,5 @@ __all__ = [
     "Alignment",
     "Difference",
     "Pronunciation",
-    "Feedback",
     "Result",
 ]
