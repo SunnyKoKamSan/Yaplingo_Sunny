@@ -24,10 +24,7 @@ type Alignment = {
 };
 
 export type Result = {
-  feedback: {
-    text: string;
-    audio: string;
-  };
+  feedback: string;
   pronunciation: {
     phonemes: string[];
     alignments: Alignment[];

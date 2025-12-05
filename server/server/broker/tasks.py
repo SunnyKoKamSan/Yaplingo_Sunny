@@ -24,4 +24,4 @@ async def analyze_echo(
     return await context.state.pipeline(audio, transcript)
 
 
-__all__ = ["analyze_echo"]
+__all__ = ["synthesize_tts", "analyze_echo"]

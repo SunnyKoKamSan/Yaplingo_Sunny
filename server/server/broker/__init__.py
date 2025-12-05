@@ -15,7 +15,34 @@ T = TypeVar("T")
 M = TypeVar("M", bound=BaseModel)
 
 
-class Task(BaseModel, Generic[T]):
+class Task(Generic[T]):
+    def __init__(self, broker: "Broker", task: AsyncTaskiqTask[T]):
+        self._task = task
+        self._broker = broker
+
+    @overload
+    async def recall(
+        self,
+        model: type[M],
+    ) -> M: ...
+
+    @overload
+    async def recall(
+        self,
+        model: None = None,
+    ) -> Any: ...
+
+    async def recall(self, model: type[M] | None = None) -> M | T:
+        result = await self._task.wait_result()
+        if result.is_err and result.error is not None:
+            raise result.error
+        if model is not None and issubclass(model, BaseModel):
+            if result.return_value is not None:
+                return model.model_validate(result.return_value)
+        return result.return_value
+
+
+class TaskResult(BaseModel, Generic[T]):
     pending: bool = True
     error: BaseException | None = None
     value: T | None = None
@@ -59,64 +86,61 @@ class Broker:
         id: ULID | None = None,
         *args: P.args,
         **kwargs: P.kwargs,
-    ) -> AsyncTaskiqTask[T]:
+    ) -> Task[T]:
         task_id = str(id) if id is not None else None
         kicker = task.kicker().with_task_id(task_id)
-        return await kicker.kiq(*args, **kwargs)
+        return Task(self, await kicker.kiq(*args, **kwargs))
 
     @overload
-    async def retrieve(self, id: ULID, model: type[M]) -> Task[M] | None: ...
+    async def retrieve(self, id: ULID, model: type[M]) -> TaskResult[M | None] | None: ...
 
     @overload
-    async def retrieve(self, id: ULID, model: None = None) -> Task[Any] | None: ...
+    async def retrieve(self, id: ULID, model: None = None) -> TaskResult[Any] | None: ...
 
-    async def retrieve(self, id: ULID, model: type[M] | None = None) -> Task[M] | Task[Any] | None:
+    async def retrieve(self, id: ULID, model: type[M] | None = None) -> TaskResult[M] | TaskResult[Any] | None:
         if not await self.broker.result_backend.is_result_ready(str(id)):
             return None
         result = await self.broker.result_backend.get_result(str(id))
         if result.is_err:
-            return Task(pending=False, error=result.error)
+            return TaskResult(pending=False, error=result.error)
         value = result.return_value
-        if model is not None and issubclass(model, BaseModel) and value is not None:
-            value = model.model_validate(value)
-        return Task(pending=False, value=value)
+        if model is not None and issubclass(model, BaseModel):
+            if value is not None:
+                value = model.model_validate(value)
+        return TaskResult(pending=False, value=value)
 
     @overload
-    async def run(
+    async def execute(
         self,
         task: AsyncTaskiqDecoratedTask[P, T],
         model: type[M],
+        id: ULID | None = None,
         *args: P.args,
         **kwargs: P.kwargs,
-    ) -> M: ...
+    ) -> M | None: ...
 
     @overload
-    async def run(
+    async def execute(
         self,
         task: AsyncTaskiqDecoratedTask[P, T],
         model: None = None,
+        id: ULID | None = None,
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Any: ...
 
-    async def run(
+    async def execute(
         self,
         task: AsyncTaskiqDecoratedTask[P, T],
         model: type[M] | None = None,
+        id: ULID | None = None,
         *args: P.args,
         **kwargs: P.kwargs,
-    ) -> M | T:
-        _task = await self.kickstart(task, id=None, *args, **kwargs)
-        result = await _task.wait_result()
-        if result.is_err and result.error is not None:
-            raise result.error
-        if model is None:
-            return result.return_value
-        if issubclass(model, BaseModel):
-            return model.model_validate(result.return_value)
-        return result.return_value
+    ) -> M | T | None:
+        t = await self.kickstart(task, id=id, *args, **kwargs)
+        return await t.recall(model)
 
 
 broker = Broker.broker
 
-__all__ = ["broker", "Broker", "Task"]
+__all__ = ["broker", "Broker", "TaskResult"]

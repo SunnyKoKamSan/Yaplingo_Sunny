@@ -86,7 +86,7 @@ export const useEchoTranscriptsQuery = () =>
   useQuery<Transcripts, AxiosError>({
     queryKey: ["echo", "transcripts"],
     queryFn: async () => {
-      const response = await client.get<Transcripts>(`/echo/transcripts`);
+      const response = await client.get<Transcripts>(`/echo/`);
       return response.data;
     },
     staleTime: Infinity,
@@ -94,30 +94,20 @@ export const useEchoTranscriptsQuery = () =>
   });
 
 export const useEchoMutation = (tid?: string) =>
-  useMutation<void, AxiosError, string>({
+  useMutation<Result | null, AxiosError, string>({
     mutationFn: async (audio: string) => {
-      if (!tid) return;
-      await client.post<void>(`/echo/${tid}`, { audio });
+      if (!tid) throw new Error("transcript id is not provided");
+      const response = await client.post<Result | null>(`/echo/${tid}`, { audio });
+      return response.status === 200 ? response.data : null;
     },
   });
 
-export const useEchoResultQuery = (tid?: string) =>
-  useQuery<Result | null, AxiosError>({
-    queryKey: ["echo", tid, "result"],
-    queryFn: async ({ client: qclient }) => {
-      while (true) {
-        const { status, data } = await client.get<Result | null>(`/echo/${tid}/result`, {
-          validateStatus: (status) => [200, 204, 425].includes(status),
-        });
-        if (status !== 425) {
-          if (status === 204) {
-            qclient.removeQueries({ queryKey: ["echo", tid, "result"] });
-            return null;
-          }
-          return data;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
+export const useEchoFeedbackAudioQuery = (tid?: string) =>
+  useQuery<string | null, AxiosError>({
+    queryKey: ["echo", tid, "result", "feedback.wav"],
+    queryFn: async () => {
+      const response = await client.get<string | null>(`/echo/${tid}/feedback.wav`);
+      return response.data;
     },
     enabled: !!tid,
     staleTime: Infinity,
