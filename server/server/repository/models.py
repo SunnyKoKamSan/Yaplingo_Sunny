@@ -41,3 +41,6 @@ class User(SQLModel, table=True):
     def is_password_hashed(cls, password: str) -> str:
         argon2.extract_parameters(password)  # will raise `InvalidHashError` if not hashed
         return password
+
+
+__all__ = ["User", "Language"]

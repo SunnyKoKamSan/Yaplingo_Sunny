@@ -2,7 +2,7 @@ import torch
 import torchaudio
 from transformers import Wav2Vec2ForCTC, Wav2Vec2PhonemeCTCTokenizer, Wav2Vec2Processor
 
-from ..models import Alignment, Pronunciation, Transcript
+from ..models import Pronunciation, PronunciationAlignment, Transcript
 from .processor import AudioProcessor
 
 
@@ -28,7 +28,7 @@ class PronunciationAligner:
         [phonemes] = self.tokenizer.batch_decode(predictions)
         return phonemes.split()
 
-    def align_phonemes(self, logits: torch.Tensor, transcript: Transcript) -> list[Alignment]:
+    def align_phonemes(self, logits: torch.Tensor, transcript: Transcript) -> list[PronunciationAlignment]:
         tokens = self.tokenizer(transcript.text).input_ids
         tokens = torch.tensor([tokens], dtype=torch.int32)
 
@@ -38,7 +38,7 @@ class PronunciationAligner:
         spans = torchaudio.functional.merge_tokens(alignments, scores.exp())
 
         return [
-            Alignment(
+            PronunciationAlignment(
                 token=self.tokenizer.convert_ids_to_tokens(s.token),
                 score=s.score,
                 interval=(s.start, s.end),

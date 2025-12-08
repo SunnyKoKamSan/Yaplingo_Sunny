@@ -5,8 +5,8 @@ from functools import cached_property
 from phonemizer import phonemize
 from phonemizer.punctuation import Punctuation
 from phonemizer.separator import Separator
-from pydantic import BaseModel, Field, computed_field
-from ulid import ULID
+from pydantic import BaseModel, computed_field
+from typing_extensions import Self
 
 from .levenshtein import OperationCode, levenshtein
 from .textspeech import data_urlencode, gtts
@@ -31,13 +31,12 @@ def cached_method(f):
 
 
 class Transcript(BaseModel):
-    id: ULID = Field(default_factory=ULID)
     text: str
     sequence: str
     audio: str
 
     @classmethod
-    async def from_text(cls, text: str) -> "Transcript":
+    async def from_text(cls, text: str) -> Self:
         sequence = phonemize(
             text,
             strip=True,
@@ -74,13 +73,13 @@ class Transcripts(BaseModel):
     items: list[Transcript]
 
 
-class Alignment(BaseModel):
+class PronunciationAlignment(BaseModel):
     token: str
     score: float
     interval: tuple[int, int]
 
 
-class Difference(BaseModel):
+class PronunciationDifference(BaseModel):
     word: str
     operation: OperationCode
 
@@ -101,11 +100,11 @@ class Difference(BaseModel):
 class Pronunciation(BaseModel):
     transcript: Transcript
     phonemes: list[str]  # predictions
-    alignments: list[Alignment]
+    alignments: list[PronunciationAlignment]
 
     @computed_field
     @cached_property
-    def words(self) -> list[tuple[str, list[Alignment]]]:
+    def words(self) -> list[tuple[str, list[PronunciationAlignment]]]:
         alignments = []
         boundaries = self.transcript.get_word_boundaries()
         for word, start, end in boundaries:
@@ -113,7 +112,7 @@ class Pronunciation(BaseModel):
         return alignments
 
     @cached_method
-    def get_differences(self) -> list[Difference]:
+    def get_differences(self) -> list[PronunciationDifference]:
         differences = []
         boundaries = self.transcript.get_word_boundaries()
         _, _, operations = levenshtein(self.transcript.phonemes, self.phonemes)
@@ -123,7 +122,7 @@ class Pronunciation(BaseModel):
             for word, start, end in boundaries:
                 if start <= i < end:
                     differences.append(
-                        Difference(
+                        PronunciationDifference(
                             word=word,
                             operation=opcode,
                             expected=self.transcript.phonemes[i] if opcode != "+" else None,
@@ -144,8 +143,8 @@ class Result(BaseModel):
 __all__ = [
     "Transcript",
     "Transcripts",
-    "Alignment",
-    "Difference",
+    "PronunciationAlignment",
+    "PronunciationDifference",
     "Pronunciation",
     "Result",
 ]

@@ -31,12 +31,12 @@ class Repository:
     async def dispose(self):
         await self.engine.dispose()
 
-    async def get_user(self, id_name: ULID | str) -> User | None:
+    async def get_user(self, uid_name: ULID | str) -> User | None:
         async with self.session() as session:
-            if isinstance(id_name, ULID):
-                user = await session.get(User, id_name)
+            if isinstance(uid_name, ULID):
+                user = await session.get(User, uid_name)
             else:
-                query = select(User).where(User.name == id_name)
+                query = select(User).where(User.name == uid_name)
                 user = (await session.exec(query)).one_or_none()
         return user
 
@@ -48,3 +48,6 @@ class Repository:
         except IntegrityError:
             raise EntityExistsError()
         return user
+
+
+__all__ = ["Repository", "EntityExistsError"]
