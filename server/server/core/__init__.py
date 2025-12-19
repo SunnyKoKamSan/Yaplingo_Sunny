@@ -1,8 +1,6 @@
 from .generators.transcript import TranscriptGenerator
 from .models import (
     Pronunciation,
-    PronunciationAlignment,
-    PronunciationDifference,
     Result,
     Transcript,
     Transcripts,
@@ -13,8 +11,6 @@ __all__ = [
     # Models
     "Transcript",
     "Transcripts",
-    "PronunciationAlignment",
-    "PronunciationDifference",
     "Pronunciation",
     "Result",
     # Components

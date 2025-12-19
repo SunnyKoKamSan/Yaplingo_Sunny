@@ -27,9 +27,12 @@ class Service:
         await self._repository.dispose()
 
     @cached_property
-    def user(self):
+    def user(self) -> UserService:
         return UserService(store=self._store, repository=self._repository)
 
     @cached_property
-    def echo(self):
+    def echo(self) -> EchoService:
         return EchoService(broker=self._broker, store=self._store, repository=self._repository)
+
+
+__all__ = ["Service"]

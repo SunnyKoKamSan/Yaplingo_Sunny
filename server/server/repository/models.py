@@ -25,6 +25,10 @@ class ULIDType(TypeDecorator):
         if value is not None:
             return ULID.from_str(value)
 
+    @property
+    def python_type(self):
+        return ULID
+
 
 class Language(str, Enum):  # ISO 639-1 (alpha-2) code
     ENGLISH = "en"

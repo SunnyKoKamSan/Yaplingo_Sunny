@@ -2,14 +2,12 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
 from ulid import ULID
 
-from server.models import Language
 from server.repository import EntityExistsError
-from server.service.user import UserCreation, UserCredentials
 
 from ..dependencies import Service, User
+from ..schemas.user import UserCreationInput, UserCredentialsInput, UserResponse
 from ..settings import settings
 
 TOKEN_TTL = timedelta(days=7)
@@ -24,7 +22,7 @@ def generate_token(uid: ULID) -> str:
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register(creation: UserCreation, service: Service):
+async def register(creation: UserCreationInput, service: Service):
     try:
         user = await service.user.create(creation)
     except EntityExistsError:
@@ -33,16 +31,10 @@ async def register(creation: UserCreation, service: Service):
 
 
 @router.post("/login")
-async def login(credentials: UserCredentials, service: Service):
+async def login(credentials: UserCredentialsInput, service: Service):
     if (user := await service.user.verify(credentials)) is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return {"token": generate_token(user.id)}
-
-
-class UserResponse(BaseModel):
-    id: ULID
-    name: str
-    language: Language
 
 
 @router.get("/me", response_model=UserResponse)

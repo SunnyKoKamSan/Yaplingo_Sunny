@@ -67,5 +67,3 @@ class KokoroTextSpeech(BaseTextSpeech):
 
 ktts = KokoroTextSpeech()
 gtts = GoogleTextSpeech()
-
-__all__ = ["ktts", "gtts"]

@@ -1,4 +1,6 @@
 from argon2 import PasswordHasher
+from pydantic import PostgresDsn
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel, select
@@ -6,7 +8,15 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from ulid import ULID
 
 from .models import User
-from .settings import settings
+
+
+class Settings(BaseSettings):
+    url: PostgresDsn
+
+    model_config = SettingsConfigDict(env_prefix="database_")
+
+
+settings = Settings.model_validate({})
 
 
 class EntityExistsError(Exception):

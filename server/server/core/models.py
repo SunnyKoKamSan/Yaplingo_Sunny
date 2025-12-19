@@ -5,8 +5,9 @@ from functools import cached_property
 from phonemizer import phonemize
 from phonemizer.punctuation import Punctuation
 from phonemizer.separator import Separator
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, Field, computed_field
 from typing_extensions import Self
+from ulid import ULID
 
 from .levenshtein import OperationCode, levenshtein
 from .textspeech import data_urlencode, gtts
@@ -31,6 +32,7 @@ def cached_method(f):
 
 
 class Transcript(BaseModel):
+    id: ULID = Field(default_factory=ULID)
     text: str
     sequence: str
     audio: str
@@ -73,38 +75,36 @@ class Transcripts(BaseModel):
     items: list[Transcript]
 
 
-class PronunciationAlignment(BaseModel):
-    token: str
-    score: float
-    interval: tuple[int, int]
-
-
-class PronunciationDifference(BaseModel):
-    word: str
-    operation: OperationCode
-
-    expected: str | None
-    predicted: str | None
-
-    def __str__(self) -> str:
-        match self.operation:
-            case "~":
-                operation = "replace"
-            case "+":
-                operation = "insert"
-            case "-":
-                operation = "delete"
-        return "\t".join([f'"{self.word}"', operation, f"{self.expected or '∅'} → {self.predicted or '∅'}"])
-
-
 class Pronunciation(BaseModel):
+    class Alignment(BaseModel):
+        token: str
+        score: float
+        interval: tuple[int, int]
+
+    class Difference(BaseModel):
+        word: str
+        operation: OperationCode
+
+        expected: str | None
+        predicted: str | None
+
+        def __str__(self) -> str:
+            match self.operation:
+                case "~":
+                    operation = "replace"
+                case "+":
+                    operation = "insert"
+                case "-":
+                    operation = "delete"
+            return "\t".join([f'"{self.word}"', operation, f"{self.expected or '∅'} → {self.predicted or '∅'}"])
+
     transcript: Transcript
     phonemes: list[str]  # predictions
-    alignments: list[PronunciationAlignment]
+    alignments: list[Alignment]
 
     @computed_field
     @cached_property
-    def words(self) -> list[tuple[str, list[PronunciationAlignment]]]:
+    def words(self) -> list[tuple[str, list[Alignment]]]:
         alignments = []
         boundaries = self.transcript.get_word_boundaries()
         for word, start, end in boundaries:
@@ -112,7 +112,7 @@ class Pronunciation(BaseModel):
         return alignments
 
     @cached_method
-    def get_differences(self) -> list[PronunciationDifference]:
+    def get_differences(self) -> list[Difference]:
         differences = []
         boundaries = self.transcript.get_word_boundaries()
         _, _, operations = levenshtein(self.transcript.phonemes, self.phonemes)
@@ -122,7 +122,7 @@ class Pronunciation(BaseModel):
             for word, start, end in boundaries:
                 if start <= i < end:
                     differences.append(
-                        PronunciationDifference(
+                        Pronunciation.Difference(
                             word=word,
                             operation=opcode,
                             expected=self.transcript.phonemes[i] if opcode != "+" else None,
@@ -143,8 +143,6 @@ class Result(BaseModel):
 __all__ = [
     "Transcript",
     "Transcripts",
-    "PronunciationAlignment",
-    "PronunciationDifference",
     "Pronunciation",
     "Result",
 ]

@@ -1,14 +1,20 @@
-from datetime import timedelta
-from typing import Awaitable, cast
+from functools import cached_property
 
+from pydantic import RedisDsn
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from redis.asyncio import Redis as AsyncRedis
-from ulid import ULID
 
-from server.core import Transcript, Transcripts
+from server.store.echo import EchoStore
+from server.store.user import UserStore
 
-from .settings import settings
 
-TRANSCRIPT_TTL = timedelta(hours=1)
+class Settings(BaseSettings):
+    url: RedisDsn
+
+    model_config = SettingsConfigDict(env_prefix="store_")
+
+
+settings = Settings.model_validate({})
 
 
 class Store:
@@ -22,19 +28,13 @@ class Store:
     async def dispose(self):
         await self.client.aclose()
 
-    async def dump_transcripts(self, transcripts: Transcripts) -> None:
-        pipe = self.client.pipeline()
-        for transcript in transcripts.items:
-            # `mode="json"` ensures `id: ULID` is serialized as a string
-            mapping = transcript.model_dump(mode="json")  # dict
-            pipe.hsetex(
-                f"transcript:{str(transcript.id)}",
-                ex=TRANSCRIPT_TTL,
-                mapping=mapping,
-            )
-        await pipe.execute()
+    @cached_property
+    def echo(self) -> EchoStore:
+        return EchoStore(self.client)
 
-    async def get_transcript(self, tid: ULID) -> Transcript | None:
-        hgetall = self.client.hgetall(f"transcript:{str(tid)}")
-        mapping = await cast(Awaitable[dict], hgetall)
-        return Transcript.model_validate(mapping) if mapping else None
+    @cached_property
+    def user(self) -> UserStore:
+        return UserStore(self.client)
+
+
+__all__ = ["Store"]

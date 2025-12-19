@@ -1,41 +1,61 @@
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 import jwt
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPBearer
+from pydantic import BaseModel, ValidationError
+from starlette.requests import HTTPConnection
 from ulid import ULID
 
-from server.repository.models import User
+from server.models import User as _User
 from server.service import Service as _Service
-from server.web.settings import settings
+
+from .settings import settings
 
 
-async def service(request: Request) -> _Service:
-    return request.app.state.service
+async def service(connection: HTTPConnection) -> _Service:
+    return connection.app.state.service
 
 
 Service = Annotated[_Service, Depends(service)]
 
 
-async def current_user(
-    credentials: Annotated[
-        HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(auto_error=False)),
+class TokenClaims(BaseModel):
+    sub: ULID
+
+
+class BearerToken(HTTPBearer):
+    def __init__(self):
+        super().__init__(auto_error=False)
+
+    async def __call__(self, connection: HTTPConnection) -> TokenClaims:
+        credentials = await super().__call__(cast(Request, connection))
+        if credentials is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+        try:
+            claims: dict[str, Any] = jwt.decode(
+                credentials.credentials,
+                settings.secret,
+                algorithms=["HS256"],
+            )
+            return TokenClaims.model_validate(claims)
+        except jwt.PyJWTError or ValidationError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Token")
+
+
+async def user(
+    claims: Annotated[
+        TokenClaims,
+        Depends(BearerToken()),
     ],
     service: Service,
-) -> User:
-    if credentials is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    try:
-        claims: dict[str, str] = jwt.decode(
-            credentials.credentials,
-            settings.secret,
-            algorithms=["HS256"],
-        )
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Token")
-    if (uid := claims.get("sub")) is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Token")
-    if (user := await service.user.get(ULID.from_str(uid))) is None:
+) -> _User:
+    if (user := await service.user.get(claims.sub)) is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Not Found")
     return user
+
+
+User = Annotated[_User, Depends(user)]
+
+
+__all__ = ["Service", "User"]
