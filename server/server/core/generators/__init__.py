@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 from openai import AsyncOpenAI
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,7 +25,7 @@ class BaseGenerator(ABC):
     def system_prompt(self) -> str:
         raise NotImplementedError
 
-    async def __call__(self, prompt: str, **kwargs) -> str:
+    async def call(self, prompt: str, **kwargs) -> str:
         completion = await self.client.chat.completions.create(
             model=settings.model_id,
             messages=[
@@ -34,3 +35,7 @@ class BaseGenerator(ABC):
             **kwargs,
         )
         return completion.choices[0].message.content or ""
+
+    @abstractmethod
+    async def __call__(self, *args, **kwargs) -> Any:
+        raise NotImplementedError

@@ -20,6 +20,6 @@ class FeedbackGenerator(BaseGenerator):
         print(prompt)  # DEBUG
         print("/".join(transcript.phonemes))  # DEBUG
         print("/".join(pronunciation.phonemes))  # DEBUG
-        text = await super().__call__(prompt, temperature=0)
+        text = await super().call(prompt, temperature=0)
         print(text)  # DEBUG
         return text.strip()

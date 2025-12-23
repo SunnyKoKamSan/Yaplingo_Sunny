@@ -32,6 +32,10 @@ dependencies = [
 [tool.ruff]
 line-length = 120
 
+[tool.ty.src]
+include = ["server"]
+exclude = ["vendor"]
+
 [tool.uv.sources]
 gtts = { path = "vendor/gtts", editable = true }
 phonemizer = { path = "vendor/phonemizer", editable = true }

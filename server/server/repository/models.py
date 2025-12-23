@@ -14,20 +14,17 @@ class ULIDType(TypeDecorator):
     def __init__(self, length=26, *args, **kwargs):
         super().__init__(length=length, *args, **kwargs)
 
-    def process_bind_param(self, value, _):
+    def process_bind_param(self, value, dialect):
         if value is None:
             return None
         if isinstance(value, ULID):
             return str(value)
         return str(ULID.from_str(value))  # try parsing from string
 
-    def process_result_value(self, value, _):
-        if value is not None:
-            return ULID.from_str(value)
-
-    @property
-    def python_type(self):
-        return ULID
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return ULID.from_str(value)
 
 
 class Language(str, Enum):  # ISO 639-1 (alpha-2) code

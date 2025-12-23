@@ -17,7 +17,7 @@ class TranscriptGenerator(BaseGenerator):
 
     async def __call__(self) -> Transcripts:
         topic = random.choice(self.TOPICS)
-        text = await super().__call__(
+        text = await super().call(
             f"Topic: {topic}",
             temperature=1.25,
             # frequency_penalty=2.0,
