@@ -1,0 +1,34 @@
+[project]
+name = "yaplingo"
+version = "0.1.0"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "uvicorn>=0.35.0", # tool to actually run the server
+    "fastapi>=0.116.1",
+    "python-multipart>=0.0.20", # support file upload in FastAPI
+    "pydantic>=2.12.3",
+    "python-ulid[pydantic]>=3.1.0",
+    "pydantic-settings>=2.11.0",
+    "argon2-cffi>=25.1.0",
+    "pyjwt>=2.10.1",
+    "redis>=7.1.0",
+    "sqlalchemy[asyncio]>=2.0.44",
+    "sqlmodel>=0.0.27",
+    "asyncpg>=0.31.0",
+    "transformers==4.56.2",
+    "torch==2.8.0",
+    "torchaudio==2.8.0",
+    "soundfile>=0.13.1",
+    "deepfilternet>=0.5.6",
+    "openai>=2.1.0",
+    "kokoro>=0.9.4",
+    "gtts",
+    "phonemizer",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.uv.sources]
+gtts = { path = "vendor/gtts", editable = true }
+phonemizer = { path = "vendor/phonemizer", editable = true }

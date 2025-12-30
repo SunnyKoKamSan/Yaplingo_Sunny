@@ -1,0 +1,59 @@
+name: yaplingo
+
+services:
+  server:
+    image: yaplingo-server:latest
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./server:/server/server
+    depends_on:
+      database:
+        condition: service_healthy
+      store:
+        condition: service_healthy
+    models:
+      - llm
+    tty: true
+
+  database:
+    image: postgres:latest
+    env_file: .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  store:
+    image: redis:latest
+    env_file: .env
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  postgres:
+  redis:
+
+models:
+  llm:
+    model: ai/llama3.1
+    runtime_flags:
+      - "--no-prefill-assistant"

@@ -1,0 +1,15 @@
+/.venv/
+
+/build/
+/dist/
+/wheels/
+
+*.egg-info
+
+*.py[oc]
+__pycache__/
+
+*.sqlite
+*.sqlite-journal
+
+*.hurl

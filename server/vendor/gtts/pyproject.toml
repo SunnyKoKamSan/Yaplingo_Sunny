@@ -1,0 +1,43 @@
+[project]
+name = "gtts"
+version = "2.5.4"
+description = "gTTS (Google Text-to-Speech), a Python library and CLI tool to interface with Google Translate text-to-speech API"
+authors = [{ name = "Pierre Nicolas Durette", email = "pndurette@gmail.com" }]
+requires-python = ">=3.7"
+readme = "README.md"
+license = { text = "MIT" }
+keywords = ["gtts", "text to speech", "Google Translate", "TTS"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: Unix",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+dependencies = [
+    "click >=7.1, <8.2", # https://click.palletsprojects.com/en/latest/changes/
+    "httpx>=0.24.1",
+]
+
+[project.scripts]
+gtts-cli = "gtts.cli:tts_cli"
+
+[project.urls]
+homepage = "https://github.com/pndurette/gTTS"
+documentation = "https://gtts.readthedocs.io"
+repository = "https://github.com/pndurette/gTTS"
+changelog = "https://github.com/pndurette/gTTS/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
