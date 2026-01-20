@@ -46,18 +46,18 @@ class EchoResponse(BaseModel):
     def dump(cls, data: EchoSession | Result | None | tuple[ULID, str]) -> dict[str, Any]:
         match data:
             case EchoSession():
-                type = EchoResponse.Type.SESSION
+                t = EchoResponse.Type.SESSION
                 response = EchoResponse.SessionResponse(**data.model_dump())
             case Result():
-                type = EchoResponse.Type.RESULT
+                t = EchoResponse.Type.RESULT
                 response = EchoResponse.ResultResponse(**data.model_dump())
             case None:
-                type = EchoResponse.Type.RESULT
+                t = EchoResponse.Type.RESULT
                 response = None
             case tuple([tid, audio]):
-                type = EchoResponse.Type.FBTTS
+                t = EchoResponse.Type.FBTTS
                 response = EchoResponse.FeedbackAudioResponse(tid=tid, audio=audio)
-        return cls(type=type, response=response).model_dump(mode="json")
+        return cls(type=t, response=response).model_dump(mode="json")
 
 
 __all__ = ["EchoInput", "EchoResponse"]

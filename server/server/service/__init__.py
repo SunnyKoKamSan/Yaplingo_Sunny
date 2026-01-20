@@ -1,4 +1,4 @@
-from functools import cached_property
+from typing import TYPE_CHECKING
 
 from server.broker import Broker
 from server.repository import Repository
@@ -6,6 +6,11 @@ from server.store import Store
 
 from .echo import EchoService
 from .user import UserService
+
+if TYPE_CHECKING:
+    cached_property = property
+else:
+    from functools import cached_property
 
 
 class Service:

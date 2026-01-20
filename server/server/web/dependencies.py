@@ -28,7 +28,7 @@ class BearerToken(HTTPBearer):
     def __init__(self):
         super().__init__(auto_error=False)
 
-    async def __call__(self, connection: HTTPConnection) -> TokenClaims:
+    async def __call__(self, connection: HTTPConnection) -> TokenClaims:  # ty:ignore[invalid-method-override]
         credentials = await super().__call__(cast(Request, connection))
         if credentials is None:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)

@@ -76,9 +76,9 @@ class Broker:
         task = AsyncTaskiqTask(
             task_id=str(task_id),
             result_backend=self.broker.result_backend,
-            return_type=task_fn.return_type,  # type: ignore
+            return_type=task_fn.return_type,
         )
-        return await self._recall(task)  # type: ignore
+        return await self._recall(task)
 
     async def execute(
         self,
@@ -91,11 +91,11 @@ class Broker:
             task = AsyncTaskiqTask(
                 task_id=str(task_id),
                 result_backend=self.broker.result_backend,
-                return_type=task_func.return_type,  # type: ignore
+                return_type=task_func.return_type,
             )
         else:
             task = await self._delegate(task_func, task_id, *args, **kwargs)
-        return await self._recall(task)  # type: ignore
+        return await self._recall(task)
 
 
 broker = Broker.broker

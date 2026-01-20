@@ -1,6 +1,5 @@
 from datetime import timedelta
-from functools import cached_property
-from typing import Annotated, Awaitable, cast
+from typing import TYPE_CHECKING, Annotated, Awaitable, cast
 
 from pydantic import ConfigDict, Field, computed_field
 from redis.asyncio import Redis
@@ -8,6 +7,12 @@ from typing_extensions import Self
 from ulid import ULID
 
 from server.core import Transcript, Transcripts
+
+if TYPE_CHECKING:
+    cached_property = property
+else:
+    from functools import cached_property
+
 
 TRANSCRIPT_TTL = timedelta(hours=1)
 

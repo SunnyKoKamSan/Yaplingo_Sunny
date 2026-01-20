@@ -12,7 +12,7 @@ dependencies = [
     "pydantic-settings>=2.11.0",
     "argon2-cffi>=25.1.0",
     "pyjwt>=2.10.1",
-    "taskiq-redis",
+    "taskiq-redis>=1.2.1",
     "taskiq>=0.12.0",
     "redis>=7.1.0",
     "sqlalchemy[asyncio]>=2.0.44",
@@ -36,8 +36,9 @@ line-length = 120
 include = ["server"]
 exclude = ["vendor"]
 
+[tool.uv]
+config-settings = { editable_mode = "compat" }
+
 [tool.uv.sources]
 gtts = { path = "vendor/gtts", editable = true }
 phonemizer = { path = "vendor/phonemizer", editable = true }
-# until https://github.com/taskiq-python/taskiq-redis/pull/106 is released
-taskiq-redis = { git = "https://github.com/taskiq-python/taskiq-redis.git", branch = "main" }

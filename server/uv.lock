@@ -1774,11 +1774,15 @@ wheels = [
 
 [[package]]
 name = "taskiq-redis"
-version = "0.0.0"
-source = { git = "https://github.com/taskiq-python/taskiq-redis.git?branch=main#f7c061fb0975e050fcb925751648b1260502c671" }
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "redis" },
     { name = "taskiq" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/64/35/58ec34c74c888235ecea3dba3b0e74a3902a6b70f0cd56fffa0012f03a61/taskiq_redis-1.2.1.tar.gz", hash = "sha256:8a6b7d3187798e00f27fca6d4a9d73efc559ed88e3c3c571647c9163add7af47", size = 14376, upload-time = "2025-12-19T17:36:03.45Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/99/1e/d4202cdb98bf2df087dd303df35d0faf2528f985d62aa685cce994584c4f/taskiq_redis-1.2.1-py3-none-any.whl", hash = "sha256:caf91241a23cd77c4304e455a775caa08c5005b48b62fc613b4dd5b44a515488", size = 20570, upload-time = "2025-12-19T17:36:02.142Z" },
 ]
 
 [[package]]
@@ -2141,7 +2145,7 @@ requires-dist = [
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.44" },
     { name = "sqlmodel", specifier = ">=0.0.27" },
     { name = "taskiq", specifier = ">=0.12.0" },
-    { name = "taskiq-redis", git = "https://github.com/taskiq-python/taskiq-redis.git?branch=main" },
+    { name = "taskiq-redis", specifier = ">=1.2.1" },
     { name = "torch", specifier = "==2.8.0" },
     { name = "torchaudio", specifier = "==2.8.0" },
     { name = "transformers", specifier = "==4.56.2" },

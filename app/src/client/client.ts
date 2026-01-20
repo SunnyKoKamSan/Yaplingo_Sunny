@@ -5,7 +5,7 @@ import store, { $token } from "../store";
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const client = axios.create({
-  baseURL: `http://${API_URL}`,
+  baseURL: API_URL,
   responseType: "json",
 });
 
@@ -29,8 +29,9 @@ export default client;
 
 export const createWebSocket = (endpoint: string): WebSocket => {
   const token = store.get($token);
+  const url = `${API_URL.replace(/^http/, "ws")}/${endpoint}`;
   // @ts-expect-error: React Native WebSocket supports custom headers
-  return new WebSocket(`ws://${API_URL}/${endpoint}`, undefined, {
+  return new WebSocket(url, undefined, {
     headers: { Authorization: `Bearer ${token}` },
   });
 };

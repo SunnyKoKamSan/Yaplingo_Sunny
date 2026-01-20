@@ -1,7 +1,7 @@
 import functools
 import re
-from functools import cached_property
 
+from isodate.version import TYPE_CHECKING
 from phonemizer import phonemize
 from phonemizer.punctuation import Punctuation
 from phonemizer.separator import Separator
@@ -11,6 +11,12 @@ from ulid import ULID
 
 from .levenshtein import OperationCode, levenshtein
 from .textspeech import data_urlencode, gtts
+
+if TYPE_CHECKING:
+    cached_property = property
+else:
+    from functools import cached_property
+
 
 SEPARATOR = Separator(phone="/", word=" ")
 PUNCTUATION = Punctuation()

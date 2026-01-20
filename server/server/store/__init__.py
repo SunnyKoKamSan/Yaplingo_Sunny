@@ -1,4 +1,4 @@
-from functools import cached_property
+from typing import TYPE_CHECKING
 
 from pydantic import RedisDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -6,6 +6,11 @@ from redis.asyncio import Redis as AsyncRedis
 
 from server.store.echo import EchoStore
 from server.store.user import UserStore
+
+if TYPE_CHECKING:
+    cached_property = property
+else:
+    from functools import cached_property
 
 
 class Settings(BaseSettings):
