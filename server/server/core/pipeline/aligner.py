@@ -31,12 +31,9 @@ class PronunciationAligner:
     def align_phonemes(self, logits: torch.Tensor, transcript: Transcript) -> list[Pronunciation.Alignment]:
         tokens = self.tokenizer(transcript.text).input_ids
         tokens = torch.tensor([tokens], dtype=torch.int32)
-
         log_probs = logits.log_softmax(dim=-1)
-
         [alignments], [scores] = torchaudio.functional.forced_align(log_probs, tokens)
         spans = torchaudio.functional.merge_tokens(alignments, scores.exp())
-
         return [
             Pronunciation.Alignment(
                 token=self.tokenizer.convert_ids_to_tokens(s.token),
@@ -53,8 +50,8 @@ class PronunciationAligner:
         assert len(aligned_phonemes) == len(transcript.phonemes), (
             "alignment output must have the same length with the transcript"
         )
-        return Pronunciation(
-            transcript=transcript,
+        pronunciation = Pronunciation(
             phonemes=predicted_phonemes,
             alignments=aligned_phonemes,
-        )
+        ).with_transcript(transcript)
+        return pronunciation

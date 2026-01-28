@@ -1,11 +1,8 @@
-import asyncio
 from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, FastAPI, WebSocket, WebSocketDisconnect
 from ulid import ULID
-
-from server.models import Result
 
 from ..dependencies import Service, User
 from ..schemas.echo import EchoInput, EchoResponse
@@ -57,42 +54,35 @@ async def websocket_session(
     sessions: Sessions,
     service: Service,
 ):
-    session = await service.echo.load_session(user)
-    print(session.attempts, session.progress)  # DEBUG
+    session = await service.echo.session(user, generate=True)
 
     async def send_response(data) -> None:
-        await ws.send_json(EchoResponse.dump(data))
+        data = await EchoResponse.dump(data)
+        await ws.send_json(data)
 
     async def receive_input() -> EchoInput:
         data = await ws.receive_json()
         return EchoInput.model_validate(data)
 
-    async def send_fbtts_response(result: Result) -> None:
-        assert session is not None, "session cannot be none when sending fbtts response"
-        tid = result.pronunciation.transcript.id
-        fbtts = await service.echo.retrieve_fbtts(session, result)
-        await send_response((tid, fbtts))
-
     try:
         await sessions.accept(user, ws)
-        while session is not None and session.progress < len(session.items):
-            if not session.attempted:
-                await send_response(session)
+        while session.state.progress < len(session.state.items):
+            if not session.state.attempted:
+                print(session.state.attempts, session.state.progress)  # DEBUG
+                await send_response(session.state)
                 while True:
                     input = await receive_input()
                     match input.type:
                         case EchoInput.Type.NEXT:
                             break
                         case EchoInput.Type.ABORT:
-                            return await service.echo.abort_session(session)
+                            return await session.abort()
                         case EchoInput.Type.AUDIO:
                             assert input.input is not None, "audio input cannot be none"
-                            result = await service.echo.submit_attempt(session, input.input)
+                            result = await session.attempt(input.input)
                             await send_response(result if result is not None else None)
-                            if result is not None:
-                                asyncio.create_task(send_fbtts_response(result))
-            await service.echo.proceed_session(session)
-            session = await service.echo.load_session(user, generate=False)  # refresh session
+            if await session.proceed():
+                await session.refresh()
     except WebSocketDisconnect:
         pass  # do not reraise on disconnect
     finally:

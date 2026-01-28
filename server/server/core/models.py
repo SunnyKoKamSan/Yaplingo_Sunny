@@ -5,12 +5,11 @@ from isodate.version import TYPE_CHECKING
 from phonemizer import phonemize
 from phonemizer.punctuation import Punctuation
 from phonemizer.separator import Separator
-from pydantic import BaseModel, Field, computed_field
-from typing_extensions import Self
-from ulid import ULID
+from pydantic import BaseModel, PrivateAttr, computed_field
+
+from server.core.textspeech import data_urlencode, gtts
 
 from .levenshtein import OperationCode, levenshtein
-from .textspeech import data_urlencode, gtts
 
 if TYPE_CHECKING:
     cached_property = property
@@ -38,24 +37,22 @@ def cached_method(f):
 
 
 class Transcript(BaseModel):
-    id: ULID = Field(default_factory=ULID)
     text: str
-    sequence: str
-    audio: str
 
-    @classmethod
-    async def from_text(cls, text: str) -> Self:
-        sequence = phonemize(
-            text,
-            strip=True,
-            with_stress=False,
-            preserve_punctuation=True,
-            separator=SEPARATOR,
-            language="en-us",
-            backend="espeak",
+    @computed_field
+    @cached_property
+    def sequence(self) -> str:
+        return str(
+            phonemize(
+                self.text,
+                strip=True,
+                with_stress=False,
+                preserve_punctuation=True,
+                separator=SEPARATOR,
+                language="en-us",
+                backend="espeak",
+            )
         )
-        audio = data_urlencode(await gtts(text), gtts.MIME)
-        return cls(text=text, sequence=str(sequence), audio=audio)
 
     @cached_property
     def phonemes(self) -> list[str]:
@@ -73,6 +70,17 @@ class Transcript(BaseModel):
             index += len(phones.split("/"))
             boundaries.append((word, start, index))
         return boundaries
+
+    # cannot decorate with `cached_method` here because this method is async
+    #   and would cause "RuntimeError: cannot reuse already awaited coroutine"
+    async def get_audio(self) -> str:
+        attr = "@audio"
+        if hasattr(self, attr):
+            audio = object.__getattribute__(self, attr)
+        else:
+            audio = data_urlencode(await gtts(self.text), gtts.MIME)
+            object.__setattr__(self, attr, audio)
+        return audio
 
 
 class Transcripts(BaseModel):
@@ -104,7 +112,8 @@ class Pronunciation(BaseModel):
                     operation = "delete"
             return "\t".join([f'"{self.word}"', operation, f"{self.expected or '∅'} → {self.predicted or '∅'}"])
 
-    transcript: Transcript
+    _transcript: Transcript = PrivateAttr()
+
     phonemes: list[str]  # predictions
     alignments: list[Alignment]
 
@@ -112,7 +121,7 @@ class Pronunciation(BaseModel):
     @cached_property
     def words(self) -> list[tuple[str, list[Alignment]]]:
         alignments = []
-        boundaries = self.transcript.get_word_boundaries()
+        boundaries = self._transcript.get_word_boundaries()
         for word, start, end in boundaries:
             alignments.append((word, self.alignments[start:end]))
         return alignments
@@ -120,8 +129,8 @@ class Pronunciation(BaseModel):
     @cached_method
     def get_differences(self) -> list[Difference]:
         differences = []
-        boundaries = self.transcript.get_word_boundaries()
-        _, _, operations = levenshtein(self.transcript.phonemes, self.phonemes)
+        boundaries = self._transcript.get_word_boundaries()
+        _, _, operations = levenshtein(self._transcript.phonemes, self.phonemes)
         for opcode, i, j in operations:
             if self.alignments[i].score >= DIFFERENCE_CUTOFF:
                 continue  # skip phonemes with high enough confidence (consider them as correct)
@@ -131,7 +140,7 @@ class Pronunciation(BaseModel):
                         Pronunciation.Difference(
                             word=word,
                             operation=opcode,
-                            expected=self.transcript.phonemes[i] if opcode != "+" else None,
+                            expected=self._transcript.phonemes[i] if opcode != "+" else None,
                             predicted=self.phonemes[j] if opcode != "-" else None,
                         )
                     )
@@ -139,6 +148,10 @@ class Pronunciation(BaseModel):
             else:
                 raise RuntimeError("could not match word boundary for difference")
         return differences
+
+    def with_transcript(self, transcript: Transcript) -> "Pronunciation":
+        self._transcript = transcript
+        return self
 
 
 class Result(BaseModel):

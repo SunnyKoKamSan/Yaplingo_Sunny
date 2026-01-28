@@ -1,13 +1,19 @@
+from typing import TYPE_CHECKING
+
 from argon2 import PasswordHasher
 from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import SQLModel, select
+from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
-from ulid import ULID
 
-from .models import User
+from .echo import EchoRepository
+from .user import UserRepository
+
+if TYPE_CHECKING:
+    cached_property = property
+else:
+    from functools import cached_property
 
 
 class Settings(BaseSettings):
@@ -17,11 +23,6 @@ class Settings(BaseSettings):
 
 
 settings = Settings.model_validate({})
-
-
-class EntityExistsError(Exception):
-    def __init__(self):
-        super().__init__("Entity already exists.")
 
 
 class Repository:
@@ -41,23 +42,13 @@ class Repository:
     async def dispose(self):
         await self.engine.dispose()
 
-    async def get_user(self, uid_name: ULID | str) -> User | None:
-        async with self.session() as session:
-            if isinstance(uid_name, ULID):
-                user = await session.get(User, uid_name)
-            else:
-                query = select(User).where(User.name == uid_name)
-                user = (await session.exec(query)).one_or_none()
-        return user
+    @cached_property
+    def user(self) -> UserRepository:
+        return UserRepository(self.session)
 
-    async def create_user(self, user: User) -> User:
-        try:
-            async with self.session() as session:
-                async with session.begin():
-                    session.add(user)
-        except IntegrityError:
-            raise EntityExistsError()
-        return user
+    @cached_property
+    def echo(self) -> EchoRepository:
+        return EchoRepository(self.session)
 
 
-__all__ = ["Repository", "EntityExistsError"]
+__all__ = ["Repository"]

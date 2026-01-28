@@ -1,6 +1,6 @@
 from server.core import Result, Transcript, Transcripts
-from server.repository.models import User
-from server.store.echo import EchoSession
+from server.repository.models import EchoSession, User
+from server.store.echo import EchoSessionState
 
 __all__ = [
     # Core
@@ -9,6 +9,7 @@ __all__ = [
     "Result",
     # Repository
     "User",
-    # Store
     "EchoSession",
+    # Store
+    "EchoSessionState",
 ]

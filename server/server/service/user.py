@@ -30,11 +30,11 @@ class UserService:
 
     async def get(self, id: ULID) -> User | None:
         if (user := await self.store.user.get(id)) is None:
-            return await self.repository.get_user(id)
+            return await self.repository.user.get(id)
         return user
 
     async def verify(self, credentials: UserCredentials) -> User | None:
-        if (user := await self.repository.get_user(credentials.name)) is not None:
+        if (user := await self.repository.user.get(credentials.name)) is not None:
             try:
                 self.hasher.verify(user.password, credentials.password)
             except VerifyMismatchError:
@@ -44,7 +44,7 @@ class UserService:
     async def create(self, creation: UserCreation) -> User:
         password = self.hasher.hash(creation.password)
         user = User(**creation.model_dump(exclude={"password"}), password=password)
-        return await self.repository.create_user(user)
+        return await self.repository.user.dump(user)
 
 
 __all__ = ["UserService", "UserCredentials", "UserCreation"]

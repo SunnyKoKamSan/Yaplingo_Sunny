@@ -10,7 +10,7 @@ from kokoro import KPipeline
 
 
 def data_urlencode(data: bytes, mime: str) -> str:
-    encoded = base64.b64encode(data).decode("utf-8")
+    encoded = base64.b64encode(data).decode()
     return f"data:{mime};base64,{encoded}"
 
 

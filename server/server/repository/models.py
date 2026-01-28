@@ -2,9 +2,12 @@ from enum import Enum
 
 import argon2
 from pydantic import field_validator
-from sqlalchemy import CHAR, TypeDecorator
-from sqlmodel import Field, SQLModel
+from sqlalchemy import CHAR, JSON, TypeDecorator
+from sqlmodel import Field, Relationship, SQLModel
+from typing_extensions import Self
 from ulid import ULID
+
+from server.store.echo import EchoSessionState
 
 
 class ULIDType(TypeDecorator):
@@ -32,7 +35,7 @@ class Language(str, Enum):  # ISO 639-1 (alpha-2) code
 
 
 class User(SQLModel, table=True):
-    id: ULID = Field(default_factory=ULID, primary_key=True, sa_type=ULIDType)
+    id: ULID = Field(primary_key=True, default_factory=ULID, sa_type=ULIDType)
     name: str = Field(unique=True)
     password: str
     language: Language
@@ -44,4 +47,57 @@ class User(SQLModel, table=True):
         return password
 
 
-__all__ = ["User", "Language"]
+class EchoAttempt(SQLModel, table=True):
+    id: ULID = Field(primary_key=True, default_factory=ULID, sa_type=ULIDType)
+    transcript_id: ULID = Field(default=None, foreign_key="echotranscript.id", sa_type=ULIDType)
+
+    audio: bytes
+    result: dict = Field(sa_type=JSON)
+
+    transcript: "EchoTranscript" = Relationship(back_populates="attempts")
+
+
+class EchoTranscript(SQLModel, table=True):
+    id: ULID = Field(primary_key=True, default_factory=ULID, sa_type=ULIDType)
+    session_id: ULID = Field(default=None, foreign_key="echosession.id", sa_type=ULIDType)
+
+    index: int
+    text: str
+
+    session: "EchoSession" = Relationship(back_populates="transcripts")
+    attempts: list[EchoAttempt] = Relationship(back_populates="transcript")
+
+
+class EchoSession(SQLModel, table=True):
+    id: ULID = Field(primary_key=True, default_factory=ULID, sa_type=ULIDType)
+    user_id: ULID = Field(foreign_key="user.id", sa_type=ULIDType)
+
+    topic: str
+    scenario: str
+
+    transcripts: list[EchoTranscript] = Relationship(back_populates="session")
+
+    @classmethod
+    def from_state(cls, state: EchoSessionState) -> Self:
+        return cls(
+            user_id=state.uid,
+            topic=state.topic,
+            scenario=state.scenario,
+            transcripts=[
+                EchoTranscript(
+                    index=index,
+                    text=item.text,
+                    attempts=[
+                        EchoAttempt(
+                            audio=attempt.audio_b64,
+                            result=attempt.result.model_dump(mode="json"),
+                        )
+                        for attempt in state.attempts[index]
+                    ],
+                )
+                for index, item in enumerate(state.items)
+            ],
+        )
+
+
+__all__ = ["Language", "User", "EchoTranscript", "EchoAttempt", "EchoSession"]

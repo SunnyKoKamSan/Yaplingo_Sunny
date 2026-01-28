@@ -1,10 +1,9 @@
 from enum import Enum
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import Base64Bytes, BaseModel
-from ulid import ULID
+from pydantic import Base64Bytes, BaseModel, Field
 
-from server.models import EchoSession, Result, Transcript
+from server.models import EchoSessionState, Result, Transcript
 
 
 class EchoInput(BaseModel):
@@ -21,9 +20,11 @@ class EchoResponse(BaseModel):
     class Type(str, Enum):
         SESSION = "session"
         RESULT = "result"
-        FBTTS = "fbtts"
 
     class SessionResponse(BaseModel):
+        class Transcript(Transcript):
+            audio: Annotated[str, Field(repr=False)]
+
         total: int
         progress: int
         attempted: int
@@ -31,32 +32,32 @@ class EchoResponse(BaseModel):
         scenario: str
         transcript: Transcript
 
-    class TranscriptResponse(Transcript): ...
-
     class ResultResponse(Result): ...
 
-    class FeedbackAudioResponse(BaseModel):
-        tid: ULID
-        audio: str  # data URL encoded
-
     type: Type
-    response: SessionResponse | TranscriptResponse | FeedbackAudioResponse | ResultResponse | None
+    response: SessionResponse | ResultResponse | None
 
     @classmethod
-    def dump(cls, data: EchoSession | Result | None | tuple[ULID, str]) -> dict[str, Any]:
+    async def dump(cls, data: EchoSessionState | Result | None) -> dict[str, Any]:
         match data:
-            case EchoSession():
+            case EchoSessionState():
                 t = EchoResponse.Type.SESSION
-                response = EchoResponse.SessionResponse(**data.model_dump())
+                response = EchoResponse.SessionResponse(
+                    # exclude attempts to avoid evaluating computed fields
+                    # provide transcript separately to include audio
+                    **data.model_dump(exclude={"attempts", "transcript"}),
+                    transcript=EchoResponse.SessionResponse.Transcript(
+                        **data.transcript.model_dump(),
+                        audio=await data.transcript.get_audio(),
+                    ),
+                )
             case Result():
                 t = EchoResponse.Type.RESULT
                 response = EchoResponse.ResultResponse(**data.model_dump())
+                response.pronunciation.with_transcript(data.pronunciation._transcript)
             case None:
                 t = EchoResponse.Type.RESULT
                 response = None
-            case tuple([tid, audio]):
-                t = EchoResponse.Type.FBTTS
-                response = EchoResponse.FeedbackAudioResponse(tid=tid, audio=audio)
         return cls(type=t, response=response).model_dump(mode="json")
 
 

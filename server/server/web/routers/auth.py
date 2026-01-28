@@ -4,7 +4,7 @@ import jwt
 from fastapi import APIRouter, HTTPException, status
 from ulid import ULID
 
-from server.repository import EntityExistsError
+from server.repository.exceptions import EntityExistsError
 
 from ..dependencies import Service, User
 from ..schemas.user import UserCreationInput, UserCredentialsInput, UserResponse

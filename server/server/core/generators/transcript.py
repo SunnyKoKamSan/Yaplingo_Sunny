@@ -1,4 +1,3 @@
-import asyncio
 import random
 import re
 from pathlib import Path
@@ -23,11 +22,10 @@ class TranscriptGenerator(BaseGenerator):
             # frequency_penalty=2.0,
             # presence_penalty=2.0,
         )
-        print(f"{'=' * 10} TRANSCRIPTS {'=' * 10}\n@ {topic}\n{text}\n{'=' * 30}")  # DEBUG
         lines = list(filter(bool, [s.strip() for s in text.splitlines()]))
         if len(lines) < 6:
-            return await self()  # FIXME: retry on invalid output
+            return await self()  # FIXME: prevent unlimited retry on invalid output
         scenario = re.split(r"^\s?[+]\s?", lines[0], maxsplit=1)[-1].strip()
         sentences = [re.split(r"^\s?[-–*]\s?", line, maxsplit=1)[-1].strip() for line in lines[1:]]
-        items = await asyncio.gather(*[Transcript.from_text(s) for s in sentences])
+        items = [Transcript(text=s) for s in sentences]
         return Transcripts(topic=topic, scenario=scenario, items=items)
