@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
 import Animated, {
   interpolate,
@@ -56,6 +56,7 @@ const RECORDING_OPTIONS: RecordingOptions = {
     outputFormat: "aac_adts",
     audioEncoder: "aac",
   },
+  web: {},
 };
 
 const Header = ({
@@ -143,8 +144,14 @@ export default function MainLearnEchoScreen() {
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder);
 
-  const { status, session, submit, proceed, abort } = useEchoSession();
-  const { transcript, result, fbtts } = session ?? {};
+  const { status, session, submit, proceed, abort } = useEchoSession({
+    onClose: () => {
+      if (router.canDismiss()) {
+        router.dismissAll();
+      }
+    },
+  });
+  const { transcript, result } = session ?? {};
 
   const _flipped = useSharedValue(false);
   const [flipped, setFlipped] = useState(false);
@@ -154,14 +161,6 @@ export default function MainLearnEchoScreen() {
     () => _flipped.value,
     (value) => runOnJS(setFlipped)(value),
   );
-
-  useEffect(() => {
-    if (fbtts) {
-      player.replace(fbtts.audio);
-      player.seekTo(0);
-      player.play();
-    }
-  }, [fbtts, player]);
 
   const handleProceed = () => {
     if (status === EchoSessionStatus.LOADING_NEW) {

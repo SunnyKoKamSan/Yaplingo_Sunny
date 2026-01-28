@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import { createWebSocket } from "../client";
-import type { FeedbackAudio, Response, Result, Session } from "./models";
+import type { Response, Result, Session } from "./models";
 
 export type EchoSession = Session & {
   result?: Result | null;
-  fbtts?: FeedbackAudio;
 };
 
 export enum EchoSessionStatus {
@@ -47,14 +46,13 @@ const reduceState = (state: State, [type, payload]: Action): State => {
         session: {
           ...state.session!,
           result: undefined,
-          fbtts: undefined,
         },
         next: "session",
       };
     }
     case "RECEIVE": {
       const { type, response } = payload;
-      if (type !== "fbtts" && type !== state.next) {
+      if (type !== state.next) {
         throw new Error(`unexpected response type: ${type}, expected: ${state.next}`);
       }
       switch (type) {
@@ -72,11 +70,6 @@ const reduceState = (state: State, [type, payload]: Action): State => {
             next: "session",
           };
         }
-        case "fbtts": {
-          if (state.status === EchoSessionStatus.LOADING_NEW) return state;
-          if (state.session.transcript.id !== response.tid) return state;
-          return { ...state, session: { ...state.session!, fbtts: response } };
-        }
       }
     }
   }
@@ -88,7 +81,9 @@ const initialState: State = {
   next: "session",
 };
 
-export const useEchoSession = () => {
+export const useEchoSession = ({ onClose }: { onClose?: () => void }) => {
+  const handleClose = useRef(onClose);
+
   const ws = useRef<WebSocket>(undefined);
   const resolveSubmit = useRef<(result: Result | null) => void>(undefined);
 
@@ -117,7 +112,10 @@ export const useEchoSession = () => {
         handleResponse(response);
       } catch {} // TODO: handle parsing error
     };
-    ws.current.onclose = () => (ws.current = undefined);
+    ws.current.onclose = () => {
+      ws.current = undefined;
+      handleClose.current?.();
+    };
   }, [handleResponse]);
 
   const close = useCallback(() => {

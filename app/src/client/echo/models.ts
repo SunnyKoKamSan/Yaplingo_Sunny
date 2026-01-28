@@ -35,12 +35,4 @@ export type Result = {
   };
 };
 
-export type FeedbackAudio = {
-  tid: string;
-  audio: string;
-};
-
-export type Response =
-  | { type: "session"; response: Session }
-  | { type: "result"; response: Result | null }
-  | { type: "fbtts"; response: FeedbackAudio };
+export type Response = { type: "session"; response: Session } | { type: "result"; response: Result | null };
