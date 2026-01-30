@@ -42,6 +42,11 @@ services:
   database:
     image: postgres:latest
     env_file: .env
+    command: >
+      -c min_wal_size=512MB
+      -c max_wal_size=1GB
+      -c wal_compression=on
+      -c checkpoint_timeout=86400
     volumes:
       - postgres:/var/lib/postgresql
     restart: always
