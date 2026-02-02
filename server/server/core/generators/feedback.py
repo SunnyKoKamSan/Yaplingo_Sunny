@@ -1,18 +1,17 @@
 from pathlib import Path
 
 from ..models import Pronunciation, Transcript
-from . import BaseGenerator
+from . import BaseGenerator, reloadable_property
 
 
 class FeedbackGenerator(BaseGenerator):
-    @property  # FIXME: use `@cached_property` in production
+    @reloadable_property
     def system_prompt(self) -> str:
         path = Path(__file__).parent / "prompts" / "feedback.md"
         return path.read_text(encoding="utf-8").strip()
 
     async def __call__(self, transcript: Transcript, pronunciation: Pronunciation) -> str:
-        differences = pronunciation.get_differences()
-        errors = "\n".join([f"\t- {d}" for d in differences]) if differences else "None"
+        errors = "\n".join([f"\t- {d}" for d in pronunciation.differences]) if pronunciation.differences else "None"
         prompt = f"""
         Text: "{transcript.text}"
         Errors: \n{errors}
@@ -21,5 +20,4 @@ class FeedbackGenerator(BaseGenerator):
         print("/".join(transcript.phonemes))  # DEBUG
         print("/".join(pronunciation.phonemes))  # DEBUG
         text = await super().call(prompt, temperature=0)
-        print(text)  # DEBUG
         return text.strip()

@@ -68,7 +68,11 @@ async def websocket_session(
         await sessions.accept(user, ws)
         while session.state.progress < len(session.state.items):
             if not session.state.attempted:
-                print(session.state.attempts, session.state.progress)  # DEBUG
+                print(
+                    "current session state:",
+                    session.state.progress,
+                    [len(attempts) for attempts in session.state.attempts],
+                )
                 await send_response(session.state)
                 while True:
                     input = await receive_input()

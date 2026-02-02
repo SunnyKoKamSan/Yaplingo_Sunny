@@ -19,19 +19,23 @@ type PronunciationAlignment = {
   interval: [number, number];
 };
 
-// type PronunciationDifference = {
-//   operation: "replace" | "insert" | "delete";
-//   word: string;
-//   expected?: string;
-//   actual?: string;
-// };
+type PronunciationDifference = {
+  operation: "replace" | "insert" | "delete";
+  word: string;
+  expected?: string;
+  predicted?: string;
+};
+
+type Pronunciation = {
+  phonemes: string[];
+  alignments: PronunciationAlignment[];
+  differences: PronunciationDifference[];
+};
 
 export type Result = {
   feedback: string;
-  pronunciation: {
-    phonemes: string[];
-    alignments: PronunciationAlignment[];
-    words: [string, PronunciationAlignment[]][];
+  pronunciation: Pronunciation & {
+    words: [string, Pronunciation][];
   };
 };
 

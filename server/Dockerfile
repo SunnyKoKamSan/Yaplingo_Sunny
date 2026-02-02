@@ -14,7 +14,7 @@ COPY pyproject.toml uv.lock init.py .
 COPY ./vendor ./vendor
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project && \
+    uv sync --no-install-project --link-mode=copy && \
     # kokoro: requires pip to install voice packages
     uv pip install --no-cache-dir pip && \
     uv run python init.py

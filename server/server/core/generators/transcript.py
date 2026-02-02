@@ -3,13 +3,13 @@ import re
 from pathlib import Path
 
 from ..models import Transcript, Transcripts
-from . import BaseGenerator
+from . import BaseGenerator, reloadable_property
 
 
 class TranscriptGenerator(BaseGenerator):
     TOPICS = ["food", "culture", "travel", "business", "technology"]
 
-    @property  # FIXME: use `@cached_property` in production
+    @reloadable_property
     def system_prompt(self) -> str:
         path = Path(__file__).parent / "prompts" / "transcript.md"
         return path.read_text(encoding="utf-8").strip()

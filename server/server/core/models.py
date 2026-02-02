@@ -6,6 +6,7 @@ from phonemizer import phonemize
 from phonemizer.punctuation import Punctuation
 from phonemizer.separator import Separator
 from pydantic import BaseModel, PrivateAttr, computed_field
+from typing_extensions import Self
 
 from server.core.textspeech import data_urlencode, gtts
 
@@ -42,17 +43,16 @@ class Transcript(BaseModel):
     @computed_field
     @cached_property
     def sequence(self) -> str:
-        return str(
-            phonemize(
-                self.text,
-                strip=True,
-                with_stress=False,
-                preserve_punctuation=True,
-                separator=SEPARATOR,
-                language="en-us",
-                backend="espeak",
-            )
+        phonemes = phonemize(
+            self.text,
+            strip=True,
+            with_stress=False,
+            preserve_punctuation=True,
+            separator=SEPARATOR,
+            language="en-us",
+            backend="espeak",
         )
+        return str(phonemes)
 
     @cached_property
     def phonemes(self) -> list[str]:
@@ -90,6 +90,8 @@ class Transcripts(BaseModel):
 
 
 class Pronunciation(BaseModel):
+    _transcript: Transcript = PrivateAttr()
+
     class Alignment(BaseModel):
         token: str
         score: float
@@ -98,7 +100,6 @@ class Pronunciation(BaseModel):
     class Difference(BaseModel):
         word: str
         operation: OperationCode
-
         expected: str | None
         predicted: str | None
 
@@ -112,22 +113,22 @@ class Pronunciation(BaseModel):
                     operation = "delete"
             return "\t".join([f'"{self.word}"', operation, f"{self.expected or '∅'} → {self.predicted or '∅'}"])
 
-    _transcript: Transcript = PrivateAttr()
+    class WordSpan(BaseModel):
+        phonemes: list[str]
+        alignments: list["Pronunciation.Alignment"]
+        differences: list["Pronunciation.Difference"]
 
-    phonemes: list[str]  # predictions
+    phonemes: list[str]
     alignments: list[Alignment]
 
+    def with_transcript(self, transcript: Transcript) -> Self:
+        self._transcript = transcript
+        return self
+
+    # FIXME: need fixing for edge cases
     @computed_field
     @cached_property
-    def words(self) -> list[tuple[str, list[Alignment]]]:
-        alignments = []
-        boundaries = self._transcript.get_word_boundaries()
-        for word, start, end in boundaries:
-            alignments.append((word, self.alignments[start:end]))
-        return alignments
-
-    @cached_method
-    def get_differences(self) -> list[Difference]:
+    def differences(self) -> list[Difference]:
         differences = []
         boundaries = self._transcript.get_word_boundaries()
         _, _, operations = levenshtein(self._transcript.phonemes, self.phonemes)
@@ -149,9 +150,23 @@ class Pronunciation(BaseModel):
                 raise RuntimeError("could not match word boundary for difference")
         return differences
 
-    def with_transcript(self, transcript: Transcript) -> "Pronunciation":
-        self._transcript = transcript
-        return self
+    # FIXME: need fixing for edge cases
+    @computed_field
+    @cached_property
+    def words(self) -> list[tuple[str, WordSpan]]:
+        boundaries = self._transcript.get_word_boundaries()
+        _, phonemes, _ = levenshtein(self._transcript.phonemes, self.phonemes)
+        return [
+            (
+                word,
+                Pronunciation.WordSpan(
+                    phonemes=[p for p in phonemes[start:end] if p],
+                    alignments=self.alignments[start:end],
+                    differences=[d for d in self.differences if d.word == word],
+                ),
+            )
+            for word, start, end in boundaries
+        ]
 
 
 class Result(BaseModel):

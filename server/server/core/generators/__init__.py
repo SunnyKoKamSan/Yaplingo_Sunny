@@ -1,8 +1,18 @@
+import sys
 from abc import ABC, abstractmethod
 from typing import Any
 
 from openai import AsyncOpenAI
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+IS_RELOAD_ENABLED = "--reload" in sys.argv
+
+if IS_RELOAD_ENABLED:
+    reloadable_property = property
+else:
+    from functools import cached_property
+
+    reloadable_property = cached_property
 
 
 class Settings(BaseSettings):
@@ -20,7 +30,7 @@ class BaseGenerator(ABC):
     def __init__(self):
         self.client = AsyncOpenAI(base_url=settings.base_url, api_key=settings.api_key)
 
-    @property
+    @reloadable_property
     @abstractmethod
     def system_prompt(self) -> str:
         raise NotImplementedError

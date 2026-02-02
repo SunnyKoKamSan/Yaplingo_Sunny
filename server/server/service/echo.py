@@ -68,7 +68,6 @@ class EchoService:
                 await self._service.store.echo.increment_session_progress(self.state)
                 return True
             # handle session completion
-            print("session complete, saving to database")  # DEBUG
             await self._service.repository.echo.save(EchoSession.from_state(self.state))
             await self._service.store.echo.discard_session(self.state)
             return False
