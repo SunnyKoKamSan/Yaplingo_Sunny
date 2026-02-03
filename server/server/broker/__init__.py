@@ -6,6 +6,7 @@ from taskiq_redis import RedisAsyncResultBackend, RedisStreamBroker
 from ulid import ULID
 
 from server.core.pipeline import Pipeline
+from server.core.textspeech import KokoroTextSpeech
 
 from .settings import settings
 
@@ -32,6 +33,7 @@ class Broker:
     @broker.on_event(TaskiqEvents.WORKER_STARTUP)
     async def startup(state: TaskiqState):
         state.pipeline = Pipeline()
+        state.ktts = KokoroTextSpeech()
 
     @classmethod
     async def create(cls):
@@ -76,9 +78,9 @@ class Broker:
         task = AsyncTaskiqTask(
             task_id=str(task_id),
             result_backend=self.broker.result_backend,
-            return_type=task_fn.return_type,
+            return_type=task_fn.return_type,  # type: ignore
         )
-        return await self._recall(task)
+        return await self._recall(task)  # type: ignore
 
     async def execute(
         self,
@@ -91,11 +93,11 @@ class Broker:
             task = AsyncTaskiqTask(
                 task_id=str(task_id),
                 result_backend=self.broker.result_backend,
-                return_type=task_func.return_type,
+                return_type=task_func.return_type,  # type: ignore
             )
         else:
             task = await self._delegate(task_func, task_id, *args, **kwargs)
-        return await self._recall(task)
+        return await self._recall(task)  # type: ignore
 
 
 broker = Broker.broker

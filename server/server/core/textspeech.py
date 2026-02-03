@@ -6,7 +6,6 @@ from functools import partial
 
 import soundfile
 from gtts import agTTS
-from kokoro import KPipeline
 
 
 def data_urlencode(data: bytes, mime: str) -> str:
@@ -38,6 +37,8 @@ class KokoroTextSpeech(BaseTextSpeech):
     MIME = "audio/wav"
 
     def __init__(self):
+        from kokoro import KPipeline
+
         pipeline = KPipeline(
             repo_id="hexgrad/Kokoro-82M",
             lang_code="en-us",
@@ -65,5 +66,4 @@ class KokoroTextSpeech(BaseTextSpeech):
         return await asyncio.to_thread(_synthesize)
 
 
-ktts = KokoroTextSpeech()
 gtts = GoogleTextSpeech()

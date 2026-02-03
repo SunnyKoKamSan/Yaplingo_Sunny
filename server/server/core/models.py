@@ -155,7 +155,14 @@ class Pronunciation(BaseModel):
     @cached_property
     def words(self) -> list[tuple[str, WordSpan]]:
         boundaries = self._transcript.get_word_boundaries()
-        _, phonemes, _ = levenshtein(self._transcript.phonemes, self.phonemes)
+        _phonemes, phonemes, _ = levenshtein(self._transcript.phonemes, self.phonemes)
+        for word, start, end in boundaries:
+            print(
+                word,
+                _phonemes[start:end],
+                [a.token for a in self.alignments[start:end]],
+                phonemes[start:end],
+            )  # DEBUG
         return [
             (
                 word,

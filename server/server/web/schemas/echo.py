@@ -27,7 +27,7 @@ class EchoResponse(BaseModel):
 
         total: int
         progress: int
-        attempted: int
+        attempts: list[int]
         topic: str
         scenario: str
         transcript: Transcript
@@ -46,6 +46,7 @@ class EchoResponse(BaseModel):
                     # exclude attempts to avoid evaluating computed fields
                     # provide transcript separately to include audio
                     **data.model_dump(exclude={"attempts", "transcript"}),
+                    attempts=[len(attempts) for attempts in data.attempts],
                     transcript=EchoResponse.SessionResponse.Transcript(
                         **data.transcript.model_dump(),
                         audio=await data.transcript.get_audio(),

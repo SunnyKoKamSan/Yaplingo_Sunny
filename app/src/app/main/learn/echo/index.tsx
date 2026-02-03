@@ -122,9 +122,10 @@ const Header = ({
         {Array.from({ length: 5 }).map((_, index) => {
           let color = theme.colors.border;
           if (status !== EchoSessionStatus.LOADING_NEW && index <= session!.progress) {
-            color = index === session!.progress ? tw.color("sky-500")! : tw.color("rose-500")!;
+            if (session!.attempts[index] > 0) color = tw.color("green-500")!;
+            else color = index === session!.progress ? tw.color("sky-500")! : tw.color("red-500")!;
           }
-          return <View key={index} style={[tw`h-1.5 flex-1 rounded-full`, { backgroundColor: color }]} />;
+          return <View key={index} style={tw.style("h-1.5 flex-1 rounded-full", { backgroundColor: color })} />;
         })}
       </View>
     </>
@@ -324,6 +325,7 @@ export default function MainLearnEchoScreen() {
       const audio = await getLocalFileBase64(recorder.uri);
       const result = await submit(audio);
       if (result === null) Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
+      else session!.attempts[session!.progress] += 1;
     }
   };
 

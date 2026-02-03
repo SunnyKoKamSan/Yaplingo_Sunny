@@ -1,7 +1,4 @@
-from ..generators.feedback import FeedbackGenerator
 from ..models import Result, Transcript
-from .aligner import PronunciationAligner
-from .processor import AudioProcessor
 
 
 class Pipeline:
@@ -14,6 +11,10 @@ class Pipeline:
         return cls.__instance
 
     def __initialize__(self):
+        from ..generators.feedback import FeedbackGenerator
+        from .aligner import PronunciationAligner
+        from .processor import AudioProcessor
+
         self.audio_processor = AudioProcessor()
         self.pronunciation_aligner = PronunciationAligner()
         self.feedback_generator = FeedbackGenerator()

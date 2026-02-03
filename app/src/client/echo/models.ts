@@ -8,6 +8,7 @@ export type Transcript = {
 export type Session = {
   total: number;
   progress: number;
+  attempts: number[];
   topic: string;
   scenario: string;
   transcript: Transcript;
