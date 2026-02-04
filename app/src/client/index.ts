@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { getCalendars, getLocales } from "expo-localization";
 import { type AxiosError } from "axios";
 import { useSetAtom } from "jotai";
 
@@ -49,10 +50,13 @@ export const useRegisterMutation = () => {
 
   return useMutation<Data, AxiosError, Variables>({
     mutationFn: async (data) => {
+      const [locale] = getLocales();
+      const [calendar] = getCalendars();
       const response = await client.post("/auth/register", {
         name: data.username,
         password: data.password,
-        language: "en", // TODO: remove hardcoding
+        language: locale.languageCode,
+        timezone: calendar.timeZone,
       });
       return response.data;
     },

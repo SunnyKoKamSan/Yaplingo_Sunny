@@ -8,6 +8,7 @@ dependencies = [
     "websockets>=15.0.1",
     "python-multipart>=0.0.20",
     "pydantic>=2.12.3",
+    "pydantic-extra-types>=2.11.0",
     "python-ulid[pydantic]>=3.1.0",
     "pydantic-settings>=2.11.0",
     "argon2-cffi>=25.1.0",
@@ -27,6 +28,7 @@ dependencies = [
     "kokoro>=0.9.4",
     "gtts",
     "phonemizer",
+    "pycountry>=24.6.1",
 ]
 
 [tool.ruff]

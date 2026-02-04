@@ -10,6 +10,8 @@
       "expo-audio",
       "expo-font",
       "expo-dev-client",
+      "expo-secure-store",
+      "expo-localization",
       [
         "expo-splash-screen",
         {
@@ -17,8 +19,7 @@
           "image": "./assets/splash.png",
           "imageWidth": 256
         }
-      ],
-      "expo-secure-store"
+      ]
     ],
     "experiments": {
       "typedRoutes": false,

@@ -1,7 +1,7 @@
-from enum import Enum
-
 import argon2
 from pydantic import field_validator
+from pydantic_extra_types.language_code import LanguageAlpha2
+from pydantic_extra_types.timezone_name import TimeZoneName
 from sqlalchemy import CHAR, JSON, TypeDecorator
 from sqlmodel import Field, Relationship, SQLModel
 from typing_extensions import Self
@@ -30,15 +30,12 @@ class ULIDType(TypeDecorator):
         return ULID.from_str(value)
 
 
-class Language(str, Enum):  # ISO 639-1 (alpha-2) code
-    ENGLISH = "en"
-
-
 class User(SQLModel, table=True):
     id: ULID = Field(primary_key=True, default_factory=ULID, sa_type=ULIDType)
     name: str = Field(unique=True)
     password: str
-    language: Language
+    language: LanguageAlpha2
+    timezone: TimeZoneName
 
     @field_validator("password")
     @classmethod  # last wall of defense to ensure password is hashed before storing into database
@@ -100,4 +97,4 @@ class EchoSession(SQLModel, table=True):
         )
 
 
-__all__ = ["Language", "User", "EchoTranscript", "EchoAttempt", "EchoSession"]
+__all__ = ["User", "EchoTranscript", "EchoAttempt", "EchoSession"]

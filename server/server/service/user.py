@@ -3,10 +3,12 @@ from typing import Annotated
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from pydantic import BaseModel, Field
+from pydantic_extra_types.language_code import LanguageAlpha2
+from pydantic_extra_types.timezone_name import TimeZoneName
 from ulid import ULID
 
 from server.repository import Repository
-from server.repository.models import Language, User
+from server.repository.models import User
 from server.store import Store
 
 
@@ -18,7 +20,8 @@ class UserCredentials(BaseModel):
 class UserCreation(BaseModel):
     name: Annotated[str, Field(min_length=2, max_length=32, pattern=r"^[a-z0-9._]+$")]
     password: Annotated[str, Field(min_length=8, max_length=128)]
-    language: Annotated[Language, Field()]
+    language: Annotated[LanguageAlpha2, Field(default=LanguageAlpha2("en"))]
+    timezone: Annotated[TimeZoneName, Field(default=TimeZoneName("UTC"))]
 
 
 class UserService:
@@ -27,11 +30,6 @@ class UserService:
     def __init__(self, store: Store, repository: Repository):
         self.store = store
         self.repository = repository
-
-    async def get(self, id: ULID) -> User | None:
-        if (user := await self.store.user.get(id)) is None:
-            return await self.repository.user.get(id)
-        return user
 
     async def verify(self, credentials: UserCredentials) -> User | None:
         if (user := await self.repository.user.get(credentials.name)) is not None:
@@ -45,6 +43,11 @@ class UserService:
         password = self.hasher.hash(creation.password)
         user = User(**creation.model_dump(exclude={"password"}), password=password)
         return await self.repository.user.dump(user)
+
+    async def get(self, id: ULID) -> User | None:
+        if (user := await self.store.user.get(id)) is None:
+            return await self.repository.user.get(id)
+        return user
 
 
 __all__ = ["UserService", "UserCredentials", "UserCreation"]
