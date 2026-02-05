@@ -4,6 +4,7 @@ import { useTheme } from "@react-navigation/native";
 import { CalendarIcon, FlameIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
+import { useAuthedUserQuery } from "~/client";
 import { Heatmap, Meter, Progress, Text } from "~/components";
 import { useNavigationOptions } from "~/hooks";
 
@@ -73,11 +74,8 @@ const WelcomeMessage = () => {
 };
 
 const ActivityCard = () => {
-  const entries = [
-    { date: new Date("2025-11-20"), count: 1 },
-    { date: new Date("2025-11-21"), count: 6 },
-    { date: new Date("2025-11-24"), count: 12 },
-  ];
+  const query = useAuthedUserQuery();
+  const entries = query.data?.activity ?? {};
   return (
     <View style={tw`gap-4 rounded-2xl border-2 border-zinc-500/50 py-4`}>
       <Text style={tw`px-4 text-2xl font-bold`}>📊 Activity</Text>

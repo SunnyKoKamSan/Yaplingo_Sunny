@@ -37,9 +37,10 @@ async def login(credentials: UserCredentialsInput, service: Service):
     return {"token": generate_token(user.id)}
 
 
-@router.get("/me", response_model=UserResponse)
-async def me(user: User) -> User:
-    return user
+@router.get("/me")
+async def me(user: User, service: Service) -> UserResponse:
+    activity = await service.user.get_year_activity(user)
+    return UserResponse(**user.model_dump(), activity=activity)
 
 
 __all__ = ["router"]

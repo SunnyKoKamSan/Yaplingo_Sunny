@@ -1,8 +1,10 @@
+from datetime import datetime, timezone
+
 import argon2
 from pydantic import field_validator
 from pydantic_extra_types.language_code import LanguageAlpha2
 from pydantic_extra_types.timezone_name import TimeZoneName
-from sqlalchemy import CHAR, JSON, TypeDecorator
+from sqlalchemy import CHAR, JSON, TIMESTAMP, TypeDecorator
 from sqlmodel import Field, Relationship, SQLModel
 from typing_extensions import Self
 from ulid import ULID
@@ -71,6 +73,7 @@ class EchoSession(SQLModel, table=True):
 
     topic: str
     scenario: str
+    completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), sa_type=TIMESTAMP(timezone=True))
 
     transcripts: list[EchoTranscript] = Relationship(back_populates="session")
 

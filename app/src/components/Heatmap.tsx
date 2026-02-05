@@ -8,12 +8,12 @@ import Tooltip from "./Tooltip";
 type Entry = { date: Date; count: number };
 
 export default function Heatmap({
-  entries = [],
+  entries = {},
   squareGap = 4,
   squareSize = 16,
   ...props
 }: {
-  entries?: Entry[];
+  entries?: Record<string, number>;
   squareGap?: number;
   squareSize?: number;
 } & ScrollViewProps) {
@@ -39,8 +39,9 @@ export default function Heatmap({
         const date = new Date(weekstart);
         date.setDate(weekstart.getDate() + d);
         if (date.getTime() > today.getTime()) break;
-        const entry = entries.find((e) => e.date.toDateString() === date.toDateString());
-        week.days.push({ date, count: entry?.count ?? 0 });
+        const key = Object.keys(entries).find((e) => new Date(e).toDateString() === date.toDateString());
+        const count = key ? entries[key] : 0;
+        week.days.push({ date, count });
       }
       weeks.push(week);
       weekstart.setDate(weekstart.getDate() + 7);

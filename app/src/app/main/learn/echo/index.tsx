@@ -13,6 +13,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { useTheme } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AudioQuality,
   setAudioModeAsync,
@@ -217,6 +218,7 @@ const ResultSheet = ({ result }: { result: Result }) => {
 export default function MainLearnEchoScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const client = useQueryClient();
   const player = useAudioPlayer();
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder);
@@ -226,6 +228,8 @@ export default function MainLearnEchoScreen() {
       if (router.canDismiss()) {
         router.dismissAll();
       }
+      // refresh user activity after session complete
+      client.invalidateQueries({ queryKey: ["auth", "me"] });
     },
   });
   const { transcript, result } = session ?? {};

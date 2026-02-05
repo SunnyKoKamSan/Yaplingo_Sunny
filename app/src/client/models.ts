@@ -3,4 +3,5 @@ export type User = {
   name: string;
   language: string;
   timezone: string;
+  activity: Record<string, number>;
 };

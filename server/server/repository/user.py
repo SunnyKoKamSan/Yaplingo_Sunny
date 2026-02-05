@@ -1,3 +1,7 @@
+from collections import Counter
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel import select
@@ -5,7 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from ulid import ULID
 
 from .exceptions import EntityExistsError
-from .models import User
+from .models import EchoSession, User
 
 
 class UserRepository:
@@ -29,6 +33,20 @@ class UserRepository:
                 query = select(User).where(User.name == uid_name)
                 user = (await session.exec(query)).one_or_none()
         return user
+
+    async def get_year_activity(self, user: User) -> dict[date, int]:
+        tz = ZoneInfo(user.timezone)
+        year = datetime.now(tz).year
+        start = datetime(year, 1, 1, tzinfo=tz).astimezone(ZoneInfo("UTC"))
+        end = datetime(year + 1, 1, 1, tzinfo=tz).astimezone(ZoneInfo("UTC"))
+        async with self._session() as session:
+            query = select(EchoSession.completed_at).where(
+                EchoSession.user_id == user.id,
+                EchoSession.completed_at >= start,
+                EchoSession.completed_at < end,
+            )
+            results = (await session.exec(query)).all()
+        return Counter([dt.astimezone(tz).date() for dt in results])
 
 
 __all__ = ["UserRepository"]

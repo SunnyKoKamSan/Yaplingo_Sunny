@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import BaseModel
 from pydantic_extra_types.language_code import LanguageAlpha2
 from pydantic_extra_types.timezone_name import TimeZoneName
@@ -17,6 +19,8 @@ class UserResponse(BaseModel):
     name: str
     language: LanguageAlpha2
     timezone: TimeZoneName
+
+    activity: dict[date, int]
 
 
 __all__ = ["UserResponse", "UserCreationInput", "UserCredentialsInput"]

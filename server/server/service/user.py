@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 
 from argon2 import PasswordHasher
@@ -48,6 +49,9 @@ class UserService:
         if (user := await self.store.user.get(id)) is None:
             return await self.repository.user.get(id)
         return user
+
+    async def get_year_activity(self, user: User) -> dict[date, int]:
+        return await self.repository.user.get_year_activity(user)
 
 
 __all__ = ["UserService", "UserCredentials", "UserCreation"]
