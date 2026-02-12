@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, FastAPI, WebSocket, WebSocketDisconnect
 from ulid import ULID
@@ -56,8 +56,8 @@ async def websocket_session(
 ):
     session = await service.echo.session(user, generate=True)
 
-    async def send_response(data) -> None:
-        data = await EchoResponse.dump(data)
+    async def send_response(data: Any, t: EchoResponse.Type | None = None) -> None:
+        data = await EchoResponse.dump(data, t)
         await ws.send_json(data)
 
     async def receive_input() -> EchoInput:
@@ -66,14 +66,14 @@ async def websocket_session(
 
     try:
         await sessions.accept(user, ws)
-        while session.state.progress < len(session.state.items):
+        while not session.completed:
             if not session.state.attempted:
                 print(
                     "current session state:",
                     session.state.progress,
                     [len(attempts) for attempts in session.state.attempts],
                 )
-                await send_response(session.state)
+                await send_response(session.state, EchoResponse.Type.SESSION)
                 while True:
                     input = await receive_input()
                     match input.type:
@@ -87,6 +87,9 @@ async def websocket_session(
                             await send_response(result if result is not None else None)
             if await session.proceed():
                 await session.refresh()
+            else:
+                await send_response(session.state, EchoResponse.Type.SUMMARY)
+                await ws.receive()  # wait for client to acknowledge completion before closing
     except WebSocketDisconnect:
         pass  # do not reraise on disconnect
     finally:

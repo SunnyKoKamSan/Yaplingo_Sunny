@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import { createWebSocket } from "../client";
-import type { Response, Result, Session } from "./models";
-
-export type EchoSession = Session & {
-  result?: Result | null;
-};
+import type { Response, Result, Session, Summary } from "./models";
 
 export enum EchoSessionStatus {
   LOADING_NEW,
@@ -13,20 +9,31 @@ export enum EchoSessionStatus {
   PENDING_ATTEMPT,
   PENDING_RESULT,
   READY_NEXT,
+  COMPLETED,
 }
 
-export type EchoSessionState =
+export type EchoSessionData = EchoSession["data"];
+
+export type EchoSession =
   | {
       status: EchoSessionStatus.LOADING_NEW;
-      session: undefined;
+      data: undefined;
     }
   | {
-      status: Exclude<EchoSessionStatus, EchoSessionStatus.LOADING_NEW>;
-      session: EchoSession;
+      status: EchoSessionStatus.LOADING_NEXT | EchoSessionStatus.PENDING_RESULT;
+      data: Session;
+    }
+  | {
+      status: EchoSessionStatus.PENDING_ATTEMPT | EchoSessionStatus.READY_NEXT;
+      data: Session & { result?: Result | null };
+    }
+  | {
+      status: EchoSessionStatus.COMPLETED;
+      data: Summary;
     };
 
-type State = EchoSessionState & {
-  next: Response["type"];
+type State = EchoSession & {
+  next?: Response["type"];
 };
 
 type Action = ["SUBMIT"] | ["PROCEED"] | ["RECEIVE", Response];
@@ -34,20 +41,19 @@ type Action = ["SUBMIT"] | ["PROCEED"] | ["RECEIVE", Response];
 const reduceState = (state: State, [type, payload]: Action): State => {
   switch (type) {
     case "SUBMIT": {
+      const session = state.data as Session;
       return {
         status: EchoSessionStatus.PENDING_RESULT,
-        session: state.session!,
+        data: session,
         next: "result",
       };
     }
     case "PROCEED": {
+      const session = state.data as Session;
       return {
         status: EchoSessionStatus.LOADING_NEXT,
-        session: {
-          ...state.session!,
-          result: undefined,
-        },
-        next: "session",
+        data: session,
+        next: session.progress < session.total - 1 ? "session" : "summary",
       };
     }
     case "RECEIVE": {
@@ -59,15 +65,22 @@ const reduceState = (state: State, [type, payload]: Action): State => {
         case "session": {
           return {
             status: EchoSessionStatus.PENDING_ATTEMPT,
-            session: response,
+            data: response, // result not included
             next: "result",
           };
         }
         case "result": {
           return {
             status: response !== null ? EchoSessionStatus.READY_NEXT : EchoSessionStatus.PENDING_ATTEMPT,
-            session: { ...state.session!, result: response },
+            data: { ...(state.data as Session), result: response },
             next: "session",
+          };
+        }
+        case "summary": {
+          return {
+            status: EchoSessionStatus.COMPLETED,
+            data: response,
+            next: undefined,
           };
         }
       }
@@ -77,46 +90,41 @@ const reduceState = (state: State, [type, payload]: Action): State => {
 
 const initialState: State = {
   status: EchoSessionStatus.LOADING_NEW,
-  session: undefined,
+  data: undefined,
   next: "session",
 };
 
-export const useEchoSession = ({ onClose }: { onClose?: () => void }) => {
-  const handleClose = useRef(onClose);
-
+export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStatus) => void }) => {
   const ws = useRef<WebSocket>(undefined);
   const resolveSubmit = useRef<(result: Result | null) => void>(undefined);
 
   const [state, dispatch] = useReducer(reduceState, initialState);
 
-  const handleResponse = useCallback((response: Response) => {
-    dispatch(["RECEIVE", response]);
-    const { type, response: res } = response;
-    switch (type) {
-      case "result": {
-        if (type === "result") {
-          resolveSubmit.current?.(res);
-          resolveSubmit.current = undefined;
-        }
-        break;
+  // // DEBUG: log state changes
+  // useEffect(() => console.log("status:", state.status, "\t", "next:", state.next), [state]);
+
+  const handleMessage = useRef(async ({ data }: { data: any }) => {
+    try {
+      const response = JSON.parse(data) as Response;
+      dispatch(["RECEIVE", response]);
+      if (response.type === "result") {
+        resolveSubmit.current?.(response.response);
+        resolveSubmit.current = undefined;
       }
-    }
-  }, []);
+    } catch {} // TODO: handle parsing error
+  });
+
+  const handleClose = useRef(() => {
+    ws.current = undefined;
+    onClose?.(state.status);
+  });
 
   const open = useCallback(() => {
     if (ws.current) ws.current.close();
     ws.current = createWebSocket("echo/ws");
-    ws.current.onmessage = async ({ data }) => {
-      try {
-        const response = JSON.parse(data) as Response;
-        handleResponse(response);
-      } catch {} // TODO: handle parsing error
-    };
-    ws.current.onclose = () => {
-      ws.current = undefined;
-      handleClose.current?.();
-    };
-  }, [handleResponse]);
+    ws.current.onmessage = handleMessage.current;
+    ws.current.onclose = handleClose.current;
+  }, []);
 
   const close = useCallback(() => {
     if (ws.current) {
@@ -156,19 +164,29 @@ export const useEchoSession = ({ onClose }: { onClose?: () => void }) => {
     close();
   }, [close]);
 
+  const complete = useCallback(() => {
+    if (!ws.current) throw new Error("WebSocket undefined");
+    if (state.status !== EchoSessionStatus.COMPLETED) {
+      throw new Error("session not completed");
+    }
+    ws.current.send(""); // acknowledge completion
+    close(); // probably redundant since server should close the connection at this point
+  }, [state.status, close]);
+
   useEffect(() => {
     open();
     return () => close();
   }, [open, close]);
 
   return {
-    ...({
+    session: {
       status: state.status,
-      session: state.session,
-    } as EchoSessionState),
+      data: state.data,
+    } as EchoSession,
     submit,
     proceed,
     abort,
+    complete,
   } as const;
 };
 

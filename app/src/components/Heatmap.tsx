@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { ScrollView, View, type ScrollViewProps } from "react-native";
+import { ScrollView, useColorScheme, View, type ScrollViewProps } from "react-native";
 import tw from "twrnc";
 
 import Text from "./Text";
@@ -17,6 +17,8 @@ export default function Heatmap({
   squareGap?: number;
   squareSize?: number;
 } & ScrollViewProps) {
+  const scheme = useColorScheme();
+
   const ref = useRef<ScrollView>(null);
 
   const weeks = useMemo(() => {
@@ -58,7 +60,10 @@ export default function Heatmap({
           {weeks.map((week, index) => (
             <View key={index} style={{ gap: squareGap }}>
               {week.days.map((day) => {
-                const intensity = Math.min(Math.ceil(day.count / 2) * 100, 900);
+                const intensity =
+                  scheme === "dark"
+                    ? Math.max(900 - Math.floor(day.count / 2) * 100, 100)
+                    : Math.min(Math.ceil(day.count / 2) * 100, 900);
                 const color = tw.color(`emerald-${intensity || 100}`);
                 return (
                   <Tooltip

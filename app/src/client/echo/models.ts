@@ -1,5 +1,4 @@
 export type Transcript = {
-  id: string;
   text: string;
   audio: string;
   sequence: string;
@@ -40,4 +39,15 @@ export type Result = {
   };
 };
 
-export type Response = { type: "session"; response: Session } | { type: "result"; response: Result | null };
+export type Summary = Omit<Session, "progress" | "attempts" | "transcript"> & {
+  attempts: {
+    audio: string;
+    result: Result;
+  }[][];
+  transcripts: Transcript[];
+};
+
+export type Response =
+  | { type: "session"; response: Session }
+  | { type: "result"; response: Result | null }
+  | { type: "summary"; response: Summary };

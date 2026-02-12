@@ -68,7 +68,7 @@ const WelcomeMessage = () => {
   const message = WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)];
   return (
     <View style={tw`mx-4 items-center`}>
-      <Text style={tw`text-center text-xl font-bold leading-tight`}>{`📢  ${message}`}</Text>
+      <Text style={tw`text-center text-lg font-medium leading-tight`}>{`📢  ${message}`}</Text>
     </View>
   );
 };
@@ -78,7 +78,7 @@ const ActivityCard = () => {
   const entries = query.data?.activity ?? {};
   return (
     <View style={tw`gap-4 rounded-2xl border-2 border-zinc-500/50 py-4`}>
-      <Text style={tw`px-4 text-2xl font-bold`}>📊 Activity</Text>
+      <Text style={tw`px-4 text-xl font-bold`}>Activity</Text>
       <Heatmap entries={entries} contentContainerStyle={tw`px-4`} />
     </View>
   );
@@ -87,7 +87,7 @@ const ActivityCard = () => {
 const DailyGoalsCard = () => {
   return (
     <View style={tw`gap-4 rounded-2xl border-2 border-zinc-500/50 p-4`}>
-      <Text style={tw`text-2xl font-bold`}>🎯 Daily Goals</Text>
+      <Text style={tw`text-xl font-bold`}>Daily Goals</Text>
       <View style={tw`gap-4`}>
         <Text style={tw`text-lg leading-tight`}>Complete 5 practices in Echo mode.</Text>
         <Progress value={3} total={5} />

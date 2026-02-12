@@ -36,6 +36,11 @@ class EchoService:
         def __init__(self, state: EchoSessionState, _service: "EchoService"):
             self.state = state
             self._service = _service
+            self._completed = False
+
+        @property
+        def completed(self) -> bool:
+            return self._completed
 
         async def refresh(self) -> None:
             session = await self._service.store.echo.get_session(self.state.uid)
@@ -66,11 +71,12 @@ class EchoService:
         async def proceed(self) -> bool:
             if self.state.progress < len(self.state.items) - 1:
                 await self._service.store.echo.increment_session_progress(self.state)
-                return True
+                return True  # indicates has more
             # handle session completion
+            self._completed = True
             await self._service.repository.echo.save(EchoSession.from_state(self.state))
             await self._service.store.echo.discard_session(self.state)
-            return False
+            return False  # indicates no more
 
         async def abort(self) -> None:
             await self._service.store.echo.discard_session(self.state)

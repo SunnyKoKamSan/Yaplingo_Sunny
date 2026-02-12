@@ -18,7 +18,7 @@ SESSION_TTL = timedelta(hours=1)
 
 class EchoSessionState(Transcripts):
     class Attempt(BaseModel):
-        audio_b64: Annotated[Base64Bytes, Field(repr=False)]
+        audio_b64: Annotated[Base64Bytes, Field(alias="audio", repr=False)]
         result: Result
 
         model_config = ConfigDict(frozen=True)

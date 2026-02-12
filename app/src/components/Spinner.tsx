@@ -3,7 +3,15 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTim
 import { LoaderCircleIcon } from "lucide-react-native";
 import tw from "twrnc";
 
-export default function Spinner({ size = 24, color = tw.color("zinc-500/50")! }: { size?: number; color?: string }) {
+export default function Spinner({
+  size = 24,
+  color = tw.color("zinc-500/50")!,
+  strokeWidth = 2.5,
+}: {
+  size?: number;
+  color?: string;
+  strokeWidth?: number;
+}) {
   const rotation = useSharedValue(0);
 
   const astyle = useAnimatedStyle(() => ({
@@ -23,7 +31,7 @@ export default function Spinner({ size = 24, color = tw.color("zinc-500/50")! }:
 
   return (
     <Animated.View style={astyle}>
-      <LoaderCircleIcon size={size} color={color} />
+      <LoaderCircleIcon size={size} color={color} strokeWidth={strokeWidth} />
     </Animated.View>
   );
 }
