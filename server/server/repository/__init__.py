@@ -10,6 +10,9 @@ from ..schemas import UserCreation, UserCredentials
 from .models import User
 from .settings import settings
 
+# Import gamification models to ensure they're registered with SQLModel metadata
+from .gamification import DailyProgress, LeaderboardEntry, UserGamification  # noqa: F401
+
 
 class EntityExistsError(Exception):
     def __init__(self):

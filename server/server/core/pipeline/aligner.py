@@ -119,13 +119,15 @@ class PronunciationAligner:
             for s in spans
         ]
 
-    def __call__(self, waveform: torch.Tensor, transcript: Transcript) -> Pronunciation:
+    def __call__(self, waveform: torch.Tensor, transcript: Transcript) -> Pronunciation | None:
         logits = self.perform_inference(waveform)
         predicted_phonemes = self.predict_phonemes(logits)
-        aligned_phonemes = self.align_phonemes(logits, transcript)
-        assert len(aligned_phonemes) == len(transcript.phonemes), (
-            "alignment output must have the same length with the transcript"
-        )
+        try:
+            aligned_phonemes = self.align_phonemes(logits, transcript)
+        except Exception:
+            return None  # forced alignment can fail on poor-quality audio
+        if len(aligned_phonemes) != len(transcript.phonemes):
+            return None  # alignment mismatch — audio too different from transcript
         return Pronunciation(
             transcript=transcript,
             phonemes=predicted_phonemes,

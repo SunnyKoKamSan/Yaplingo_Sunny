@@ -34,3 +34,43 @@ export type Result = {
     words: [string, Alignment[]][];
   };
 };
+
+// ============================================================================
+// CONTENT TOPICS (for UI categorization - backend doesn't filter by these yet)
+// ============================================================================
+export type Topic = "Global" | "Food" | "Culture" | "Travel" | "Business" | "Technology";
+
+// ============================================================================
+// GAMIFICATION API TYPES (matching actual backend responses)
+// ============================================================================
+
+// POST /gamification/check-in request
+export type CheckInParams = {
+  xp_amount: number;
+  topic?: Topic;
+};
+
+// POST /gamification/check-in response
+export type CheckInResponse = {
+  user_id: string;
+  date_key: string;
+  xp_earned: number;
+  goal_met: boolean;
+  lessons_completed: number;
+  new_streak: number;
+};
+
+export type LeaderboardItem = {
+  rank: number;
+  name: string;
+  total_xp: number;
+  user_id: string;
+  // Note: Backend doesn't return avatar_url yet
+};
+
+export type MyRankResponse = {
+  rank: number;
+  total_xp: number;
+  period_key: string;
+  is_current_period: boolean;
+};

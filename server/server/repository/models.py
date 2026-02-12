@@ -1,8 +1,12 @@
 from enum import Enum
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import CHAR, TypeDecorator
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
 from ulid import ULID
+
+if TYPE_CHECKING:
+    from .gamification import DailyProgress, LeaderboardEntry, UserGamification
 
 
 class ULIDType(TypeDecorator):
@@ -34,3 +38,5 @@ class User(SQLModel, table=True):
     name: str = Field(unique=True)
     password: str
     language: Language
+
+    leaderboard_entries: list["LeaderboardEntry"] = Relationship(back_populates="user")

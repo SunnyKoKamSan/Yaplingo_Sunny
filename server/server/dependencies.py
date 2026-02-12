@@ -1,8 +1,9 @@
-from typing import Annotated
+from typing import Annotated, TypeAlias
 
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from server.core import Yaplingo as _Yaplingo
 from server.repository import Repository as _Repository
@@ -19,12 +20,18 @@ async def repository(request: Request) -> _Repository:
     return request.app.state.repository
 
 
+async def session(request: Request) -> AsyncSession:
+    async with request.app.state.repository.session() as db_session:
+        yield db_session
+
+
 async def store(request: Request) -> _Store:
     return request.app.state.store
 
 
 Yaplingo = Annotated[_Yaplingo, Depends(yaplingo)]
 Repository = Annotated[_Repository, Depends(repository)]
+SessionDep: TypeAlias = Annotated[AsyncSession, Depends(session)]
 Store = Annotated[_Store, Depends(store)]
 
 security = HTTPBearer(auto_error=False)  # handle errors ourselves

@@ -27,7 +27,7 @@ router = APIRouter(dependencies=[Depends(current_user)])
 @router.get("/transcripts")
 async def get_transcripts(yaplingo: Yaplingo, store: Store) -> Transcripts:
     transcripts = await yaplingo.generate_transcripts()
-    asyncio.gather(*[store.save_transcript(item) for item in transcripts.items])
+    await asyncio.gather(*[store.save_transcript(item) for item in transcripts.items])
     return transcripts
 
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
 import Animated, {
   interpolate,
@@ -31,8 +31,8 @@ import {
 } from "lucide-react-native";
 import tw from "twrnc";
 
-import { useEchoMutation, useEchoResultQuery, useEchoTranscriptsQuery } from "~/client";
-import type { Transcript } from "~/client/models";
+import { useCheckInMutation, useEchoMutation, useEchoResultQuery, useEchoTranscriptsQuery } from "~/client";
+import type { Transcript, Topic } from "~/client/models";
 import { Spinner, Text } from "~/components";
 import { useNavigationOptions } from "~/hooks";
 import { getLocalFileBase64 } from "~/utils";
@@ -131,6 +131,15 @@ const getScoringColor = (x: number) => {
   return tw.color("red-500");
 };
 
+/**
+ * Calculate XP from pronunciation score percentage.
+ * - Minimum: 10 XP (for attempting)
+ * - Maximum: 50 XP (for 100% accuracy)
+ * - Formula: score/2 clamped to [10, 50]
+ */
+const calculateXP = (scorePercentage: number): number =>
+  Math.max(10, Math.min(50, Math.round(scorePercentage / 2)));
+
 // FIXME: handle query/mutation errors
 export default function MainLearnEchoScreen() {
   const router = useRouter();
@@ -143,6 +152,9 @@ export default function MainLearnEchoScreen() {
   const [_flipped, setFlipped] = useState(false);
   const [height, setHeight] = useState(0);
   const [progress, setProgress] = useState(0);
+
+  // Track which sentences already had XP recorded (by progress index)
+  const recordedIndices = useRef(new Set<number>());
 
   useAnimatedReaction(
     () => flipped.value,
@@ -159,7 +171,44 @@ export default function MainLearnEchoScreen() {
   const { reset: resetMutation, ...mutation } = useEchoMutation(transcript?.id);
   const { data: result, ...queryResult } = useEchoResultQuery(mutation.isSuccess ? transcript?.id : undefined);
 
-  const handleNext = () => {
+  const checkInMutation = useCheckInMutation();
+
+  const score = useMemo(() => {
+    if (!result) return undefined;
+    const scores = result.pronunciation.alignments.map((a) => a.score);
+    const total = scores.reduce((a, b) => a + b, 0);
+    const percentage = Math.round((total / scores.length) * 100);
+    const color = getScoringColor(percentage);
+    let message = "bruh";
+    if (percentage >= 90) message = "tuff";
+    else if (percentage >= 75) message = "bro slayed";
+    else if (percentage >= 50) message = "that's mid";
+    else if (percentage >= 25) message = "skill issue";
+    return { percentage, color, message };
+  }, [result]);
+
+  const recordXP = async (xpAmount: number, topic?: string) => {
+    try {
+      const data = await checkInMutation.mutateAsync({
+        xp_amount: xpAmount,
+        topic: topic as Topic | undefined,
+      });
+      console.log(`✅ Recorded ${xpAmount} XP! Total today: ${data.xp_earned}`);
+    } catch (error) {
+      console.error("Failed to record XP:", (error as Error).message);
+    }
+  };
+
+  // Record XP immediately when score/feedback becomes available
+  useEffect(() => {
+    if (score?.percentage !== undefined && !recordedIndices.current.has(progress)) {
+      recordedIndices.current.add(progress);
+      const xpEarned = calculateXP(score.percentage);
+      void recordXP(xpEarned, transcripts?.topic);
+    }
+  }, [score, progress]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleNext = async () => {
     if (progress < transcripts!.items.length - 1) {
       resetMutation();
       player.replace("");
@@ -171,15 +220,15 @@ export default function MainLearnEchoScreen() {
   };
 
   const handleProgress = () => {
-    if (queryResult.isSuccess) {
-      handleNext();
+    if (queryResult.isSuccess && score) {
+      void handleNext();
     } else {
-      Alert.alert("Relinquish", "Are you sure you want to relinquish this attempt?", [
+      Alert.alert("Relinquish", "Are you sure you want to skip this attempt?", [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Relinquish",
+          text: "Skip",
           style: "destructive",
-          onPress: handleNext,
+          onPress: () => void handleNext(),
         },
       ]);
     }
@@ -280,20 +329,6 @@ export default function MainLearnEchoScreen() {
     ),
   ];
 
-  const score = useMemo(() => {
-    if (!result) return undefined;
-    const scores = result.pronunciation.alignments.map((a) => a.score);
-    const total = scores.reduce((a, b) => a + b, 0);
-    const percentage = Math.round((total / scores.length) * 100);
-    const color = getScoringColor(percentage);
-    let message = "bruh";
-    if (percentage >= 90) message = "tuff";
-    else if (percentage >= 75) message = "bro slayed";
-    else if (percentage >= 50) message = "that's mid";
-    else if (percentage >= 25) message = "skill issue";
-    return { percentage, color, message };
-  }, [result]);
-
   return (
     <View style={[tw`flex-1 items-center justify-between gap-4 p-4`, { paddingBottom: insets.bottom }]}>
       {queryTranscripts.isFetching ? (
@@ -306,14 +341,16 @@ export default function MainLearnEchoScreen() {
       ) : (
         queryTranscripts.isSuccess && (
           <>
-            <View style={tw`rounded-xl border-2 border-zinc-500/50 p-2.5`}>
+            <View style={tw`w-full rounded-xl border-2 border-zinc-500/50 p-2.5`}>
               <Text style={tw`text-lg font-medium leading-tight`}>{transcripts!.scenario}</Text>
             </View>
             {result && (
               <View style={tw`mt-8 items-center justify-center gap-2`}>
-                <Text style={[tw`text-center text-5xl font-bold tracking-tighter`, { color: score!.color }]}>
-                  {score!.percentage}%
-                </Text>
+                <View style={tw`flex-row items-center gap-3`}>
+                  <Text style={[tw`text-center text-5xl font-bold tracking-tighter`, { color: score!.color }]}> 
+                    {score!.percentage}%
+                  </Text>
+                </View>
                 <Text style={[tw`text-center text-2xl font-medium`, { color: score!.color }]}>{score!.message}</Text>
               </View>
             )}
@@ -368,14 +405,14 @@ export default function MainLearnEchoScreen() {
                   </View>
                 ) : (
                   mutation.isIdle && (
-                    <>
+                    <View style={tw`w-full items-center justify-center`}>
                       {!recorderState.isRecording && (
-                        <Text style={tw`absolute -top-2 text-sm font-medium`}>Hold to Speak</Text>
+                        <Text style={tw`absolute -top-8 text-sm font-medium w-32 text-center`}>Hold to Speak</Text>
                       )}
                       <Pressable
                         style={({ pressed }) =>
                           tw.style(
-                            "mx-auto rounded-full p-6",
+                            "rounded-full p-6",
                             pressed && "opacity-80",
                             recorderState.isRecording ? "bg-red-500" : "bg-green-500",
                           )
@@ -388,7 +425,7 @@ export default function MainLearnEchoScreen() {
                           <MicIcon color="white" size={32} />
                         )}
                       </Pressable>
-                    </>
+                    </View>
                   )
                 )}
               </View>
@@ -397,7 +434,7 @@ export default function MainLearnEchoScreen() {
         )
       )}
       {result && (
-        <View style={tw`w-full gap-2`}>
+        <View style={tw`w-full gap-2 mt-6`}>
           <Text style={tw`text-base font-medium text-zinc-500`}>FEEDBACK</Text>
           <ScrollView
             alwaysBounceVertical={false}

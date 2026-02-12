@@ -1,11 +1,41 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+/**
+ * XP CALCULATION STRATEGY
+ * ========================
+ *
+ * The backend check-in endpoint expects 'xp_amount' to be provided by the client.
+ *
+ * CURRENT APPROACH:
+ * - After user completes a lesson via Echo API (POST /echo/analyze),
+ * - Client receives analysis results with phoneme error counts in logs
+ * - Client calculates XP score based on accuracy:
+ *   Example: xp = Math.max(10, 100 - (error_count * 5))
+ * - Client then calls useCheckInMutation().mutate({ xp_amount: calculatedXP })
+ *
+ * FUTURE: Echo could return 'xp_score' directly in response to simplify client logic.
+ */
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
 import { useSetAtom } from "jotai";
 
 import store, { $token } from "../store";
-import type { Result, Transcripts, User } from "./models";
+import type {
+  CheckInParams,
+  CheckInResponse,
+  LeaderboardItem,
+  MyRankResponse,
+  Result,
+  Topic,
+  Transcripts,
+  User,
+} from "./models";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
 
 const client = axios.create({
   baseURL: API_URL,
@@ -122,5 +152,76 @@ export const useEchoResultQuery = (tid?: string) =>
     enabled: !!tid,
     staleTime: Infinity,
   });
+
+// ============================================================================
+// CHECK-IN MUTATION
+// ============================================================================
+export const useCheckInMutation = (): UseMutationResult<
+  CheckInResponse,
+  AxiosError,
+  CheckInParams
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: CheckInParams) => {
+      // Server is the UTC authority; client never sends dates.
+      const { data } = await client.post<CheckInResponse>("/gamification/check-in", params);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gamification"] });
+    },
+  });
+};
+
+// ============================================================================
+// LEADERBOARD QUERIES
+// ============================================================================
+export const useLeaderboardQuery = (
+  periodKey?: string,
+  topic?: Topic
+): UseQueryResult<LeaderboardItem[], AxiosError> => {
+  const isAllTime = periodKey === "ALL_TIME";
+  return useQuery({
+    queryKey: ["gamification", "leaderboard", periodKey ?? "current", topic ?? "Global"],
+    queryFn: async () => {
+      const params: Record<string, string> = {};
+      if (isAllTime) {
+        params.all_time = "true";
+      } else if (periodKey) {
+        params.period_key = periodKey;
+      }
+      if (topic && topic !== "Global") params.topic = topic;
+      const { data } = await client.get<LeaderboardItem[]>("/gamification/leaderboard", { params });
+      return data;
+    },
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+};
+
+export const useMyRankQuery = (
+  periodKey?: string,
+  topic?: Topic
+): UseQueryResult<MyRankResponse, AxiosError> => {
+  const isAllTime = periodKey === "ALL_TIME";
+  return useQuery({
+    queryKey: ["gamification", "myRank", periodKey ?? "current", topic ?? "Global"],
+    queryFn: async () => {
+      const params: Record<string, string> = {};
+      if (isAllTime) {
+        params.all_time = "true";
+      } else if (periodKey) {
+        params.period_key = periodKey;
+      }
+      if (topic && topic !== "Global") params.topic = topic;
+      const { data } = await client.get<MyRankResponse>("/gamification/leaderboard/me", { params });
+      return data;
+    },
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+};
 
 export default client;

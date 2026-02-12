@@ -23,5 +23,12 @@ class Pipeline:
         if waveform is None:
             return None
         pronunciation = self.pronunciation_aligner(waveform, transcript)
-        feedback = await self.feedback_generator(transcript, pronunciation)
+        if pronunciation is None:
+            return None
+        try:
+            feedback = await self.feedback_generator(transcript, pronunciation)
+        except Exception as e:
+            # LLM call or difference analysis can fail — return result with fallback feedback
+            print(f"[Pipeline] feedback generation failed: {e}")
+            feedback = Feedback(text="Great attempt! Keep practising to improve your pronunciation.", audio="")
         return Result(feedback=feedback, pronunciation=pronunciation)

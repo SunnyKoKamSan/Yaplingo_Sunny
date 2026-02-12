@@ -105,7 +105,7 @@ const DailyGoalsCard = () => {
 export default function MainHomeScreen() {
   useNavigationOptions({ header: () => <Header /> });
   return (
-    <ScrollView contentContainerStyle={tw`flex-1 gap-4 p-4`}>
+    <ScrollView style={tw`flex-1`} contentContainerStyle={tw`gap-4 p-4`}>
       <StreakMeter />
       <WelcomeMessage />
       <ActivityCard />
@@ -113,3 +113,4 @@ export default function MainHomeScreen() {
     </ScrollView>
   );
 }
+

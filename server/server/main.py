@@ -7,7 +7,7 @@ from starlette.exceptions import HTTPException
 
 from server.core import Yaplingo
 from server.repository import Repository
-from server.routers import auth, echo
+from server.routers import auth, echo, gamification
 from server.store import Store
 
 
@@ -36,3 +36,4 @@ def request_validation_error_handler(_, exc: RequestValidationError):
 
 app.include_router(auth.router, prefix="/auth")
 app.include_router(echo.router, prefix="/echo")
+app.include_router(gamification.router, prefix="/gamification")
