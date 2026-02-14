@@ -345,6 +345,8 @@ export default function MainLearnEchoScreen() {
   const [flipped, setFlipped] = useState(false);
   const [height, setHeight] = useState(0);
 
+  const [playbacking, setPlaybacking] = useState(false);
+
   useAnimatedReaction(
     () => _flipped.value,
     (value) => runOnJS(setFlipped)(value),
@@ -394,6 +396,7 @@ export default function MainLearnEchoScreen() {
   });
 
   const handlePronounce = () => {
+    setPlaybacking(false);
     player.replace(transcript!.audio);
     player.seekTo(0);
     player.play();
@@ -432,6 +435,7 @@ export default function MainLearnEchoScreen() {
   };
 
   const handlePlayback = () => {
+    setPlaybacking(true);
     player.replace(recorder.uri!);
     player.seekTo(0);
     player.play();
@@ -604,7 +608,7 @@ export default function MainLearnEchoScreen() {
             )}
             {result && (
               <>
-                {!playerStatus.playing && (
+                {!(playerStatus.playing && playbacking) && (
                   <Text style={tw`absolute -top-2 text-sm font-medium`}>Playback Your Speech</Text>
                 )}
                 <Pressable
@@ -612,10 +616,10 @@ export default function MainLearnEchoScreen() {
                     tw.style(
                       "mx-auto rounded-full bg-sky-500 p-6",
                       pressed && "opacity-80",
-                      playerStatus.playing && "opacity-50",
+                      playerStatus.playing && playbacking && "opacity-50",
                     )
                   }
-                  disabled={playerStatus.playing}
+                  disabled={playerStatus.playing && playbacking}
                   onPress={handlePlayback}>
                   <PlayIcon color="white" fill="white" size={32} />
                 </Pressable>
