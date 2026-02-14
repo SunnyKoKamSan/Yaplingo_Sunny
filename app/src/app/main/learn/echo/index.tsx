@@ -19,6 +19,7 @@ import {
   AudioQuality,
   setAudioModeAsync,
   useAudioPlayer,
+  useAudioPlayerStatus,
   useAudioRecorder,
   useAudioRecorderState,
   type RecordingOptions,
@@ -34,6 +35,7 @@ import {
   EarIcon,
   FlipHorizontalIcon,
   MicIcon,
+  PlayIcon,
   RedoIcon,
   XIcon,
 } from "lucide-react-native";
@@ -325,6 +327,7 @@ export default function MainLearnEchoScreen() {
   const insets = useSafeAreaInsets();
   const client = useQueryClient();
   const player = useAudioPlayer();
+  const playerStatus = useAudioPlayerStatus(player);
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder);
 
@@ -426,6 +429,12 @@ export default function MainLearnEchoScreen() {
         session.data.attempts[session.data.progress] += 1;
       }
     }
+  };
+
+  const handlePlayback = () => {
+    player.replace(recorder.uri!);
+    player.seekTo(0);
+    player.play();
   };
 
   const frontCardAnimatedStyle = useAnimatedStyle(() => {
@@ -590,6 +599,25 @@ export default function MainLearnEchoScreen() {
                   ) : (
                     <MicIcon color="white" size={32} />
                   )}
+                </Pressable>
+              </>
+            )}
+            {result && (
+              <>
+                {!playerStatus.playing && (
+                  <Text style={tw`absolute -top-2 text-sm font-medium`}>Playback Your Speech</Text>
+                )}
+                <Pressable
+                  style={({ pressed }) =>
+                    tw.style(
+                      "mx-auto rounded-full bg-sky-500 p-6",
+                      pressed && "opacity-80",
+                      playerStatus.playing && "opacity-50",
+                    )
+                  }
+                  disabled={playerStatus.playing}
+                  onPress={handlePlayback}>
+                  <PlayIcon color="white" fill="white" size={32} />
                 </Pressable>
               </>
             )}
