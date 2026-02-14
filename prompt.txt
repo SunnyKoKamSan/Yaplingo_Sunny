@@ -1,0 +1,495 @@
+================================================================================
+YAPLINGO GAMIFICATION - WEEKS 10 TO 17 PROMPTS
+================================================================================
+Updated: February 10, 2026
+Context: Week 9 & 9.5 COMPLETED — Echo → XP → Leaderboard fully wired
+  - useCheckInMutation imported & called in echo/index.tsx
+  - calculateXP helper in echo/index.tsx: max(10, min(50, score/2))
+  - recordXP() calls mutateAsync, alerts on goal_met
+  - handleNext() records XP before progressing/dismissing
+  - 5-sentence streak bonus: 100XP for completing all 5 without skip
+  - Milestone XP alerts at 50/100/200 thresholds (not every 50)
+  - Community screen refactored with podium, mascot animation, gradient header
+Backend: Global XP only (no topic filtering yet)
+Topics: Food, Culture, Travel, Business, Technology (UI-only filters)
+Stack: Expo 53, React 19, RN 0.79.3, React Query 5.90, Jotai 2.12,
+       twrnc, lucide-react-native, react-native-reanimated 3.17
+================================================================================
+
+
+================================================================================
+WEEK 10: DAILY GOAL & STREAK WIDGET
+================================================================================
+
+Act as a Principal React Native UI Engineer specialising in animated,
+theme-aware components using twrnc, Reanimated 3.17, lucide icons.
+
+### PROJECT CONTEXT (MUST FOLLOW EXACTLY)
+- Components live in `app/src/components/` with barrel export in `index.ts`
+- Style: twrnc — `tw` backtick and `tw.style(...)`
+- Theme: `useTheme()` from `@react-navigation/native`
+- Icons: lucide-react-native (Flame, CheckCircle, Target, Trophy, RefreshCw)
+- Animations: react-native-reanimated 3.17.4
+- Topics: "Global" | "Food" | "Culture" | "Travel" | "Business" | "Technology"
+- Backend limitation: No topic filtering, no /progress endpoint
+
+### CURRENT STATE (Week 9/9.5 already done)
+- `useCheckInMutation()` is imported AND called in echo/index.tsx
+- `calculateXP()` helper exists in echo/index.tsx
+- `recordXP()` calls mutateAsync, logs XP, alerts on goal_met
+- `useLeaderboardQuery()` and `useMyRankQuery()` work
+- `community.tsx` has leaderboard screen with podium, filters, etc.
+- No progress endpoint — need Jotai atom workaround
+
+### TASK: Create `app/src/components/GamificationWidget.tsx`
+
+Widget for the home screen showing current streak, today's XP, goal status.
+
+### APPROACH: Jotai Atom for Progress State
+
+Since backend lacks a /progress endpoint, store last check-in response:
+
+1. **Add to `store.ts`**:
+   ```typescript
+   import type { CheckInResponse } from "~/client/models";
+   export const $lastCheckIn = atom<CheckInResponse | null>(null);
+   ```
+
+2. **Update `useCheckInMutation` in `index.ts`** to also store in atom:
+   ```typescript
+   import { useSetAtom } from "jotai";
+   import { $lastCheckIn } from "~/store";
+   // Inside the mutation onSuccess: setLastCheckIn(data);
+   ```
+
+3. **Widget reads from atom** via `useAtomValue($lastCheckIn)`
+
+### FEATURES
+- Props: `compact?: boolean` for smaller dashboard variant
+- Data: streak, xpEarned, goalMet from $lastCheckIn atom
+- States: loading (skeleton pulse), error (retry), success, empty (first-time)
+- Layout (full size):
+  - Card: rounded-2xl bg-white dark:bg-gray-900 shadow-lg p-6
+  - Header row: Flame icon + "🔥 X day streak" (large bold)
+  - Progress bar with color interpolation (red → yellow → green)
+  - Text: "X/50 XP today"
+  - Goal status: CheckCircle + "Daily goal complete!" or Target + "Keep going!"
+
+### ANIMATIONS (Reanimated 3)
+1. Entrance: fade in + slide up (translateY 20→0, opacity 0→1)
+2. Progress bar: withTiming 800ms with Easing.bezier
+3. Color interpolation: interpolateColor for bar gradient
+4. Goal celebration: scale pulse 1→1.15→0.95→1.05→1 when goal_met
+5. Use `useReducedMotion()` to skip animations when enabled
+
+### ACCESSIBILITY
+- `accessibilityLabel` on streak, progress, goal status
+- `accessibilityRole="progressbar"` with accessibilityValue
+
+### OUTPUT REQUIREMENTS
+- Full component (~150-200 lines) with animations
+- Add to `components/index.ts`: `export { default as GamificationWidget } from "./GamificationWidget";`
+- Store atom addition to `store.ts`
+- Updated `useCheckInMutation` with atom storage
+- Empty state for first-time users
+- Dark mode support via theme
+
+
+================================================================================
+WEEK 11: REACT QUERY v5 OPTIMISED HOOKS (Production Patterns)
+================================================================================
+
+Act as a Principal Frontend Engineer with deep expertise in React Query v5.90.2.
+
+### PROJECT CONTEXT
+- File: `app/src/client/index.ts`
+- React Query 5.90.2 (uses `gcTime` not `cacheTime`, `placeholderData` callback)
+- Backend limitation: No topic filtering, no /progress endpoint
+- Topics (Food, Culture, etc.) are UI-only for now
+
+### CURRENT STATE
+The hooks from Week 9 work but need production hardening:
+- Better error handling with retry + exponential backoff
+- Proper staleTime / gcTime tuning
+- Prefetch utility for navigation transitions
+- Granular invalidation helpers
+- Timeout to prevent hanging on poor networks
+
+### TASK: Enhance gamification hooks in `index.ts`
+
+### ENHANCED HOOKS SPEC
+
+1. **useCheckInMutation** — add Jotai atom storage + better invalidation
+   - `onSuccess`: call `setLastCheckIn(data)` + invalidate ["gamification"]
+   - `onError`: log but don't crash
+
+2. **useLeaderboardQuery** — production-ready
+   - `staleTime: 60_000` (1 min)
+   - `gcTime: 5 * 60_000` (5 min)
+   - `placeholderData: keepPreviousData` (prevents loading flash)
+   - `retry: 2` with exponential backoff
+   - `signal` timeout: 10s
+
+3. **useMyRankQuery** — production-ready
+   - `staleTime: 30_000` (30s, more real-time)
+   - `gcTime: 5 * 60_000`
+   - `placeholderData: keepPreviousData`
+   - `retry: 2`
+
+4. **usePrefetchLeaderboard** — navigation optimisation
+   - Returns a function that prefetches leaderboard data
+   - Call from Community tab focus or navigation transition
+
+5. **useInvalidateGamification** — granular helper
+   - `.all()` — invalidate all gamification queries
+   - `.leaderboard(periodKey?)` — invalidate specific period
+   - `.myRank()` — invalidate only rank query
+
+### OUTPUT REQUIREMENTS
+- Full enhanced hooks file
+- Comments explaining staleTime vs gcTime
+- `keepPreviousData` prevents loading flash
+- Retry with exponential backoff
+- Timeout prevents hanging on poor networks
+
+
+================================================================================
+WEEK 11.5: ACHIEVEMENT SYSTEM — BADGES & XP MILESTONES
+================================================================================
+
+Act as a Senior Full-Stack Engineer designing a gamification achievement system.
+
+### CONCEPT
+Users unlock badges/achievements by accumulating XP. This adds a compelling
+"collect them all" loop that encourages continued practice beyond daily goals.
+
+### BACKEND: Achievement Model & Endpoint
+
+1. **New table** — `server/server/repository/gamification.py`:
+   ```python
+   class UserAchievement(SQLModel, table=True):
+       __tablename__ = "user_achievement"
+       user_id: ULID = Field(foreign_key="user.id", primary_key=True, sa_type=ULIDType)
+       achievement_key: str = Field(primary_key=True, max_length=50)
+       unlocked_at: str = Field(description="ISO datetime when unlocked")
+   ```
+
+2. **Achievement definitions** (static, no DB table needed):
+   ```python
+   ACHIEVEMENTS = [
+       {"key": "first_steps",    "title": "First Steps",    "description": "Earn your first XP",              "xp_threshold": 1,     "icon": "🐣"},
+       {"key": "warming_up",     "title": "Warming Up",     "description": "Accumulate 100 XP",               "xp_threshold": 100,   "icon": "🔥"},
+       {"key": "half_century",   "title": "Half Century",   "description": "Accumulate 500 XP",               "xp_threshold": 500,   "icon": "⭐"},
+       {"key": "centurion",      "title": "Centurion",      "description": "Accumulate 1,000 XP",             "xp_threshold": 1000,  "icon": "🏅"},
+       {"key": "xp_machine",     "title": "XP Machine",     "description": "Accumulate 2,500 XP",             "xp_threshold": 2500,  "icon": "⚡"},
+       {"key": "legend",         "title": "Legend",          "description": "Accumulate 5,000 XP",             "xp_threshold": 5000,  "icon": "🏆"},
+       {"key": "yap_king",       "title": "Yap King",       "description": "Accumulate 10,000 XP",            "xp_threshold": 10000, "icon": "👑"},
+       {"key": "streak_starter", "title": "Streak Starter",  "description": "Reach a 3-day streak",           "streak_threshold": 3,  "icon": "🔥"},
+       {"key": "streak_warrior", "title": "Streak Warrior",  "description": "Reach a 7-day streak",           "streak_threshold": 7,  "icon": "⚔️"},
+       {"key": "streak_legend",  "title": "Streak Legend",   "description": "Reach a 30-day streak",          "streak_threshold": 30, "icon": "💎"},
+       {"key": "perfect_echo",   "title": "Perfect Echo",    "description": "Score 95%+ on a sentence",       "special": "perfect_score", "icon": "🎯"},
+       {"key": "five_alive",     "title": "Five Alive",      "description": "Complete 5 in a row without skipping", "special": "five_streak", "icon": "5️⃣"},
+   ]
+   ```
+
+3. **Check & grant achievements** in check-in endpoint:
+   - After recording XP, calculate user's ALL-TIME total XP
+     (SUM of all LeaderboardEntry.total_xp for this user)
+   - Compare against thresholds, insert any newly unlocked UserAchievement rows
+   - Return newly unlocked achievements in the CheckInResponse
+
+4. **New endpoint** `GET /gamification/achievements`:
+   ```python
+   @router.get("/achievements")
+   async def get_achievements(current_user, session):
+       # Return all achievements with unlock status for this user
+       # Unlocked ones have unlocked_at timestamp, locked ones have null
+   ```
+
+### FRONTEND: Types & Hook
+
+1. **models.ts** additions:
+   ```typescript
+   export type Achievement = {
+     key: string;
+     title: string;
+     description: string;
+     icon: string;
+     unlocked: boolean;
+     unlocked_at: string | null;
+   };
+   ```
+
+2. **index.ts** hook:
+   ```typescript
+   export const useAchievementsQuery = () =>
+     useQuery<Achievement[], AxiosError>({
+       queryKey: ["gamification", "achievements"],
+       queryFn: async () => {
+         const { data } = await client.get("/gamification/achievements");
+         return data;
+       },
+       staleTime: 5 * 60_000,
+     });
+   ```
+
+3. **Achievement unlock toast** in echo/index.tsx:
+   - When checkInMutation response has newly_unlocked, show animated toast:
+     "🏅 Achievement Unlocked! [title]"
+   - Use Reanimated for slide-down + bounce animation
+
+4. **Achievements display** — add to Profile screen (`profile.tsx`):
+   - Grid of badge icons (locked = grayscale, unlocked = full color + glow)
+   - Tap badge to see title + description + unlock date
+   - Progress bar toward next locked achievement
+
+### OUTPUT REQUIREMENTS
+- Backend: UserAchievement model, achievement definitions, check logic, endpoint
+- Frontend: types, hook, unlock toast in echo, badge grid in profile
+- Keep it lightweight — no complex UI framework needed
+- Comments explaining the threshold-based unlock system
+
+
+================================================================================
+WEEK 12: OPTIMISTIC CHECK-IN MUTATION
+================================================================================
+
+Act as a Senior State Management Engineer implementing optimistic updates.
+
+### PROJECT CONTEXT
+- File: `app/src/client/index.ts`
+- Goal threshold: 50 XP
+- Jotai atom: `$lastCheckIn` stores last check-in response (from Week 10)
+- No optimistic leaderboard update — too complex without other users' data
+
+### TASK: Implement useCheckInMutation with optimistic UI feedback
+
+Strategy:
+1. **Immediately** update Jotai atom with estimated new values
+2. **On success**: Jotai atom gets real server values
+3. **On error**: Rollback to previous Jotai state
+
+```typescript
+export const useCheckInMutation = (): UseMutationResult<
+  CheckInResponse, AxiosError, CheckInParams,
+  { previousCheckIn: CheckInResponse | null }
+> => {
+  const queryClient = useQueryClient();
+  const [lastCheckIn, setLastCheckIn] = useAtom($lastCheckIn);
+
+  return useMutation({
+    mutationFn: ...,
+    onMutate: async (params) => {
+      const previousCheckIn = lastCheckIn;
+      setLastCheckIn({
+        ...previousCheckIn,
+        xp_earned: (previousCheckIn?.xp_earned ?? 0) + params.xp_amount,
+        goal_met: (previousCheckIn?.xp_earned ?? 0) + params.xp_amount >= 50,
+        lessons_completed: (previousCheckIn?.lessons_completed ?? 0) + 1,
+        // DON'T optimistically update streak (server authority)
+      });
+      return { previousCheckIn };
+    },
+    onSuccess: (data) => setLastCheckIn(data),
+    onError: (_, __, context) => {
+      if (context?.previousCheckIn !== undefined)
+        setLastCheckIn(context.previousCheckIn);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["gamification"] });
+    },
+  });
+};
+```
+
+### OUTPUT REQUIREMENTS
+- Full optimistic mutation with rollback context type
+- Comments: why streak is NOT optimistically updated (server authority)
+- Comments: rollback strategy explanation
+- onSettled for guaranteed cleanup
+
+
+================================================================================
+WEEK 13: LEADERBOARD — ALREADY REFACTORED (SKIP OR POLISH)
+================================================================================
+
+NOTE: community.tsx has already been fully refactored with:
+  - Green gradient header with personal stats (rank, score, streak)
+  - Climbing tips section
+  - "All Time" + "This Week" tabs with historical week navigation
+  - Top 3 podium bar chart with animated mascot on rank 1
+  - Topic filter pills (Global, Food, Culture, Travel, Business, Technology)
+  - Pull-to-refresh, empty/error states, MyRank footer
+
+If polish is needed, focus on:
+- Dark mode gradient tweaks
+- Haptic feedback on tab switch
+- Skeleton loading for podium bars
+
+
+================================================================================
+WEEK 14: HISTORY ENDPOINT + PROGRESS CHART
+================================================================================
+
+Act as a Full-Stack Feature Engineer.
+
+### BACKEND: GET /gamification/history
+
+File: `server/server/routers/gamification.py`
+
+Add a new endpoint that returns daily XP history for the past N days.
+Zero-fill missing days so the frontend chart has consistent data points.
+
+Schemas to add to `server/server/schemas.py`:
+```python
+class HistoryItem(BaseModel):
+    date_key: str
+    xp_earned: int
+    goal_met: bool
+
+class HistoryResponse(BaseModel):
+    items: list[HistoryItem]
+    period_start: str
+    period_end: str
+    total_xp: int
+    goal_days: int
+```
+
+Endpoint:
+```python
+@router.get("/history", response_model=HistoryResponse)
+async def get_history(
+    days: int = Query(default=30, ge=1, le=90),
+    current_user = Depends(current_user),
+    session = Depends(get_session),
+):
+    # Query DailyProgress for date range, zero-fill missing days
+```
+
+### FRONTEND
+
+1. **models.ts**: Add HistoryItem + HistoryResponse types
+2. **index.ts**: Add useHistoryQuery hook (staleTime: 5min, gcTime: 30min)
+3. **progress.tsx**: New screen with:
+   - Stats cards row (streak, total XP, goal days)
+   - SVG bar chart via react-native-svg
+   - 50 XP goal line overlay
+   - Period selector tabs: 7 / 14 / 30 days
+   - Dark mode support
+
+### OUTPUT REQUIREMENTS
+- Full backend endpoint with zero-fill
+- Frontend types, hook, complete progress screen
+
+
+================================================================================
+WEEK 15: OFFLINE QUEUE + BACKEND HARDENING
+================================================================================
+
+Act as a Performance & Resilience Engineer.
+
+### FRONTEND: Offline Queue
+
+File: `app/src/client/offline.ts` (new)
+
+Queue XP check-ins when offline, replay when connectivity returns.
+
+Key behaviours:
+- On mutation error (network), add to AsyncStorage queue
+- On app resume or connectivity change, replay queue in order
+- ULID ordering ensures server processes chronologically
+- Max 3 retries per item, then discard with warning
+
+Dependencies:
+```bash
+npx expo install @react-native-community/netinfo
+```
+
+### BACKEND
+- Leaderboard already uses `selectinload` — verify no N+1 regressions
+- Consider adding request timeout middleware if not present
+
+### OUTPUT REQUIREMENTS
+- Full offline.ts module
+- Integration with useCheckInMutation error path
+- Init code for `app/_layout.tsx`
+
+
+================================================================================
+WEEK 16: VISUAL POLISH WITH REANIMATED
+================================================================================
+
+Act as a Principal Motion Design Engineer using react-native-reanimated 3.17.
+
+### TASK 1: GamificationWidget Animations
+- Progress bar with `interpolateColor` (red → yellow → green)
+- Goal celebration: withSequence scale pulse
+- Streak count-up animation
+
+### TASK 2: Leaderboard Row Entrance
+- `FadeInDown.delay(index * 50)` for staggered entrance
+- useReducedMotion check
+
+### TASK 3: Achievement Unlock Animation
+- Slide down from top + scale bounce
+- Auto-dismiss after 3s
+
+### OUTPUT REQUIREMENTS
+- Full animation implementations
+- useReducedMotion checks
+- Comments on UI thread performance
+
+
+================================================================================
+WEEK 17: DEMO MODE + FINAL DOCUMENTATION
+================================================================================
+
+Act as a Capstone Project Mentor preparing for professor demo.
+
+### BACKEND: Demo Reset Endpoint
+
+Add to `server/server/settings.py`:
+```python
+class Settings(BaseSettings):
+    secret: str
+    environment: str = "development"
+    demo_secret: str = ""
+```
+
+Add to gamification router:
+```python
+@router.post("/demo/reset", include_in_schema=False)
+async def demo_reset(current_user, session, x_demo_key: str | None = Header(None)):
+    # Validate demo_secret, delete user's gamification data, return status
+```
+
+### DOCUMENTATION: GAMIFICATION_DOCS.md
+
+Cover:
+- Architecture (UTC authority, atomic transactions, write-through cache)
+- API Reference (all endpoints)
+- XP Calculation formula
+- Achievement thresholds
+- 5-sentence streak bonus
+- Demo Script (7 minutes with timestamps)
+
+### OUTPUT REQUIREMENTS
+- Demo reset endpoint
+- Complete documentation
+- Demo script with timestamps
+
+
+================================================================================
+END OF PROMPTS
+================================================================================
+
+EXECUTION ORDER:
+1. Week 10   — GamificationWidget + Jotai atom + home screen integration
+2. Week 11   — React Query production hooks
+3. Week 11.5 — Achievement system (backend + frontend) ← NEW
+4. Week 12   — Optimistic check-in mutation
+5. Week 13   — (Already done — polish only)
+6. Week 14   — History endpoint + progress chart
+7. Week 15   — Offline queue + backend hardening
+8. Week 16   — Animation polish
+9. Week 17   — Demo mode + documentation

@@ -25,6 +25,12 @@ class UserCredentials(BaseModel):
 class CheckInRequest(BaseModel):
     xp_amount: int = Field(gt=0, description="XP amount earned (must be positive)")
     topic: str | None = Field(default=None, description="Topic category (e.g. Food, Culture, Travel, Business, Technology). None = Global only.")
+    accuracy_percentage: int | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description="Optional pronunciation score percentage for daily accuracy tracking.",
+    )
 
 
 class CheckInResponse(BaseModel):
@@ -33,6 +39,7 @@ class CheckInResponse(BaseModel):
     xp_earned: int
     goal_met: bool
     lessons_completed: int
+    high_accuracy_hits: int
     new_streak: int
     
     class Config:
@@ -49,5 +56,6 @@ class LeaderboardItem(BaseModel):
 class MyRankResponse(BaseModel):
     rank: int
     total_xp: int
+    current_streak: int = 0
     period_key: str
     is_current_period: bool = True

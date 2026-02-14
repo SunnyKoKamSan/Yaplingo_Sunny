@@ -48,6 +48,7 @@ export type Topic = "Global" | "Food" | "Culture" | "Travel" | "Business" | "Tec
 export type CheckInParams = {
   xp_amount: number;
   topic?: Topic;
+  accuracy_percentage?: number;
 };
 
 // POST /gamification/check-in response
@@ -57,6 +58,7 @@ export type CheckInResponse = {
   xp_earned: number;
   goal_met: boolean;
   lessons_completed: number;
+  high_accuracy_hits: number;
   new_streak: number;
 };
 
@@ -71,6 +73,7 @@ export type LeaderboardItem = {
 export type MyRankResponse = {
   rank: number;
   total_xp: number;
+  current_streak: number;
   period_key: string;
   is_current_period: boolean;
 };

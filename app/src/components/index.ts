@@ -6,3 +6,4 @@ export { default as TextInput } from "./TextInput";
 export { default as Meter } from "./Meter";
 export { default as Heatmap } from "./Heatmap";
 export { default as Tooltip } from "./Tooltip";
+export { default as GamificationWidget } from "./GamificationWidget";

@@ -187,11 +187,12 @@ export default function MainLearnEchoScreen() {
     return { percentage, color, message };
   }, [result]);
 
-  const recordXP = async (xpAmount: number, topic?: string) => {
+  const recordXP = async (xpAmount: number, accuracyPercentage: number, topic?: string) => {
     try {
       const data = await checkInMutation.mutateAsync({
         xp_amount: xpAmount,
         topic: topic as Topic | undefined,
+        accuracy_percentage: accuracyPercentage,
       });
       console.log(`✅ Recorded ${xpAmount} XP! Total today: ${data.xp_earned}`);
     } catch (error) {
@@ -204,7 +205,7 @@ export default function MainLearnEchoScreen() {
     if (score?.percentage !== undefined && !recordedIndices.current.has(progress)) {
       recordedIndices.current.add(progress);
       const xpEarned = calculateXP(score.percentage);
-      void recordXP(xpEarned, transcripts?.topic);
+      void recordXP(xpEarned, score.percentage, transcripts?.topic);
     }
   }, [score, progress]); // eslint-disable-line react-hooks/exhaustive-deps
 

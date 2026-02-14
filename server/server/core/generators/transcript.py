@@ -17,6 +17,12 @@ from . import Generator
 
 SEPARATOR = Separator(phone="/", word=" ")
 PUNCTUATION = Punctuation()
+MIN_TRANSCRIPT_LINES = 6
+MAX_TRANSCRIPT_ATTEMPTS = 4
+
+
+class TranscriptGenerationError(RuntimeError):
+    """Raised when transcript output format remains invalid across retries."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -75,17 +81,21 @@ class TranscriptGenerator(Generator):
 
     async def __call__(self) -> Transcripts:
         topic = random.choice(self.TOPICS)
-        text = await super().__call__(
-            f"Topic: {topic}",
-            temperature=1.25,
-            # frequency_penalty=2.0,
-            # presence_penalty=2.0,
-        )
-        print(f"{'=' * 10} TRANSCRIPTS {'=' * 10}\n@ {topic}\n{text}\n{'=' * 30}")  # DEBUG
-        lines = list(filter(bool, [s.strip() for s in text.splitlines()]))
-        if len(lines) < 6:
-            return await self()  # FIXME: retry on invalid output
-        scenario = re.split(r"^\s?[+]\s?", lines[0], maxsplit=1)[-1].strip()
-        sentences = [re.split(r"^\s?[-–*]\s?", line, maxsplit=1)[-1].strip() for line in lines[1:]]
-        items = await asyncio.gather(*[Transcript.from_text(s) for s in sentences])
-        return Transcripts(topic=topic, scenario=scenario, items=items)
+        for _ in range(MAX_TRANSCRIPT_ATTEMPTS):
+            text = await super().__call__(
+                f"Topic: {topic}",
+                temperature=1.25,
+                # frequency_penalty=2.0,
+                # presence_penalty=2.0,
+            )
+            print(f"{'=' * 10} TRANSCRIPTS {'=' * 10}\n@ {topic}\n{text}\n{'=' * 30}")  # DEBUG
+            lines = list(filter(bool, [s.strip() for s in text.splitlines()]))
+            if len(lines) < MIN_TRANSCRIPT_LINES:
+                continue
+            scenario = re.split(r"^\s?[+]\s?", lines[0], maxsplit=1)[-1].strip()
+            sentences = [re.split(r"^\s?[-–*]\s?", line, maxsplit=1)[-1].strip() for line in lines[1:]]
+            if not scenario or any(not sentence for sentence in sentences):
+                continue
+            items = await asyncio.gather(*[Transcript.from_text(sentence) for sentence in sentences])
+            return Transcripts(topic=topic, scenario=scenario, items=items)
+        raise TranscriptGenerationError("Transcript output format was invalid after multiple attempts")

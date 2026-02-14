@@ -565,14 +565,18 @@ const WeekNav = ({
 // ─── Sticky Footer ──────────────────────────────────────────────────────────
 
 const MyRankFooter = ({
-  periodKey,
+  rank,
+  totalXP,
+  isLoading,
+  hasError,
   userName,
 }: {
-  periodKey?: string;
+  rank: number;
+  totalXP: number;
+  isLoading: boolean;
+  hasError: boolean;
   userName?: string;
 }) => {
-  const { data: myRank, isLoading, error } = useMyRankQuery(periodKey);
-
   if (isLoading) {
     return (
       <View style={[tw`py-4 items-center`, { backgroundColor: "#188152" }]}>
@@ -581,7 +585,7 @@ const MyRankFooter = ({
     );
   }
 
-  if (error || !myRank) {
+  if (hasError) {
     return (
       <View style={[tw`py-4 items-center`, { backgroundColor: "#188152" }]}>
         <Text style={tw`text-sm text-red-400`}>Unable to load your rank</Text>
@@ -594,9 +598,9 @@ const MyRankFooter = ({
       style={[
         tw`flex-row items-center justify-between px-5 py-3.5 bg-green-600/20 rounded-3xl border border-green-700`
       ]}
-    >
+     >
          <View style={{ width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000000', backgroundColor: '#ffffff' }}>
-           <Text style={{color: '#000000', fontWeight: '900', fontSize: 18 }}>{myRank.rank}</Text>
+           <Text style={{color: '#000000', fontWeight: '900', fontSize: 18 }}>{rank}</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginLeft: 12 }}>
         <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#46786b', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
@@ -605,7 +609,7 @@ const MyRankFooter = ({
         <Text style={{ color: '#000000', fontWeight: '800' }}>{userName ?? 'You'}</Text>
       </View>
       <View style={{ minWidth: 88, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999, backgroundColor: '#ffffff' }}>
-        <Text style={{ color: '#000000', fontWeight: '800' }}>{formatXP(myRank.total_xp)}</Text>
+        <Text style={{ color: '#000000', fontWeight: '800' }}>{formatXP(totalXP)}</Text>
       </View>
     </View>
   );
@@ -615,8 +619,6 @@ const MyRankFooter = ({
 
 export default function MainCommunityScreen() {
   const { data: currentUser } = useAuthedUserQuery();
-  const { data: myRankData, isLoading: rankLoading } = useMyRankQuery();
-
   const [selectedTopic, setSelectedTopic] = useState<Topic>("Global");
   const [timeTab, setTimeTab] = useState<TimeTab>("this-week");
   const periods = useMemo(() => buildPeriods(5), []);
@@ -627,6 +629,12 @@ export default function MainCommunityScreen() {
     if (timeTab === "all-time") return "ALL_TIME";
     return periods[periodIndex]?.key;
   }, [timeTab, periods, periodIndex]);
+
+  const {
+    data: myRankData,
+    isLoading: rankLoading,
+    error: rankError,
+  } = useMyRankQuery(periodKey, selectedTopic);
 
   useNavigationOptions({ headerShown: false });
 
@@ -648,9 +656,17 @@ export default function MainCommunityScreen() {
   const items = useMemo(() => leaderboard || [], [leaderboard]);
   const top3 = useMemo(() => items.filter((i) => i.rank <= 3), [items]);
   const rest = useMemo(() => items.filter((i) => i.rank > 3), [items]);
+  const currentUserEntry = useMemo(
+    () => items.find((item) => item.user_id === currentUser?.id),
+    [items, currentUser?.id],
+  );
 
-  // Streak — defaults to 0 until dedicated endpoint exists
-  const streak = 0;
+  const rank = currentUserEntry?.rank ?? myRankData?.rank ?? 0;
+  const totalXP = currentUserEntry?.total_xp ?? myRankData?.total_xp ?? 0;
+  const headerLoading = rankLoading && !currentUserEntry;
+  const rankUnavailable = !!rankError && !currentUserEntry;
+
+  const streak = myRankData?.current_streak ?? 0;
 
   if (isLoading && !leaderboard) {
     return (
@@ -689,10 +705,10 @@ export default function MainCommunityScreen() {
         ListHeaderComponent={
           <View>
             <ScreenHeader
-              rank={myRankData?.rank ?? 0}
-              totalXP={myRankData?.total_xp ?? 0}
+              rank={rank}
+              totalXP={totalXP}
               streak={streak}
-              isLoading={rankLoading}
+              isLoading={headerLoading}
             />
             <ClimbingTips />
             <TopicTabs
@@ -737,7 +753,13 @@ export default function MainCommunityScreen() {
         style={{ backgroundColor: BG_COLOR }}
       />
 
-      <MyRankFooter periodKey={periodKey} userName={currentUser?.name} />
+      <MyRankFooter
+        rank={rank}
+        totalXP={totalXP}
+        isLoading={headerLoading}
+        hasError={rankUnavailable}
+        userName={currentUser?.name}
+      />
     </View>
   );
 }

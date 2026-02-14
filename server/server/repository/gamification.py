@@ -33,6 +33,24 @@ class DailyProgress(SQLModel, table=True):
     lessons_completed: int = Field(default=0, ge=0)
 
 
+class DailyAccuracy(SQLModel, table=True):
+    """Tracks how many times user achieved >=85% accuracy in a UTC day."""
+
+    __tablename__ = "daily_accuracy"
+
+    user_id: ULID = Field(
+        foreign_key="user.id",
+        primary_key=True,
+        sa_type=ULIDType,
+    )
+    date_key: str = Field(
+        primary_key=True,
+        max_length=10,
+        description="Date in 'YYYY-MM-DD' format",
+    )
+    high_accuracy_hits: int = Field(default=0, ge=0)
+
+
 class LeaderboardEntry(SQLModel, table=True):
     """Tracks user rankings per period for leaderboard display."""
     

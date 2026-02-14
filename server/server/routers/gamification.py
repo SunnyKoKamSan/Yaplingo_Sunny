@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from server.core.gamification import get_period_key, update_streak_utc
 from server.dependencies import Repository, SessionDep, current_user
-from server.repository.gamification import DailyProgress, LeaderboardEntry
+from server.repository.gamification import DailyAccuracy, DailyProgress, LeaderboardEntry, UserGamification
 from server.repository.models import User
 from server.schemas import CheckInRequest, CheckInResponse, LeaderboardItem, MyRankResponse
 from server.utils import get_current_utc_period_key
@@ -21,7 +21,8 @@ from server.utils import get_current_utc_period_key
 router = APIRouter()
 
 # Constants
-DAILY_GOAL_XP = 50  # XP required to meet daily goal
+DAILY_GOAL_XP = 200  # XP required to meet daily goal
+HIGH_ACCURACY_THRESHOLD = 85  # score percentage counted as "Hit 85%"
 
 
 @router.post("/check-in", response_model=CheckInResponse, status_code=status.HTTP_200_OK)
@@ -96,6 +97,34 @@ async def check_in(
                 
                 # Check if daily goal threshold is reached
                 daily_progress.goal_met = daily_progress.xp_earned >= DAILY_GOAL_XP
+
+                accuracy_query = select(DailyAccuracy).where(
+                    DailyAccuracy.user_id == current_user.id,
+                    DailyAccuracy.date_key == today_str,
+                )
+                accuracy_result = await session.exec(accuracy_query)
+                accuracy_row = accuracy_result.one_or_none()
+                daily_accuracy = (
+                    accuracy_row[0]
+                    if isinstance(accuracy_row, tuple) or hasattr(accuracy_row, "__getitem__")
+                    else accuracy_row
+                )
+
+                is_high_accuracy = (
+                    request.accuracy_percentage is not None
+                    and request.accuracy_percentage >= HIGH_ACCURACY_THRESHOLD
+                )
+
+                if daily_accuracy:
+                    if is_high_accuracy:
+                        daily_accuracy.high_accuracy_hits += 1
+                elif is_high_accuracy:
+                    daily_accuracy = DailyAccuracy(
+                        user_id=current_user.id,
+                        date_key=today_str,
+                        high_accuracy_hits=1,
+                    )
+                    session.add(daily_accuracy)
                 
                 # ════════════════════════════════════════════════════════════
                 # STEP 3: UPDATE STREAK (Server UTC Time Authority)
@@ -164,7 +193,54 @@ async def check_in(
         xp_earned=daily_progress.xp_earned,
         goal_met=daily_progress.goal_met,
         lessons_completed=daily_progress.lessons_completed,
+        high_accuracy_hits=daily_accuracy.high_accuracy_hits if daily_accuracy else 0,
         new_streak=new_streak,
+    )
+
+
+@router.get("/daily-progress", response_model=CheckInResponse, status_code=status.HTTP_200_OK)
+async def get_daily_progress(
+    session: SessionDep,
+    current_user: Annotated[User, Depends(current_user)],
+) -> CheckInResponse:
+    today_utc = datetime.now(timezone.utc)
+    today_str = today_utc.strftime("%Y-%m-%d")
+
+    progress_query = select(DailyProgress).where(
+        DailyProgress.user_id == current_user.id,
+        DailyProgress.date_key == today_str,
+    )
+    progress_result = await session.exec(progress_query)
+    progress_row = progress_result.one_or_none()
+    daily_progress = (
+        progress_row[0]
+        if isinstance(progress_row, tuple) or hasattr(progress_row, "__getitem__")
+        else progress_row
+    )
+
+    accuracy_query = select(DailyAccuracy).where(
+        DailyAccuracy.user_id == current_user.id,
+        DailyAccuracy.date_key == today_str,
+    )
+    accuracy_result = await session.exec(accuracy_query)
+    accuracy_row = accuracy_result.one_or_none()
+    daily_accuracy = (
+        accuracy_row[0]
+        if isinstance(accuracy_row, tuple) or hasattr(accuracy_row, "__getitem__")
+        else accuracy_row
+    )
+
+    gamification_profile = await session.get(UserGamification, current_user.id)
+    current_streak = gamification_profile.current_streak if gamification_profile else 0
+
+    return CheckInResponse(
+        user_id=current_user.id,
+        date_key=today_str,
+        xp_earned=daily_progress.xp_earned if daily_progress else 0,
+        goal_met=daily_progress.goal_met if daily_progress else False,
+        lessons_completed=daily_progress.lessons_completed if daily_progress else 0,
+        high_accuracy_hits=daily_accuracy.high_accuracy_hits if daily_accuracy else 0,
+        new_streak=current_streak,
     )
 
 
@@ -294,6 +370,9 @@ async def get_my_rank(
         - Zero participants: rank = 1 (user would be first if they played)
         - Ties: Users with equal XP get consecutive ranks (not same rank)
     """
+    gamification_profile = await session.get(UserGamification, current_user.id)
+    current_streak = gamification_profile.current_streak if gamification_profile else 0
+
     # ════════════════════════════════════════════════════════════════
     # ALL TIME MODE: Aggregate XP across all weeks
     # ════════════════════════════════════════════════════════════════
@@ -330,6 +409,7 @@ async def get_my_rank(
         return MyRankResponse(
             rank=int(higher_count) + 1,
             total_xp=my_xp,
+            current_streak=current_streak,
             period_key="ALL_TIME",
             is_current_period=True,
         )
@@ -382,6 +462,7 @@ async def get_my_rank(
     return MyRankResponse(
         rank=rank,
         total_xp=my_xp,
+        current_streak=current_streak,
         period_key=period_key,
         is_current_period=is_current_period
     )

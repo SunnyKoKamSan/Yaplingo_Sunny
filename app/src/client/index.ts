@@ -13,6 +13,7 @@
  *
  * FUTURE: Echo could return 'xp_score' directly in response to simplify client logic.
  */
+import { useEffect } from "react";
 import {
   useMutation,
   useQuery,
@@ -23,7 +24,7 @@ import {
 import axios, { AxiosError } from "axios";
 import { useSetAtom } from "jotai";
 
-import store, { $token } from "../store";
+import store, { $lastCheckIn, $token } from "../store";
 import type {
   CheckInParams,
   CheckInResponse,
@@ -36,6 +37,7 @@ import type {
 } from "./models";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+let supportsDailyProgressEndpoint: boolean | null = null;
 
 const client = axios.create({
   baseURL: API_URL,
@@ -119,6 +121,12 @@ export const useEchoTranscriptsQuery = () =>
       const response = await client.get<Transcripts>(`/echo/transcripts`);
       return response.data;
     },
+    retry: (failureCount, error) => {
+      const status = error.response?.status;
+      if ([429, 500, 502, 503, 504].includes(status ?? 0)) return failureCount < 6;
+      return failureCount < 2;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
     staleTime: Infinity,
     refetchOnMount: "always", // important
   });
@@ -162,6 +170,7 @@ export const useCheckInMutation = (): UseMutationResult<
   CheckInParams
 > => {
   const queryClient = useQueryClient();
+  const setLastCheckIn = useSetAtom($lastCheckIn);
 
   return useMutation({
     mutationFn: async (params: CheckInParams) => {
@@ -169,10 +178,55 @@ export const useCheckInMutation = (): UseMutationResult<
       const { data } = await client.post<CheckInResponse>("/gamification/check-in", params);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setLastCheckIn(data);
+      queryClient.setQueryData(["gamification", "daily-progress"], data);
       queryClient.invalidateQueries({ queryKey: ["gamification"] });
     },
   });
+};
+
+export const useDailyProgressQuery = (): UseQueryResult<CheckInResponse, AxiosError> => {
+  const setLastCheckIn = useSetAtom($lastCheckIn);
+  const query = useQuery<CheckInResponse, AxiosError>({
+    queryKey: ["gamification", "daily-progress"],
+    queryFn: async () => {
+      const fallback = store.get($lastCheckIn) ?? {
+        user_id: "",
+        date_key: new Date().toISOString().slice(0, 10),
+        xp_earned: 0,
+        goal_met: false,
+        lessons_completed: 0,
+        high_accuracy_hits: 0,
+        new_streak: 0,
+      };
+
+      if (supportsDailyProgressEndpoint === false) return fallback;
+
+      const response = await client.get<CheckInResponse>("/gamification/daily-progress", {
+        validateStatus: (status) => [200, 404].includes(status),
+      });
+
+      if (response.status === 404) {
+        supportsDailyProgressEndpoint = false;
+        return fallback;
+      }
+
+      supportsDailyProgressEndpoint = true;
+      return response.data;
+    },
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: 2000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (query.data) setLastCheckIn(query.data);
+  }, [query.data, setLastCheckIn]);
+
+  return query;
 };
 
 // ============================================================================
