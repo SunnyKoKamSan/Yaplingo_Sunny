@@ -50,7 +50,7 @@ class EchoAttempt(SQLModel, table=True):
     id: ULID = Field(primary_key=True, default_factory=ULID, sa_type=ULIDType)
     transcript_id: ULID = Field(default=None, foreign_key="echotranscript.id", sa_type=ULIDType)
 
-    audio: bytes
+    audio: bytes  # base64
     result: dict = Field(sa_type=JSON)
 
     transcript: "EchoTranscript" = Relationship(back_populates="attempts")
