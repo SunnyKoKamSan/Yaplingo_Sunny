@@ -215,10 +215,9 @@ export const useDailyProgressQuery = (): UseQueryResult<CheckInResponse, AxiosEr
       supportsDailyProgressEndpoint = true;
       return response.data;
     },
-    staleTime: 0,
-    refetchOnMount: "always",
+    staleTime: 60 * 1000,
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 2000,
     retry: false,
   });
 

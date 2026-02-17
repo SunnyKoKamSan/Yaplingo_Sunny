@@ -22,7 +22,7 @@ router = APIRouter()
 
 # Constants
 DAILY_GOAL_XP = 200  # XP required to meet daily goal
-HIGH_ACCURACY_THRESHOLD = 85  # score percentage counted as "Hit 85%"
+HIGH_ACCURACY_THRESHOLD = 80  # score percentage counted as "Hit 80%"
 
 
 @router.post("/check-in", response_model=CheckInResponse, status_code=status.HTTP_200_OK)

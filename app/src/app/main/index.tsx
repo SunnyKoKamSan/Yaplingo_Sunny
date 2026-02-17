@@ -61,11 +61,7 @@ const StreakMeter = ({ streak }: { streak: number }) => {
 
   return (
     <View style={tw`mt-4 items-center justify-center`}>
-      <Meter
-        percentage={progressPercentage}
-        color={flameColor}
-        pointerColor={flameColor}
-        showPointer>
+      <Meter percentage={progressPercentage}>
         <View style={tw`flex-row items-center`}>
           <FlameIcon color={flameColor} fill={streakActive ? flameColor : "transparent"} size={36} />
           <Text style={tw.style("text-5xl font-bold leading-[0] tracking-tighter", streakColor)}>{safeStreak}</Text>
@@ -115,8 +111,7 @@ const DailyGoalsCard = () => {
   const { current, target } = useAtomValue($dailyProgress);
   const lessonProgress = useAtomValue($dailyLessonProgress);
   const accuracyProgress = useAtomValue($dailyAccuracyProgress);
-  const totalSegments = 5;
-  const dailyGoalSegments = Math.min(Math.floor((current / target) * totalSegments), totalSegments);
+  const xpProgressPercent = target > 0 ? Math.min(Math.max((current / target) * 100, 0), 100) : 0;
   const lessonsCompleted = Math.min(lessonProgress.current, lessonProgress.target);
   const highAccuracyHits = Math.min(accuracyProgress.current, accuracyProgress.target);
 
@@ -128,12 +123,14 @@ const DailyGoalsCard = () => {
         <Progress value={lessonsCompleted} total={lessonProgress.target} />
       </View>
       <View style={tw`gap-4`}>
-        <Text style={tw`text-lg leading-tight`}>{`Hit 85% accuracy 5 times in Echo mode. (${highAccuracyHits}/5)`}</Text>
+        <Text style={tw`text-lg leading-tight`}>{`Hit 80% accuracy 5 times in Echo mode. (${highAccuracyHits}/5)`}</Text>
         <Progress value={highAccuracyHits} total={accuracyProgress.target} />
       </View>
       <View style={tw`gap-4`}>
         <Text style={tw`text-lg leading-tight`}>{`Earn ${target} XP today. (${current} / ${target} XP)`}</Text>
-        <Progress value={dailyGoalSegments} total={totalSegments} />
+        <View style={tw`h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800`}>
+          <View style={[tw`h-full rounded-full bg-green-500`, { width: `${xpProgressPercent}%` }]} />
+        </View>
       </View>
     </View>
   );

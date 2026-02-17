@@ -34,7 +34,7 @@ class DailyProgress(SQLModel, table=True):
 
 
 class DailyAccuracy(SQLModel, table=True):
-    """Tracks how many times user achieved >=85% accuracy in a UTC day."""
+    """Tracks how many times user achieved >=80% accuracy in a UTC day."""
 
     __tablename__ = "daily_accuracy"
 

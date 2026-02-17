@@ -66,7 +66,7 @@ type TimeTab = "this-week" | "all-time";
 
 const getISOWeek = (date: Date) => {
   const d = new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
   );
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -80,9 +80,12 @@ const getISOWeek = (date: Date) => {
 const buildPeriods = (count: number) => {
   const periods: { key: string; label: string }[] = [];
   const now = new Date();
+  const nowUtcDate = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
   for (let i = 0; i < count; i += 1) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i * 7);
+    const date = new Date(nowUtcDate);
+    date.setUTCDate(date.getUTCDate() - i * 7);
     const { year, week } = getISOWeek(date);
     const key = `WEEK-${year}-${String(week).padStart(2, "0")}`;
     const label =
@@ -627,6 +630,7 @@ export default function MainCommunityScreen() {
   // Determine period key based on selected time tab
   const periodKey = useMemo(() => {
     if (timeTab === "all-time") return "ALL_TIME";
+    if (periodIndex === 0) return undefined;
     return periods[periodIndex]?.key;
   }, [timeTab, periods, periodIndex]);
 
