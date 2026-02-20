@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Dimensions,
   FlatList,
   Image,
   Pressable,
@@ -17,6 +16,7 @@ import Animated, {
   withTiming,
   FadeInDown,
 } from "react-native-reanimated";
+import { useIsFocused } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ChevronLeftIcon,
@@ -31,7 +31,7 @@ import LottieView from "lottie-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import tw from "twrnc";
 
-import { Button, Spinner, Text } from "~/components";
+import { AnimatedPodium, Button, Spinner, Text } from "~/components";
 import {
   useAuthedUserQuery,
   useLeaderboardQuery,
@@ -41,9 +41,6 @@ import { useNavigationOptions } from "~/hooks";
 import type { LeaderboardItem, Topic } from "~/client/models";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const PILLAR_WIDTH = (SCREEN_WIDTH - 64) / 3;
 
 // Background green intensified ~10% from #F0FDF4
 const BG_COLOR = "#E2FAE6";
@@ -315,108 +312,24 @@ const TimeTabs = ({
 
 // ─── Podium ──────────────────────────────────────────────────────────────────
 
-// Faded gradient colors (light top → darker bottom)
-const PODIUM_COLORS = {
-  1: { start: "#86EFAC", end: "#059669" }, // light green → dark green
-  2: { start: "#BEF264", end: "#65A30D" }, // light lime → dark lime
-  3: { start: "#5EEAD4", end: "#0D9488" }, // light teal → dark teal
-} as const;
-
-// Different bar sizes: 1 is largest
-const PODIUM_HEIGHTS = { 1: 170, 2: 115, 3: 90 } as const;
-const RANK_FONT_SIZES = { 1: 60, 2: 45, 3: 40 } as const;
-
-const PodiumPillar = ({
-  item,
-  rank,
-}: {
-  item: LeaderboardItem;
-  rank: 1 | 2 | 3;
-}) => {
-  const colors = PODIUM_COLORS[rank];
-  const height = PODIUM_HEIGHTS[rank];
-  const fontSize = RANK_FONT_SIZES[rank];
-
-  return (
-    <View style={tw`items-center`}>
-      {/* Avatar + name above pillar */}
-      <View style={tw`items-center mb-2 relative`}>
-        <View
-          style={tw`w-12 h-12 rounded-full bg-zinc-200 dark:bg-zinc-700 items-center justify-center border-2 border-white`}
-        >
-          <UserIcon size={22} color={tw.color("zinc-400")} />
-        </View>
-      </View>
-      <Text style={tw`text-xs font-bold mb-0.5 text-center`} numberOfLines={1}>
-        {item.name}
-      </Text>
-      <Text style={tw`text-xs text-zinc-500 mb-1`}>
-        {formatXP(item.total_xp)}
-      </Text>
-
-      {/* 3D-style pillar with faded gradient top→bottom */}
-      <LinearGradient
-        colors={[colors.start, colors.end]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={[
-          tw`rounded-t-2xl items-center justify-center`,
-          {
-            width: PILLAR_WIDTH,
-            height,
-            shadowColor: colors.end,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 8,
-          },
-        ]}
-      >
-        {rank === 1 ? (
-          /* Mascot centered inside bar, with crown floating in sync */
-          <View style={tw`items-center`}>
-            <FloatingMascot showCrown />
-            <Text style={[tw`font-bold text-white/90 mt-1`, { fontSize }]}>
-              {rank}
-            </Text>
-          </View>
-        ) : (
-          <Text style={[tw`font-bold text-white/90`, { fontSize }]}>
-            {rank}
-          </Text>
-        )}
-      </LinearGradient>
-    </View>
-  );
-};
-
-const PodiumSection = ({ top3 }: { top3: LeaderboardItem[] }) => {
+const PodiumSection = ({ top3, playToken }: { top3: LeaderboardItem[]; playToken: number }) => {
   if (top3.length === 0) return null;
 
   return (
     <LinearGradient
       colors={[BG_COLOR, "#D1FAE5", BG_COLOR]}
-      style={tw`pt-4 pb-0`}
+      style={tw`pt-10 pb-0`}
     >
-      <View style={tw`flex-row items-end justify-center gap-2 px-4`}>
-        {/* Rank 2 (left) */}
-        {top3[1] ? (
-          <PodiumPillar item={top3[1]} rank={2} />
-        ) : (
-          <View style={{ width: PILLAR_WIDTH }} />
-        )}
-        {/* Rank 1 (center, tallest) */}
-        {top3[0] ? (
-          <PodiumPillar item={top3[0]} rank={1} />
-        ) : (
-          <View style={{ width: PILLAR_WIDTH }} />
-        )}
-        {/* Rank 3 (right) */}
-        {top3[2] ? (
-          <PodiumPillar item={top3[2]} rank={3} />
-        ) : (
-          <View style={{ width: PILLAR_WIDTH }} />
-        )}
+      <View>
+        <AnimatedPodium
+          playToken={playToken}
+          entries={{
+            1: top3[0] ? { name: top3[0].name, xpLabel: formatXP(top3[0].total_xp) } : undefined,
+            2: top3[1] ? { name: top3[1].name, xpLabel: formatXP(top3[1].total_xp) } : undefined,
+            3: top3[2] ? { name: top3[2].name, xpLabel: formatXP(top3[2].total_xp) } : undefined,
+          }}
+          championContent={<FloatingMascot showCrown />}
+        />
       </View>
     </LinearGradient>
   );
@@ -621,11 +534,19 @@ const MyRankFooter = ({
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function MainCommunityScreen() {
+  const isFocused = useIsFocused();
   const { data: currentUser } = useAuthedUserQuery();
+  const [podiumPlayToken, setPodiumPlayToken] = useState(0);
   const [selectedTopic, setSelectedTopic] = useState<Topic>("Global");
   const [timeTab, setTimeTab] = useState<TimeTab>("this-week");
   const periods = useMemo(() => buildPeriods(5), []);
   const [periodIndex, setPeriodIndex] = useState(0);
+
+  useEffect(() => {
+    if (isFocused) {
+      setPodiumPlayToken((token) => token + 1);
+    }
+  }, [isFocused]);
 
   // Determine period key based on selected time tab
   const periodKey = useMemo(() => {
@@ -735,7 +656,7 @@ export default function MainCommunityScreen() {
               />
             )}
 
-            <PodiumSection top3={top3} />
+            <PodiumSection top3={top3} playToken={podiumPlayToken} />
 
             {/* remove spacer so podium and list touch */}
           </View>

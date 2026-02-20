@@ -15,6 +15,7 @@
  */
 import { useEffect } from "react";
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -38,6 +39,10 @@ import type {
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
 let supportsDailyProgressEndpoint: boolean | null = null;
+const GAMIFICATION_QUERY_KEY = ["gamification"] as const;
+const GAMIFICATION_DAILY_PROGRESS_QUERY_KEY = [...GAMIFICATION_QUERY_KEY, "daily-progress"] as const;
+const GAMIFICATION_LEADERBOARD_QUERY_KEY = [...GAMIFICATION_QUERY_KEY, "leaderboard"] as const;
+const GAMIFICATION_MY_RANK_QUERY_KEY = [...GAMIFICATION_QUERY_KEY, "myRank"] as const;
 
 const client = axios.create({
   baseURL: API_URL,
@@ -59,6 +64,36 @@ client.interceptors.response.use(undefined, (error) => {
   }
   return Promise.reject(error);
 });
+
+const getLeaderboardQueryKey = (periodKey?: string, topic?: Topic) =>
+  [...GAMIFICATION_LEADERBOARD_QUERY_KEY, periodKey ?? "current", topic ?? "Global"] as const;
+
+const getMyRankQueryKey = (periodKey?: string, topic?: Topic) =>
+  [...GAMIFICATION_MY_RANK_QUERY_KEY, periodKey ?? "current", topic ?? "Global"] as const;
+
+const fetchLeaderboard = async (periodKey?: string, topic?: Topic): Promise<LeaderboardItem[]> => {
+  const params: Record<string, string> = {};
+  if (periodKey === "ALL_TIME") {
+    params.all_time = "true";
+  } else if (periodKey) {
+    params.period_key = periodKey;
+  }
+  if (topic && topic !== "Global") params.topic = topic;
+  const { data } = await client.get<LeaderboardItem[]>("/gamification/leaderboard", { params });
+  return data;
+};
+
+const fetchMyRank = async (periodKey?: string, topic?: Topic): Promise<MyRankResponse> => {
+  const params: Record<string, string> = {};
+  if (periodKey === "ALL_TIME") {
+    params.all_time = "true";
+  } else if (periodKey) {
+    params.period_key = periodKey;
+  }
+  if (topic && topic !== "Global") params.topic = topic;
+  const { data } = await client.get<MyRankResponse>("/gamification/leaderboard/me", { params });
+  return data;
+};
 
 export const useAuthedUserQuery = () =>
   useQuery<User | null, AxiosError>({
@@ -161,6 +196,15 @@ export const useEchoResultQuery = (tid?: string) =>
     staleTime: Infinity,
   });
 
+export const useInvalidateGamification = () => {
+  const queryClient = useQueryClient();
+  return {
+    all: () => queryClient.invalidateQueries({ queryKey: GAMIFICATION_QUERY_KEY }),
+    leaderboard: () => queryClient.invalidateQueries({ queryKey: GAMIFICATION_LEADERBOARD_QUERY_KEY }),
+    myRank: () => queryClient.invalidateQueries({ queryKey: GAMIFICATION_MY_RANK_QUERY_KEY }),
+  };
+};
+
 // ============================================================================
 // CHECK-IN MUTATION
 // ============================================================================
@@ -170,6 +214,7 @@ export const useCheckInMutation = (): UseMutationResult<
   CheckInParams
 > => {
   const queryClient = useQueryClient();
+  const invalidateGamification = useInvalidateGamification();
   const setLastCheckIn = useSetAtom($lastCheckIn);
 
   return useMutation({
@@ -180,8 +225,8 @@ export const useCheckInMutation = (): UseMutationResult<
     },
     onSuccess: (data) => {
       setLastCheckIn(data);
-      queryClient.setQueryData(["gamification", "daily-progress"], data);
-      queryClient.invalidateQueries({ queryKey: ["gamification"] });
+      queryClient.setQueryData(GAMIFICATION_DAILY_PROGRESS_QUERY_KEY, data);
+      invalidateGamification.all();
     },
   });
 };
@@ -189,7 +234,7 @@ export const useCheckInMutation = (): UseMutationResult<
 export const useDailyProgressQuery = (): UseQueryResult<CheckInResponse, AxiosError> => {
   const setLastCheckIn = useSetAtom($lastCheckIn);
   const query = useQuery<CheckInResponse, AxiosError>({
-    queryKey: ["gamification", "daily-progress"],
+    queryKey: GAMIFICATION_DAILY_PROGRESS_QUERY_KEY,
     queryFn: async () => {
       const fallback = store.get($lastCheckIn) ?? {
         user_id: "",
@@ -235,22 +280,14 @@ export const useLeaderboardQuery = (
   periodKey?: string,
   topic?: Topic
 ): UseQueryResult<LeaderboardItem[], AxiosError> => {
-  const isAllTime = periodKey === "ALL_TIME";
   return useQuery({
-    queryKey: ["gamification", "leaderboard", periodKey ?? "current", topic ?? "Global"],
-    queryFn: async () => {
-      const params: Record<string, string> = {};
-      if (isAllTime) {
-        params.all_time = "true";
-      } else if (periodKey) {
-        params.period_key = periodKey;
-      }
-      if (topic && topic !== "Global") params.topic = topic;
-      const { data } = await client.get<LeaderboardItem[]>("/gamification/leaderboard", { params });
-      return data;
-    },
+    queryKey: getLeaderboardQueryKey(periodKey, topic),
+    queryFn: () => fetchLeaderboard(periodKey, topic),
     staleTime: 60 * 1000,
-    refetchOnWindowFocus: true,
+    gcTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    retry: 2,
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -258,23 +295,24 @@ export const useMyRankQuery = (
   periodKey?: string,
   topic?: Topic
 ): UseQueryResult<MyRankResponse, AxiosError> => {
-  const isAllTime = periodKey === "ALL_TIME";
   return useQuery({
-    queryKey: ["gamification", "myRank", periodKey ?? "current", topic ?? "Global"],
-    queryFn: async () => {
-      const params: Record<string, string> = {};
-      if (isAllTime) {
-        params.all_time = "true";
-      } else if (periodKey) {
-        params.period_key = periodKey;
-      }
-      if (topic && topic !== "Global") params.topic = topic;
-      const { data } = await client.get<MyRankResponse>("/gamification/leaderboard/me", { params });
-      return data;
-    },
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: true,
+    queryKey: getMyRankQueryKey(periodKey, topic),
+    queryFn: () => fetchMyRank(periodKey, topic),
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
+};
+
+export const usePrefetchLeaderboard = () => {
+  const queryClient = useQueryClient();
+  return (periodKey?: string, topic?: Topic) => {
+    void queryClient.prefetchQuery({
+      queryKey: getLeaderboardQueryKey(periodKey, topic),
+      queryFn: () => fetchLeaderboard(periodKey, topic),
+      staleTime: 60 * 1000,
+    });
+  };
 };
 
 export default client;

@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from server.core.gamification import get_period_key, update_streak_utc
+from server.core.gamification import get_period_key, get_visible_streak_utc, update_streak_utc
 from server.dependencies import Repository, SessionDep, current_user
 from server.repository.gamification import DailyAccuracy, DailyProgress, LeaderboardEntry, UserGamification
 from server.repository.models import User
@@ -231,7 +231,7 @@ async def get_daily_progress(
     )
 
     gamification_profile = await session.get(UserGamification, current_user.id)
-    current_streak = gamification_profile.current_streak if gamification_profile else 0
+    current_streak = get_visible_streak_utc(gamification_profile)
 
     return CheckInResponse(
         user_id=current_user.id,
@@ -371,7 +371,7 @@ async def get_my_rank(
         - Ties: Users with equal XP get consecutive ranks (not same rank)
     """
     gamification_profile = await session.get(UserGamification, current_user.id)
-    current_streak = gamification_profile.current_streak if gamification_profile else 0
+    current_streak = get_visible_streak_utc(gamification_profile)
 
     # ════════════════════════════════════════════════════════════════
     # ALL TIME MODE: Aggregate XP across all weeks

@@ -2,6 +2,8 @@ import { Image, View, type ImageRequireSource } from "react-native";
 import { Tabs } from "expo-router";
 import tw from "twrnc";
 
+import { usePrefetchLeaderboard } from "~/client";
+
 type Tab = {
   header?: boolean;
   title: string;
@@ -35,6 +37,8 @@ const TabBarIcon = ({ tab, focused }: { tab: Tab; focused: boolean }) => (
 );
 
 export default function MainLayout() {
+  const prefetchLeaderboard = usePrefetchLeaderboard();
+
   return (
     <Tabs
       screenOptions={{
@@ -46,6 +50,15 @@ export default function MainLayout() {
         <Tabs.Screen
           key={name}
           name={name}
+          listeners={
+            name === "community"
+              ? {
+                  tabPress: () => {
+                    prefetchLeaderboard();
+                  },
+                }
+              : undefined
+          }
           options={{
             headerTitle: tab.title,
             headerShown: tab.header ?? true,

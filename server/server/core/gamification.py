@@ -38,6 +38,34 @@ def get_period_key(dt: date) -> str:
     return f"WEEK-{iso_year}-{iso_week:02d}"
 
 
+def get_visible_streak_utc(user_gamification: Optional[UserGamification]) -> int:
+    """
+    Return the streak value that should be shown to clients.
+
+    Rules:
+    - If user has no profile/activity, show 0.
+    - If last activity is today or yesterday (UTC), show stored streak.
+    - If at least one full day was missed, show 0 until next check-in.
+    """
+    if user_gamification is None:
+        return 0
+
+    last_activity = user_gamification.last_activity_date
+    if not last_activity:
+        return 0
+
+    try:
+        last_activity_date = datetime.strptime(last_activity, "%Y-%m-%d").date()
+    except ValueError:
+        return 0
+
+    today_utc = datetime.now(timezone.utc).date()
+    if last_activity_date < today_utc - timedelta(days=1):
+        return 0
+
+    return user_gamification.current_streak
+
+
 async def update_streak_utc(
     session: AsyncSession,
     user_id: ULID,
