@@ -43,7 +43,7 @@ import type { LeaderboardItem, Topic } from "~/client/models";
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 // Background green intensified ~10% from #F0FDF4
-const BG_COLOR = "#E2FAE6";
+const BG_COLOR = "#ffffff";
 
 const LOTTIE_CROWN_URI =
   "https://lottie.host/e371643e-e22e-4a3e-a1ce-b8ab03785b60/WiYpVXACUw.lottie";
@@ -274,12 +274,17 @@ const TopicTabs = ({
 const TimeTabs = ({
   selected,
   onSelect,
+  inDirt = false,
 }: {
   selected: TimeTab;
   onSelect: (tab: TimeTab) => void;
+  inDirt?: boolean;
 }) => (
   <View
-    style={tw`flex-row mx-4 mt-1 mb-2 bg-zinc-100 dark:bg-zinc-800 rounded-full p-1`}
+    style={tw.style(
+      "flex-row bg-zinc-100 dark:bg-zinc-800 rounded-full p-0.5",
+      inDirt ? "mx-8" : "mx-8 mt-1 mb-2",
+    )}
   >
     {(["this-week", "all-time"] as TimeTab[]).map((tab) => {
       const active = selected === tab;
@@ -292,7 +297,7 @@ const TimeTabs = ({
           key={tab}
           onPress={() => onSelect(tab)}
           style={tw.style(
-            "flex-1 items-center py-2.5 rounded-full",
+            "flex-1 items-center py-1.75 rounded-full",
             active && "bg-green-700 shadow-sm",
           )}
         >
@@ -312,13 +317,25 @@ const TimeTabs = ({
 
 // ─── Podium ──────────────────────────────────────────────────────────────────
 
-const PodiumSection = ({ top3, playToken }: { top3: LeaderboardItem[]; playToken: number }) => {
-  if (top3.length === 0) return null;
+const PodiumSection = ({
+  top3,
+  playToken,
+  timeTab,
+  onSelectTimeTab,
+}: {
+  top3: LeaderboardItem[];
+  playToken: number;
+  timeTab: TimeTab;
+  onSelectTimeTab: (tab: TimeTab) => void;
+}) => {
+  if (top3.length === 0) {
+    return <TimeTabs selected={timeTab} onSelect={onSelectTimeTab} />;
+  }
 
   return (
     <LinearGradient
       colors={[BG_COLOR, "#D1FAE5", BG_COLOR]}
-      style={tw`pt-10 pb-0`}
+      style={tw`pt-2 pb-0`}
     >
       <View>
         <AnimatedPodium
@@ -330,6 +347,12 @@ const PodiumSection = ({ top3, playToken }: { top3: LeaderboardItem[]; playToken
           }}
           championContent={<FloatingMascot showCrown />}
         />
+        <View
+          pointerEvents="box-none"
+          style={[tw`absolute left-0 right-0`, { bottom: 8 }]}
+        >
+          <TimeTabs selected={timeTab} onSelect={onSelectTimeTab} inDirt />
+        </View>
       </View>
     </LinearGradient>
   );
@@ -382,7 +405,7 @@ const LeaderboardRow = ({
           backgroundColor: "#FFFFFF",
         }}
       >
-        <Text style={{ fontSize: 20, fontWeight: "900", color: "#065F46" }}>{item.rank}</Text>
+        <Text style={{ fontSize: 20, fontWeight: "900", color: "#065F46" }}>{`#${item.rank}`}</Text>
       </View>
 
       <View style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", marginRight: 14 }}>
@@ -516,7 +539,7 @@ const MyRankFooter = ({
       ]}
      >
          <View style={{ width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000000', backgroundColor: '#ffffff' }}>
-           <Text style={{color: '#000000', fontWeight: '900', fontSize: 18 }}>{rank}</Text>
+           <Text style={{color: '#000000', fontWeight: '900', fontSize: 18 }}>{`#${rank}`}</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginLeft: 12 }}>
         <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#46786b', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
@@ -640,8 +663,6 @@ export default function MainCommunityScreen() {
               selected={selectedTopic}
               onSelect={setSelectedTopic}
             />
-            <TimeTabs selected={timeTab} onSelect={setTimeTab} />
-
             {timeTab === "this-week" && (
               <WeekNav
                 label={periods[periodIndex]?.label ?? ""}
@@ -656,7 +677,12 @@ export default function MainCommunityScreen() {
               />
             )}
 
-            <PodiumSection top3={top3} playToken={podiumPlayToken} />
+            <PodiumSection
+              top3={top3}
+              playToken={podiumPlayToken}
+              timeTab={timeTab}
+              onSelectTimeTab={setTimeTab}
+            />
 
             {/* remove spacer so podium and list touch */}
           </View>
