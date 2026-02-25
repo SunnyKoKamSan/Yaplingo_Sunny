@@ -1,8 +1,12 @@
+import { useEffect } from "react";
 import { Image, View, type ImageRequireSource } from "react-native";
 import { Tabs } from "expo-router";
+import { useSetAtom } from "jotai";
 import tw from "twrnc";
 
-import { usePrefetchLeaderboard } from "~/client";
+import { useActiveEventsQuery, usePrefetchLeaderboard } from "~/client";
+import EventBanner from "~/components/EventBanner";
+import { $activeEvent } from "~/store";
 
 type Tab = {
   header?: boolean;
@@ -38,9 +42,16 @@ const TabBarIcon = ({ tab, focused }: { tab: Tab; focused: boolean }) => (
 
 export default function MainLayout() {
   const prefetchLeaderboard = usePrefetchLeaderboard();
+  const { data: events, refetch } = useActiveEventsQuery();
+  const setActiveEvent = useSetAtom($activeEvent);
+
+  useEffect(() => {
+    setActiveEvent(events?.[0] ?? null);
+  }, [events, setActiveEvent]);
 
   return (
-    <Tabs
+    <View style={tw`flex-1`}>
+      <Tabs
       screenOptions={{
         tabBarShowLabel: false,
         tabBarStyle: tw`h-22 border-t-2 pt-4`,
@@ -66,6 +77,8 @@ export default function MainLayout() {
           }}
         />
       ))}
-    </Tabs>
+      </Tabs>
+      <EventBanner onExpire={() => void refetch()} />
+    </View>
   );
 }

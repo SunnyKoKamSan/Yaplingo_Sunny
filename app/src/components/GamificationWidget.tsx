@@ -2,16 +2,17 @@ import { useEffect } from "react";
 import { View } from "react-native";
 import { useAtomValue } from "jotai";
 import { FlameIcon } from "lucide-react-native";
-import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { FadeIn, interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import tw from "twrnc";
 
-import { $dailyProgress, $streak } from "~/store";
+import { $dailyProgress, $lastCheckIn, $streak } from "~/store";
 
 import Text from "./Text";
 
 export default function GamificationWidget() {
   const streak = useAtomValue($streak);
   const { current, target, met } = useAtomValue($dailyProgress);
+  const lastCheckIn = useAtomValue($lastCheckIn);
   const goalMet = met || current >= target;
 
   const progress = useSharedValue(0);
@@ -50,6 +51,13 @@ export default function GamificationWidget() {
         <Text style={tw`mt-2 text-sm font-medium text-green-500`}>🎉 Goal Complete!</Text>
       ) : (
         <Text style={tw`mt-2 text-sm font-medium text-zinc-500`}>{`${current} / ${target} XP`}</Text>
+      )}
+      {lastCheckIn?.multiplier_active && (
+        <Animated.View entering={FadeIn.duration(400)} style={tw`mt-2 self-start rounded-full bg-amber-500 px-3 py-1`}>
+          <Text style={tw`text-xs font-bold text-white`}>
+            {lastCheckIn.event_name ?? "2x XP!"}{lastCheckIn.bonus_xp > 0 ? ` +${lastCheckIn.bonus_xp} bonus` : ""}
+          </Text>
+        </Animated.View>
       )}
     </View>
   );

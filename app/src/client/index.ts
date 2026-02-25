@@ -29,6 +29,7 @@ import store, { $lastCheckIn, $token } from "../store";
 import type {
   CheckInParams,
   CheckInResponse,
+  ActiveEvent,
   LeaderboardItem,
   MyRankResponse,
   Result,
@@ -314,5 +315,20 @@ export const usePrefetchLeaderboard = () => {
     });
   };
 };
+
+// ============================================================================
+// ACTIVE EVENTS QUERY
+// ============================================================================
+export const useActiveEventsQuery = () =>
+  useQuery<ActiveEvent[], AxiosError>({
+    queryKey: [...GAMIFICATION_QUERY_KEY, "active-events"],
+    queryFn: async () => {
+      const { data } = await client.get<ActiveEvent[]>("/gamification/active-events");
+      return data;
+    },
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 60 * 1000,
+  });
 
 export default client;

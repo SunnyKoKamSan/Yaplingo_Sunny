@@ -60,6 +60,9 @@ export type CheckInResponse = {
   lessons_completed: number;
   high_accuracy_hits: number;
   new_streak: number;
+  bonus_xp: number;
+  multiplier_active: boolean;
+  event_name: string | null;
 };
 
 export type LeaderboardItem = {
@@ -76,4 +79,13 @@ export type MyRankResponse = {
   current_streak: number;
   period_key: string;
   is_current_period: boolean;
+};
+
+export type ActiveEvent = {
+  id: number;
+  name: string;
+  description: string;
+  multiplier: number;
+  starts_at: string;
+  ends_at: string;
 };

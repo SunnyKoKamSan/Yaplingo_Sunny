@@ -3,7 +3,7 @@ import { atom, getDefaultStore } from "jotai";
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
 import { type SyncStringStorage } from "jotai/vanilla/utils/atomWithStorage";
 
-import type { CheckInResponse } from "~/client/models";
+import type { CheckInResponse, ActiveEvent } from "~/client/models";
 
 const store = getDefaultStore();
 
@@ -51,5 +51,7 @@ export const $dailyAccuracyProgress = atom((get) => ({
   current: get($lastCheckIn)?.high_accuracy_hits ?? 0,
   target: 5,
 }));
+
+export const $activeEvent = atom<ActiveEvent | null>(null);
 
 export default store;

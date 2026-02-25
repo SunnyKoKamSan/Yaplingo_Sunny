@@ -13,9 +13,9 @@ from sqlalchemy.orm import selectinload
 
 from server.core.gamification import get_period_key, get_visible_streak_utc, update_streak_utc
 from server.dependencies import Repository, SessionDep, current_user
-from server.repository.gamification import DailyAccuracy, DailyProgress, LeaderboardEntry, UserGamification
+from server.repository.gamification import DailyAccuracy, DailyProgress, LeaderboardEntry, UserGamification, XPMultiplierEvent
 from server.repository.models import User
-from server.schemas import CheckInRequest, CheckInResponse, LeaderboardItem, MyRankResponse
+from server.schemas import ActiveEventResponse, CheckInRequest, CheckInResponse, LeaderboardItem, MyRankResponse
 from server.utils import get_current_utc_period_key
 
 router = APIRouter()
@@ -23,6 +23,22 @@ router = APIRouter()
 # Constants
 DAILY_GOAL_XP = 200  # XP required to meet daily goal
 HIGH_ACCURACY_THRESHOLD = 80  # score percentage counted as "Hit 80%"
+
+
+@router.get("/active-events", response_model=list[ActiveEventResponse], status_code=status.HTTP_200_OK)
+async def get_active_events(session: SessionDep) -> list[ActiveEventResponse]:
+    """Return all currently active XP multiplier events. Public endpoint."""
+    now = datetime.now(timezone.utc)
+    result = await session.exec(
+        select(XPMultiplierEvent).where(
+            XPMultiplierEvent.is_active == True,
+            XPMultiplierEvent.starts_at <= now,
+            XPMultiplierEvent.ends_at >= now,
+        )
+    )
+    rows = result.all()
+    events = [r[0] if isinstance(r, tuple) or hasattr(r, "__getitem__") else r for r in rows]
+    return events
 
 
 @router.post("/check-in", response_model=CheckInResponse, status_code=status.HTTP_200_OK)
@@ -58,9 +74,36 @@ async def check_in(
         async with session.begin():
             try:
                 # ════════════════════════════════════════════════════════════
+                # STEP 0: CHECK FOR ACTIVE XP MULTIPLIER EVENT (Anti-Cheat)
+                # ════════════════════════════════════════════════════════════
+                now_utc = datetime.now(timezone.utc)
+                event_query = select(XPMultiplierEvent).where(
+                    XPMultiplierEvent.is_active == True,
+                    XPMultiplierEvent.starts_at <= now_utc,
+                    XPMultiplierEvent.ends_at >= now_utc,
+                )
+                event_result = await session.exec(event_query)
+                event_rows = event_result.all()
+                active_event_row = event_rows[0] if event_rows else None
+                active_event = (
+                    active_event_row[0]
+                    if active_event_row is not None and (isinstance(active_event_row, tuple) or hasattr(active_event_row, "__getitem__"))
+                    else active_event_row
+                )
+
+                if active_event:
+                    effective_xp = int(request.xp_amount * active_event.multiplier)
+                    bonus_xp = effective_xp - request.xp_amount
+                    event_name = active_event.name
+                else:
+                    effective_xp = request.xp_amount
+                    bonus_xp = 0
+                    event_name = None
+
+                # ════════════════════════════════════════════════════════════
                 # STEP 1: GENERATE SERVER UTC DATE (Anti-Cheat Protection)
                 # ════════════════════════════════════════════════════════════
-                today_utc = datetime.now(timezone.utc)
+                today_utc = now_utc
                 today_str = today_utc.strftime("%Y-%m-%d")
                 today_date = today_utc.date()
                 period_key = get_period_key(today_date)
@@ -82,14 +125,14 @@ async def check_in(
                 
                 if daily_progress:
                     # UPDATE: Increment XP and lesson count
-                    daily_progress.xp_earned += request.xp_amount
+                    daily_progress.xp_earned += effective_xp
                     daily_progress.lessons_completed += 1
                 else:
                     # CREATE: New daily progress record
                     daily_progress = DailyProgress(
                         user_id=current_user.id,
                         date_key=today_str,
-                        xp_earned=request.xp_amount,
+                        xp_earned=effective_xp,
                         lessons_completed=1,
                         goal_met=False
                     )
@@ -144,12 +187,12 @@ async def check_in(
                 )
                 
                 if leaderboard_entry:
-                    leaderboard_entry.total_xp += request.xp_amount
+                    leaderboard_entry.total_xp += effective_xp
                 else:
                     leaderboard_entry = LeaderboardEntry(
                         user_id=current_user.id,
                         period_key=period_key,
-                        total_xp=request.xp_amount
+                        total_xp=effective_xp
                     )
                     session.add(leaderboard_entry)
                 
@@ -161,12 +204,12 @@ async def check_in(
                         (current_user.id, topic_period_key)
                     )
                     if topic_entry:
-                        topic_entry.total_xp += request.xp_amount
+                        topic_entry.total_xp += effective_xp
                     else:
                         topic_entry = LeaderboardEntry(
                             user_id=current_user.id,
                             period_key=topic_period_key,
-                            total_xp=request.xp_amount
+                            total_xp=effective_xp
                         )
                         session.add(topic_entry)
                 
@@ -195,6 +238,9 @@ async def check_in(
         lessons_completed=daily_progress.lessons_completed,
         high_accuracy_hits=daily_accuracy.high_accuracy_hits if daily_accuracy else 0,
         new_streak=new_streak,
+        bonus_xp=bonus_xp,
+        multiplier_active=active_event is not None,
+        event_name=event_name,
     )
 
 

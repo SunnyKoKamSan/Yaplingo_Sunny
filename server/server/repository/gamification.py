@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Index
@@ -97,3 +98,17 @@ class UserGamification(SQLModel, table=True):
         max_length=10,
         description="Last activity date in 'YYYY-MM-DD' format"
     )
+
+
+class XPMultiplierEvent(SQLModel, table=True):
+    """Defines time-limited XP multiplier events (e.g. Double XP Weekend)."""
+
+    __tablename__ = "xp_multiplier_event"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(max_length=100)
+    description: str = Field(default="", max_length=255)
+    multiplier: float = Field(ge=1.0, le=10.0)
+    starts_at: datetime = Field(index=True)
+    ends_at: datetime = Field(index=True)
+    is_active: bool = Field(default=True)

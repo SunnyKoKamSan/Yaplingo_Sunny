@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
 from ulid import ULID
 
 from server.repository.models import Language
@@ -41,6 +43,9 @@ class CheckInResponse(BaseModel):
     lessons_completed: int
     high_accuracy_hits: int
     new_streak: int
+    bonus_xp: int = Field(default=0)
+    multiplier_active: bool = Field(default=False)
+    event_name: str | None = Field(default=None)
     
     class Config:
         from_attributes = True
@@ -59,3 +64,14 @@ class MyRankResponse(BaseModel):
     current_streak: int = 0
     period_key: str
     is_current_period: bool = True
+
+
+class ActiveEventResponse(BaseModel):
+    id: int
+    name: str
+    description: str
+    multiplier: float
+    starts_at: datetime
+    ends_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
