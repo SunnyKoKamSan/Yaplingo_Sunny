@@ -28,7 +28,7 @@ HIGH_ACCURACY_THRESHOLD = 80  # score percentage counted as "Hit 80%"
 @router.get("/active-events", response_model=list[ActiveEventResponse], status_code=status.HTTP_200_OK)
 async def get_active_events(session: SessionDep) -> list[ActiveEventResponse]:
     """Return all currently active XP multiplier events. Public endpoint."""
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     result = await session.exec(
         select(XPMultiplierEvent).where(
             XPMultiplierEvent.is_active == True,
@@ -76,7 +76,7 @@ async def check_in(
                 # ════════════════════════════════════════════════════════════
                 # STEP 0: CHECK FOR ACTIVE XP MULTIPLIER EVENT (Anti-Cheat)
                 # ════════════════════════════════════════════════════════════
-                now_utc = datetime.now(timezone.utc)
+                now_utc = datetime.utcnow()
                 event_query = select(XPMultiplierEvent).where(
                     XPMultiplierEvent.is_active == True,
                     XPMultiplierEvent.starts_at <= now_utc,
