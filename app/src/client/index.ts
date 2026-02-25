@@ -245,6 +245,9 @@ export const useDailyProgressQuery = (): UseQueryResult<CheckInResponse, AxiosEr
         lessons_completed: 0,
         high_accuracy_hits: 0,
         new_streak: 0,
+        bonus_xp: 0,
+        multiplier_active: false,
+        event_name: null,
       };
 
       if (supportsDailyProgressEndpoint === false) return fallback;
