@@ -138,6 +138,7 @@ async def main():
             year, week, _ = datetime.now().isocalendar()
             current_period = f"WEEK-{year}-{week:02d}"
             
+            # ── Global ──
             query = (
                 select(LeaderboardEntry, User)
                 .join(User, LeaderboardEntry.user_id == User.id)
@@ -148,12 +149,52 @@ async def main():
             results = list(result.all())
             
             if results:
-                print(f"\nPeriod: {current_period}\n")
+                print(f"\nPeriod: {current_period}  (Global)\n")
                 for rank, (entry, user) in enumerate(results, 1):
                     medal = "🥇" if rank == 1 else "🥈" if rank == 2 else "🥉" if rank == 3 else "  "
                     print(f"{medal} #{rank:2d} | {user.name:20s} | {entry.total_xp:5d} XP")
             else:
                 print(f"\n⚠️  No entries for current week: {current_period}")
+
+            # ── Per-Topic ──
+            topics = ["Food", "Culture", "Travel", "Business", "Technology"]
+            for topic in topics:
+                topic_key = f"{current_period}::{topic}"
+                query = (
+                    select(LeaderboardEntry, User)
+                    .join(User, LeaderboardEntry.user_id == User.id)
+                    .where(LeaderboardEntry.period_key == topic_key)
+                    .order_by(col(LeaderboardEntry.total_xp).desc())
+                )
+                result = await session.exec(query)
+                topic_results = list(result.all())
+                if topic_results:
+                    print(f"\nPeriod: {topic_key}\n")
+                    for rank, (entry, user) in enumerate(topic_results, 1):
+                        medal = "🥇" if rank == 1 else "🥈" if rank == 2 else "🥉" if rank == 3 else "  "
+                        print(f"{medal} #{rank:2d} | {user.name:20s} | {entry.total_xp:5d} XP")
+
+            # ── All-Time Global ──
+            print("\n" + "-" * 70)
+            print("🏆 ALL-TIME LEADERBOARD (Global)")
+            print("-" * 70)
+            query = (
+                select(
+                    User.name,
+                    func.sum(LeaderboardEntry.total_xp).label("total_xp"),
+                )
+                .join(User, LeaderboardEntry.user_id == User.id)
+                .where(~LeaderboardEntry.period_key.contains("::"))
+                .group_by(User.name)
+                .order_by(func.sum(LeaderboardEntry.total_xp).desc())
+            )
+            result = await session.exec(query)
+            all_time_results = list(result.all())
+            if all_time_results:
+                print()
+                for rank, (name, total_xp) in enumerate(all_time_results, 1):
+                    medal = "🥇" if rank == 1 else "🥈" if rank == 2 else "🥉" if rank == 3 else "  "
+                    print(f"{medal} #{rank:2d} | {name:20s} | {int(total_xp):5d} XP")
             
             # ========================================
             # 5. DATABASE STATISTICS

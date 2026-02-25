@@ -5,7 +5,8 @@ Gamification Data Seeding Script
 Creates test data for the Gamification system including:
 - Dummy users
 - 14 days of historical daily progress
-- Leaderboard entries
+- Global AND topic-specific leaderboard entries (double-write)
+- Multi-week history for all-time aggregation testing
 - Streak information
 
 Usage:
@@ -41,6 +42,14 @@ PRACTICE_PROBABILITY = 0.7  # 70% chance user practiced on a given day
 MIN_XP = 20
 MAX_XP = 100
 GOAL_THRESHOLD = 40  # XP needed to meet daily goal
+
+# Topics matching frontend community.tsx tabs
+TOPICS = ["Food", "Culture", "Travel", "Business", "Technology"]
+
+# Each practice session is randomly assigned 1-2 topics.
+# XP is split across those topics (and also added to Global).
+MIN_TOPICS_PER_SESSION = 1
+MAX_TOPICS_PER_SESSION = 2
 
 
 # ============================================================================
@@ -145,25 +154,45 @@ async def update_leaderboard(
     session: AsyncSession,
     user: User,
     date: datetime,
-    xp: int
+    xp: int,
+    topics: list[str] | None = None,
 ):
     """
-    Update or create a LeaderboardEntry for the user's weekly period.
+    Double-write leaderboard: one Global entry + one per topic.
+
+    Global entry  → period_key = "WEEK-YYYY-WW"
+    Topic entry   → period_key = "WEEK-YYYY-WW::Food"  (etc.)
+
+    XP is written to Global AND each assigned topic entry so that
+    the topic tabs and all-time aggregation have realistic data.
     """
     period_key = get_week_period_key(date)
-    
-    # Check if entry exists
+
+    # ── Global entry (always) ──
     entry = await session.get(LeaderboardEntry, {"user_id": user.id, "period_key": period_key})
-    
     if entry:
         entry.total_xp += xp
     else:
-        entry = LeaderboardEntry(
-            user_id=user.id,
-            period_key=period_key,
-            total_xp=xp
-        )
+        entry = LeaderboardEntry(user_id=user.id, period_key=period_key, total_xp=xp)
         session.add(entry)
+
+    # ── Topic-specific entries ──
+    if topics:
+        per_topic_xp = xp // len(topics)  # split XP evenly across topics
+        remainder = xp - per_topic_xp * len(topics)
+        for i, topic in enumerate(topics):
+            topic_xp = per_topic_xp + (remainder if i == 0 else 0)
+            topic_key = f"{period_key}::{topic}"
+            topic_entry = await session.get(
+                LeaderboardEntry, {"user_id": user.id, "period_key": topic_key}
+            )
+            if topic_entry:
+                topic_entry.total_xp += topic_xp
+            else:
+                topic_entry = LeaderboardEntry(
+                    user_id=user.id, period_key=topic_key, total_xp=topic_xp
+                )
+                session.add(topic_entry)
 
 
 async def update_user_gamification(
@@ -194,6 +223,7 @@ async def update_user_gamification(
 async def seed_user_history(session: AsyncSession, user: User):
     """
     Generate 14 days of historical data for a single user.
+    Each practice session is randomly assigned 1-2 topics.
     """
     print(f"\n   📅 Generating history for {user.name}...")
     
@@ -202,6 +232,7 @@ async def seed_user_history(session: AsyncSession, user: User):
     
     last_practice_date = None
     total_xp = 0
+    topic_xp_totals: dict[str, int] = {}
     
     for day_offset in range(HISTORY_DAYS):
         current_date = start_date + timedelta(days=day_offset)
@@ -209,10 +240,19 @@ async def seed_user_history(session: AsyncSession, user: User):
         # 70% chance the user practiced
         if random.random() < PRACTICE_PROBABILITY:
             xp = await seed_daily_progress(session, user, current_date)
-            await update_leaderboard(session, user, current_date, xp)
+
+            # Pick 1-2 random topics for this session
+            num_topics = random.randint(MIN_TOPICS_PER_SESSION, MAX_TOPICS_PER_SESSION)
+            session_topics = random.sample(TOPICS, num_topics)
+
+            await update_leaderboard(session, user, current_date, xp, topics=session_topics)
             last_practice_date = current_date
             total_xp += xp
-            print(f"      ✓ Day {day_offset + 1}: {get_date_key(current_date)} → {xp} XP")
+
+            for t in session_topics:
+                topic_xp_totals[t] = topic_xp_totals.get(t, 0) + (xp // num_topics)
+
+            print(f"      ✓ Day {day_offset + 1}: {get_date_key(current_date)} → {xp} XP  [{', '.join(session_topics)}]")
         else:
             print(f"      ○ Day {day_offset + 1}: {get_date_key(current_date)} → No practice")
     
@@ -220,7 +260,10 @@ async def seed_user_history(session: AsyncSession, user: User):
     if last_practice_date:
         await update_user_gamification(session, user, last_practice_date)
     
-    print(f"      💎 Total XP earned: {total_xp}")
+    print(f"      💎 Total Global XP: {total_xp}")
+    if topic_xp_totals:
+        for t, txp in sorted(topic_xp_totals.items()):
+            print(f"         🏷️  {t}: ~{txp} XP")
 
 
 # ============================================================================
@@ -260,7 +303,9 @@ async def main():
             print(f"   • Days of history: {HISTORY_DAYS}")
             print(f"   • Practice probability: {PRACTICE_PROBABILITY * 100}%")
             print(f"   • XP range per session: {MIN_XP}-{MAX_XP}")
-            print("\n✅ You can now run your tests or demo the gamification features!\n")
+            print(f"   • Topics seeded: {', '.join(TOPICS)}")
+            print(f"   • Leaderboard writes: Global + topic-specific (double-write)")
+            print("\n✅ You can now test topic leaderboards and all-time aggregation!\n")
     
     finally:
         # Clean up
