@@ -64,6 +64,8 @@ export type CheckInResponse = {
   bonus_xp: number;
   multiplier_active: boolean;
   event_name: string | null;
+  gems_earned: number;
+  newly_unlocked: string[];
 };
 
 export type LeaderboardItem = {
@@ -103,3 +105,30 @@ export type TopicMasteryResponse = {
   tier: MasteryTier;
   updated_at: string;
 };
+
+// ============================================================================
+// GEM & ACHIEVEMENT TYPES
+// ============================================================================
+
+export type GemTransaction = {
+  id: number;
+  amount: number;
+  reason: string;
+  created_at: string;
+};
+
+export type GemBalanceResponse = {
+  balance: number;
+  transactions: GemTransaction[];
+};
+
+export type AchievementResponse = {
+  key: string;
+  title: string;
+  desc: string;
+  unlocked: boolean;
+  unlocked_at: string | null;
+};
+
+export type SpendGemsRequest = { item_key: string };
+export type SpendGemsResponse = { new_balance: number; item_key: string };

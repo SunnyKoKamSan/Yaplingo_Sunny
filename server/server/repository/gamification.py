@@ -20,6 +20,43 @@ class MasteryTier(str, Enum):
     DIAMOND = "Diamond"
 
 
+# ── Gem Economy ───────────────────────────────────────────────────────────────
+
+GEM_EARN_RATES: dict[str, int] = {
+    "daily_goal_met":       10,
+    "achievement_unlocked": 15,
+    "streak_7":             25,
+    "streak_30":            75,
+    "mastery_tier_upgrade": 20,
+}
+
+GEM_SPEND_RATES: dict[str, int] = {
+    "streak_freeze":     50,
+    "xp_boost_1h":      100,
+    "avatar_decoration": 150,
+}
+
+# ── Achievement Definitions ───────────────────────────────────────────────────
+
+ACHIEVEMENTS: dict[str, dict] = {
+    "first_step":   {"title": "First Step",  "desc": "Earn your first 10 XP",
+                     "threshold": 10,         "threshold_type": "lifetime_xp"},
+    "bronze_mic":   {"title": "Bronze Mic",  "desc": "Earn 500 XP lifetime",
+                     "threshold": 500,        "threshold_type": "lifetime_xp"},
+    "silver_mic":   {"title": "Silver Mic",  "desc": "Earn 2,000 XP lifetime",
+                     "threshold": 2000,       "threshold_type": "lifetime_xp"},
+    "gold_mic":     {"title": "Gold Mic",    "desc": "Earn 10,000 XP lifetime",
+                     "threshold": 10000,      "threshold_type": "lifetime_xp"},
+    "streak_5":     {"title": "On Fire",     "desc": "Maintain a 5-day streak",
+                     "threshold": 5,          "threshold_type": "streak"},
+    "streak_30":    {"title": "Unstoppable", "desc": "Maintain a 30-day streak",
+                     "threshold": 30,         "threshold_type": "streak"},
+    "diamond_food": {"title": "Food Master", "desc": "Reach Diamond in Food topic",
+                     "threshold": "Diamond",  "threshold_type": "mastery_tier",
+                     "topic": "Food"},
+}
+
+
 class DailyProgress(SQLModel, table=True):
     """Tracks daily user progress and goals."""
     
@@ -140,3 +177,34 @@ class TopicMastery(SQLModel, table=True):
     tier: MasteryTier = Field(default=MasteryTier.BRONZE)
 
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GemBalance(SQLModel, table=True):
+    """Tracks a user's persistent gem currency balance."""
+
+    __tablename__ = "gem_balance"
+
+    user_id: ULID = Field(foreign_key="user.id", primary_key=True, sa_type=ULIDType)
+    balance: int = Field(default=0, ge=0)
+
+
+class GemTransaction(SQLModel, table=True):
+    """Immutable ledger of gem earn/spend events."""
+
+    __tablename__ = "gem_transaction"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: ULID = Field(foreign_key="user.id", index=True, sa_type=ULIDType)
+    amount: int  # positive = earn, negative = spend
+    reason: str = Field(max_length=100)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class UserAchievement(SQLModel, table=True):
+    """Records which achievements a user has unlocked."""
+
+    __tablename__ = "user_achievement"
+
+    user_id: ULID = Field(foreign_key="user.id", primary_key=True, sa_type=ULIDType)
+    achievement_key: str = Field(primary_key=True, max_length=50)
+    unlocked_at: datetime = Field(default_factory=datetime.utcnow)

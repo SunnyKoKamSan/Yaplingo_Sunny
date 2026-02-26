@@ -51,6 +51,8 @@ class CheckInResponse(BaseModel):
     bonus_xp: int = Field(default=0)
     multiplier_active: bool = Field(default=False)
     event_name: str | None = Field(default=None)
+    gems_earned: int = Field(default=0)
+    newly_unlocked: list[str] = Field(default_factory=list)
     
     class Config:
         from_attributes = True
@@ -93,3 +95,36 @@ class TopicMasteryResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Gem & Achievement Schemas ─────────────────────────────────────────────────
+
+class GemTransactionResponse(BaseModel):
+    id: int
+    amount: int
+    reason: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GemBalanceResponse(BaseModel):
+    balance: int
+    transactions: list[GemTransactionResponse] = Field(default_factory=list)
+
+
+class SpendGemsRequest(BaseModel):
+    item_key: str
+
+
+class SpendGemsResponse(BaseModel):
+    new_balance: int
+    item_key: str
+
+
+class AchievementResponse(BaseModel):
+    key: str
+    title: str
+    desc: str
+    unlocked: bool
+    unlocked_at: datetime | None = None

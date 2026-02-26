@@ -25,14 +25,18 @@ import {
 import axios, { AxiosError } from "axios";
 import { useSetAtom } from "jotai";
 
-import store, { $lastCheckIn, $token } from "../store";
+import store, { $gemBalance, $lastCheckIn, $token } from "../store";
 import type {
+  AchievementResponse,
   CheckInParams,
   CheckInResponse,
   ActiveEvent,
+  GemBalanceResponse,
   LeaderboardItem,
   MyRankResponse,
   Result,
+  SpendGemsRequest,
+  SpendGemsResponse,
   Topic,
   TopicMasteryResponse,
   Transcripts,
@@ -218,6 +222,7 @@ export const useCheckInMutation = (): UseMutationResult<
   const queryClient = useQueryClient();
   const invalidateGamification = useInvalidateGamification();
   const setLastCheckIn = useSetAtom($lastCheckIn);
+  const setGemBalance = useSetAtom($gemBalance);
 
   return useMutation({
     mutationFn: async (params: CheckInParams) => {
@@ -228,6 +233,13 @@ export const useCheckInMutation = (): UseMutationResult<
     onSuccess: (data) => {
       setLastCheckIn(data);
       queryClient.setQueryData(GAMIFICATION_DAILY_PROGRESS_QUERY_KEY, data);
+      if (data.gems_earned > 0) {
+        setGemBalance((prev) => prev + data.gems_earned);
+        queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "gems"] });
+      }
+      if (data.newly_unlocked.length > 0) {
+        queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "achievements"] });
+      }
       invalidateGamification.all();
     },
   });
@@ -249,6 +261,8 @@ export const useDailyProgressQuery = (): UseQueryResult<CheckInResponse, AxiosEr
         bonus_xp: 0,
         multiplier_active: false,
         event_name: null,
+        gems_earned: 0,
+        newly_unlocked: [],
       };
 
       if (supportsDailyProgressEndpoint === false) return fallback;
@@ -347,6 +361,55 @@ export const useMasteryQuery = (): UseQueryResult<TopicMasteryResponse[], AxiosE
     },
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
+  });
+
+// ============================================================================
+// GEM & ACHIEVEMENT HOOKS
+// ============================================================================
+
+export const useGemBalanceQuery = (): UseQueryResult<GemBalanceResponse, AxiosError> => {
+  const setGemBalance = useSetAtom($gemBalance);
+  const query = useQuery<GemBalanceResponse, AxiosError>({
+    queryKey: [...GAMIFICATION_QUERY_KEY, "gems"],
+    queryFn: async () => {
+      const { data } = await client.get<GemBalanceResponse>("/gamification/gems");
+      return data;
+    },
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (query.data) setGemBalance(query.data.balance);
+  }, [query.data, setGemBalance]);
+
+  return query;
+};
+
+export const useSpendGemsMutation = () => {
+  const queryClient = useQueryClient();
+  const setGemBalance = useSetAtom($gemBalance);
+  return useMutation<SpendGemsResponse, AxiosError, SpendGemsRequest>({
+    mutationFn: async (req) => {
+      const { data } = await client.post<SpendGemsResponse>("/gamification/gems/spend", req);
+      return data;
+    },
+    onSuccess: (data) => {
+      setGemBalance(data.new_balance);
+      queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "gems"] });
+    },
+  });
+};
+
+export const useAchievementsQuery = (): UseQueryResult<AchievementResponse[], AxiosError> =>
+  useQuery({
+    queryKey: [...GAMIFICATION_QUERY_KEY, "achievements"],
+    queryFn: async () => {
+      const { data } = await client.get<AchievementResponse[]>("/gamification/achievements");
+      return data;
+    },
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
 export default client;
