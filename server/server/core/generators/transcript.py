@@ -72,7 +72,7 @@ class Transcripts:
 
 
 class TranscriptGenerator(Generator):
-    TOPICS = ["food", "culture", "travel", "business", "technology"]
+    TOPICS = ["Food", "Culture", "Travel", "Business", "Technology"]
 
     @property  # FIXME: use `@cached_property` in production
     def system_prompt(self) -> str:

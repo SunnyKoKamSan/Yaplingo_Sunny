@@ -36,7 +36,7 @@ from server.repository.models import Language, User
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SEED_USER_COUNT = 5
+SEED_USER_COUNT = 15
 HISTORY_DAYS = 14
 PRACTICE_PROBABILITY = 0.7  # 70% chance user practiced on a given day
 MIN_XP = 20
