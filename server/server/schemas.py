@@ -128,3 +128,4 @@ class AchievementResponse(BaseModel):
     desc: str
     unlocked: bool
     unlocked_at: datetime | None = None
+    progress: float = Field(default=0.0, ge=0.0, le=1.0)

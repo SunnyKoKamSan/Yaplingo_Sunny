@@ -330,6 +330,14 @@ async def check_in(
                 lifetime_xp_row = lifetime_xp_result.one()
                 lifetime_xp = int(lifetime_xp_row[0] if isinstance(lifetime_xp_row, tuple) or hasattr(lifetime_xp_row, "__getitem__") else lifetime_xp_row)
 
+                # Calculate lifetime lessons
+                lifetime_lessons_result = await session.exec(
+                    select(func.coalesce(func.sum(DailyProgress.lessons_completed), 0))
+                    .where(DailyProgress.user_id == current_user.id)
+                )
+                lifetime_lessons_row = lifetime_lessons_result.one()
+                lifetime_lessons = int(lifetime_lessons_row[0] if isinstance(lifetime_lessons_row, tuple) or hasattr(lifetime_lessons_row, "__getitem__") else lifetime_lessons_row)
+
                 for ach_key, cfg in ACHIEVEMENTS.items():
                     if ach_key in existing_keys:
                         continue
@@ -338,6 +346,8 @@ async def check_in(
                         unlocked = lifetime_xp >= cfg["threshold"]
                     elif cfg["threshold_type"] == "streak":
                         unlocked = new_streak >= cfg["threshold"]
+                    elif cfg["threshold_type"] == "lifetime_lessons":
+                        unlocked = lifetime_lessons >= cfg["threshold"]
                     elif cfg["threshold_type"] == "mastery_tier" and request.topic:
                         unlocked = (
                             mastery_row is not None
@@ -734,20 +744,63 @@ async def get_achievements(
     session: SessionDep,
     current_user: Annotated[User, Depends(current_user)],
 ) -> list[AchievementResponse]:
-    """Return all achievements with locked/unlocked status for the user."""
+    """Return all achievements with locked/unlocked status and progress."""
+    # Fetch unlocked achievements
     result = await session.exec(
         select(UserAchievement).where(UserAchievement.user_id == current_user.id)
     )
     rows = result.all()
     entries = [r[0] if isinstance(r, tuple) or hasattr(r, "__getitem__") else r for r in rows]
     unlocked_map = {e.achievement_key: e.unlocked_at for e in entries}
-    return [
-        AchievementResponse(
-            key=key,
-            title=cfg["title"],
-            desc=cfg["desc"],
-            unlocked=key in unlocked_map,
-            unlocked_at=unlocked_map.get(key),
-        )
-        for key, cfg in ACHIEVEMENTS.items()
-    ]
+
+    # Context for progress computation
+    xp_result = await session.exec(
+        select(func.coalesce(func.sum(DailyProgress.xp_earned), 0))
+        .where(DailyProgress.user_id == current_user.id)
+    )
+    xp_row = xp_result.one()
+    lifetime_xp = int(xp_row[0] if isinstance(xp_row, tuple) or hasattr(xp_row, "__getitem__") else xp_row)
+
+    lessons_result = await session.exec(
+        select(func.coalesce(func.sum(DailyProgress.lessons_completed), 0))
+        .where(DailyProgress.user_id == current_user.id)
+    )
+    lessons_row = lessons_result.one()
+    lifetime_lessons = int(lessons_row[0] if isinstance(lessons_row, tuple) or hasattr(lessons_row, "__getitem__") else lessons_row)
+
+    gam_profile = await session.get(UserGamification, current_user.id)
+    current_streak = get_visible_streak_utc(gam_profile)
+
+    mastery_result = await session.exec(
+        select(TopicMastery).where(TopicMastery.user_id == current_user.id)
+    )
+    mastery_rows = mastery_result.all()
+    mastery_map = {}
+    for m in mastery_rows:
+        entry = m[0] if isinstance(m, tuple) or hasattr(m, "__getitem__") else m
+        mastery_map[entry.topic] = entry
+
+    responses: list[AchievementResponse] = []
+    for key, cfg in ACHIEVEMENTS.items():
+        is_unlocked = key in unlocked_map
+        progress = 1.0 if is_unlocked else 0.0
+
+        if not is_unlocked:
+            t = cfg["threshold_type"]
+            if t == "lifetime_xp":
+                progress = min(lifetime_xp / cfg["threshold"], 1.0)
+            elif t == "streak":
+                progress = min(current_streak / cfg["threshold"], 1.0)
+            elif t == "lifetime_lessons":
+                progress = min(lifetime_lessons / cfg["threshold"], 1.0)
+            elif t == "mastery_tier":
+                topic = cfg.get("topic")
+                if topic and topic in mastery_map:
+                    progress = min(mastery_map[topic].mastery_score / app_settings.MASTERY_TIER_DIAMOND, 1.0)
+
+        responses.append(AchievementResponse(
+            key=key, title=cfg["title"], desc=cfg["desc"],
+            unlocked=is_unlocked, unlocked_at=unlocked_map.get(key),
+            progress=round(progress, 2),
+        ))
+    return responses

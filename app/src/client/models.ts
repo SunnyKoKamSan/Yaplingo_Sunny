@@ -128,6 +128,7 @@ export type AchievementResponse = {
   desc: string;
   unlocked: boolean;
   unlocked_at: string | null;
+  progress: number;
 };
 
 export type SpendGemsRequest = { item_key: string };

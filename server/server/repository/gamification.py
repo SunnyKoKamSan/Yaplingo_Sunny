@@ -31,29 +31,61 @@ GEM_EARN_RATES: dict[str, int] = {
 }
 
 GEM_SPEND_RATES: dict[str, int] = {
-    "streak_freeze":     50,
-    "xp_boost_1h":      100,
+    "streak_freeze":      50,
+    "extra_attempts":     40,
+    "hint_pack":          75,
+    "xp_boost_1h":       100,
     "avatar_decoration": 150,
+    "premium_scenario":  200,
 }
 
 # ── Achievement Definitions ───────────────────────────────────────────────────
 
 ACHIEVEMENTS: dict[str, dict] = {
-    "first_step":   {"title": "First Step",  "desc": "Earn your first 10 XP",
-                     "threshold": 10,         "threshold_type": "lifetime_xp"},
-    "bronze_mic":   {"title": "Bronze Mic",  "desc": "Earn 500 XP lifetime",
-                     "threshold": 500,        "threshold_type": "lifetime_xp"},
-    "silver_mic":   {"title": "Silver Mic",  "desc": "Earn 2,000 XP lifetime",
-                     "threshold": 2000,       "threshold_type": "lifetime_xp"},
-    "gold_mic":     {"title": "Gold Mic",    "desc": "Earn 10,000 XP lifetime",
-                     "threshold": 10000,      "threshold_type": "lifetime_xp"},
-    "streak_5":     {"title": "On Fire",     "desc": "Maintain a 5-day streak",
-                     "threshold": 5,          "threshold_type": "streak"},
-    "streak_30":    {"title": "Unstoppable", "desc": "Maintain a 30-day streak",
-                     "threshold": 30,         "threshold_type": "streak"},
-    "diamond_food": {"title": "Food Master", "desc": "Reach Diamond in Food topic",
-                     "threshold": "Diamond",  "threshold_type": "mastery_tier",
-                     "topic": "Food"},
+    # XP milestones
+    "first_step":     {"title": "First Step",     "desc": "Earn your first 10 XP",
+                       "threshold": 10,            "threshold_type": "lifetime_xp"},
+    "bronze_mic":     {"title": "Bronze Mic",     "desc": "Earn 500 XP lifetime",
+                       "threshold": 500,           "threshold_type": "lifetime_xp"},
+    "silver_mic":     {"title": "Silver Mic",     "desc": "Earn 2,000 XP lifetime",
+                       "threshold": 2000,          "threshold_type": "lifetime_xp"},
+    "gold_mic":       {"title": "Gold Mic",       "desc": "Earn 10,000 XP lifetime",
+                       "threshold": 10000,         "threshold_type": "lifetime_xp"},
+    "platinum_mic":   {"title": "Platinum Mic",   "desc": "Earn 50,000 XP lifetime",
+                       "threshold": 50000,         "threshold_type": "lifetime_xp"},
+    "diamond_mic":    {"title": "Diamond Mic",    "desc": "Earn 100,000 XP lifetime",
+                       "threshold": 100000,        "threshold_type": "lifetime_xp"},
+    # Streak milestones
+    "streak_5":       {"title": "On Fire",        "desc": "Maintain a 5-day streak",
+                       "threshold": 5,             "threshold_type": "streak"},
+    "streak_14":      {"title": "Two Weeks",      "desc": "Maintain a 14-day streak",
+                       "threshold": 14,            "threshold_type": "streak"},
+    "streak_30":      {"title": "Unstoppable",    "desc": "Maintain a 30-day streak",
+                       "threshold": 30,            "threshold_type": "streak"},
+    "streak_100":     {"title": "Century",        "desc": "Maintain a 100-day streak",
+                       "threshold": 100,           "threshold_type": "streak"},
+    "streak_365":     {"title": "Year of Yap",    "desc": "Practice every day for a year",
+                       "threshold": 365,           "threshold_type": "streak"},
+    # Lesson milestones
+    "lesson_50":      {"title": "Half Century",   "desc": "Complete 50 practice sessions",
+                       "threshold": 50,            "threshold_type": "lifetime_lessons"},
+    "lesson_200":     {"title": "Dedicated",      "desc": "Complete 200 practice sessions",
+                       "threshold": 200,           "threshold_type": "lifetime_lessons"},
+    "lesson_500":     {"title": "Lesson Legend",  "desc": "Complete 500 practice sessions",
+                       "threshold": 500,           "threshold_type": "lifetime_lessons"},
+    # Mastery tier achievements
+    "diamond_food":     {"title": "Food Master",      "desc": "Reach Diamond in Food",
+                         "threshold": "Diamond",       "threshold_type": "mastery_tier",
+                         "topic": "Food"},
+    "diamond_culture":  {"title": "Culture Expert",   "desc": "Reach Diamond in Culture",
+                         "threshold": "Diamond",       "threshold_type": "mastery_tier",
+                         "topic": "Culture"},
+    "diamond_travel":   {"title": "Globe Trotter",    "desc": "Reach Diamond in Travel",
+                         "threshold": "Diamond",       "threshold_type": "mastery_tier",
+                         "topic": "Travel"},
+    "diamond_business": {"title": "Business Pro",     "desc": "Reach Diamond in Business",
+                         "threshold": "Diamond",       "threshold_type": "mastery_tier",
+                         "topic": "Business"},
 }
 
 
