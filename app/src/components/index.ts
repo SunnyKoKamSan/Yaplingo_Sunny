@@ -8,3 +8,5 @@ export { default as Heatmap } from "./Heatmap";
 export { default as Tooltip } from "./Tooltip";
 export { default as GamificationWidget } from "./GamificationWidget";
 export { default as AnimatedPodium } from "./AnimatedPodium";
+export { default as MasteryCard } from "./MasteryCard";
+export { default as MasteryRadar } from "./MasteryRadar";

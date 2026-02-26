@@ -49,6 +49,7 @@ export type CheckInParams = {
   xp_amount: number;
   topic?: Topic;
   accuracy_percentage?: number;
+  completion_time_ms?: number;
 };
 
 // POST /gamification/check-in response
@@ -88,4 +89,17 @@ export type ActiveEvent = {
   multiplier: number;
   starts_at: string;
   ends_at: string;
+};
+
+export type MasteryTier = "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond";
+
+export type TopicMasteryResponse = {
+  topic: string;
+  total_xp: number;
+  lesson_count: number;
+  avg_accuracy: number;
+  avg_speed_ms: number;
+  mastery_score: number;
+  tier: MasteryTier;
+  updated_at: string;
 };

@@ -35,10 +35,11 @@ import { AnimatedPodium, Button, Spinner, Text } from "~/components";
 import {
   useAuthedUserQuery,
   useLeaderboardQuery,
+  useMasteryQuery,
   useMyRankQuery,
 } from "~/client";
 import { useNavigationOptions } from "~/hooks";
-import type { LeaderboardItem, Topic } from "~/client/models";
+import type { LeaderboardItem, MasteryTier, Topic, TopicMasteryResponse } from "~/client/models";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -227,12 +228,22 @@ const ClimbingTips = () => (
 
 // ─── Topic Tabs ──────────────────────────────────────────────────────────────
 
+const TIER_BADGE_COLORS: Record<MasteryTier, string> = {
+  Bronze: "#CD7F32",
+  Silver: "#C0C0C0",
+  Gold: "#FFD700",
+  Platinum: "#E5E4E2",
+  Diamond: "#B9F2FF",
+};
+
 const TopicTabs = ({
   selected,
   onSelect,
+  masteryMap,
 }: {
   selected: Topic;
   onSelect: (topic: Topic) => void;
+  masteryMap: Partial<Record<Topic, TopicMasteryResponse>>;
 }) => (
   <ScrollView
     horizontal
@@ -241,28 +252,48 @@ const TopicTabs = ({
   >
     {TOPICS.map((topic) => {
       const active = selected === topic.key;
+      const mastery = topic.key !== "Global" ? masteryMap[topic.key] : undefined;
       return (
         <Pressable
           key={topic.key}
           onPress={() => onSelect(topic.key)}
           style={tw.style(
-            "flex-row items-center gap-1.5 rounded-full border-2 px-3 py-1.5",
+            "items-center gap-0.5 rounded-full border-2 px-3 py-1.5",
             active
               ? "border-green-500 bg-green-500/10"
               : "border-zinc-300/60 dark:border-zinc-600/60",
           )}
         >
-          <Text style={tw`text-base`}>{topic.emoji}</Text>
-          <Text
-            style={tw.style(
-              "text-sm font-medium",
-              active
-                ? "text-green-600 dark:text-green-400"
-                : "text-zinc-600 dark:text-zinc-400",
-            )}
-          >
-            {topic.label}
-          </Text>
+          <View style={tw`flex-row items-center gap-1.5`}>
+            <Text style={tw`text-base`}>{topic.emoji}</Text>
+            <Text
+              style={tw.style(
+                "text-sm font-medium",
+                active
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-zinc-600 dark:text-zinc-400",
+              )}
+            >
+              {topic.label}
+            </Text>
+          </View>
+          {mastery && (
+            <View
+              style={[
+                tw`rounded-full px-1.5 py-0`,
+                { backgroundColor: TIER_BADGE_COLORS[mastery.tier] + "33" },
+              ]}
+            >
+              <Text
+                style={[
+                  tw`text-[10px] font-bold`,
+                  { color: TIER_BADGE_COLORS[mastery.tier] },
+                ]}
+              >
+                {mastery.tier}
+              </Text>
+            </View>
+          )}
         </Pressable>
       );
     })}
@@ -297,7 +328,7 @@ const TimeTabs = ({
           key={tab}
           onPress={() => onSelect(tab)}
           style={tw.style(
-            "flex-1 items-center py-1.75 rounded-full",
+            "flex-1 items-center py-1.25 rounded-full",
             active && "bg-green-700 shadow-sm",
           )}
         >
@@ -565,6 +596,15 @@ export default function MainCommunityScreen() {
   const periods = useMemo(() => buildPeriods(5), []);
   const [periodIndex, setPeriodIndex] = useState(0);
 
+  const { data: masteryData } = useMasteryQuery();
+  const masteryMap = useMemo(() => {
+    const map: Partial<Record<Topic, TopicMasteryResponse>> = {};
+    if (masteryData) {
+      for (const m of masteryData) map[m.topic as Topic] = m;
+    }
+    return map;
+  }, [masteryData]);
+
   useEffect(() => {
     if (isFocused) {
       setPodiumPlayToken((token) => token + 1);
@@ -662,6 +702,7 @@ export default function MainCommunityScreen() {
             <TopicTabs
               selected={selectedTopic}
               onSelect={setSelectedTopic}
+              masteryMap={masteryMap}
             />
             {timeTab === "this-week" && (
               <WeekNav

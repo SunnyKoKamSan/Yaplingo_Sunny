@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Index
@@ -9,6 +10,14 @@ from .models import ULIDType
 
 if TYPE_CHECKING:
     from .models import User
+
+
+class MasteryTier(str, Enum):
+    BRONZE = "Bronze"
+    SILVER = "Silver"
+    GOLD = "Gold"
+    PLATINUM = "Platinum"
+    DIAMOND = "Diamond"
 
 
 class DailyProgress(SQLModel, table=True):
@@ -112,3 +121,22 @@ class XPMultiplierEvent(SQLModel, table=True):
     starts_at: datetime = Field(index=True)
     ends_at: datetime = Field(index=True)
     is_active: bool = Field(default=True)
+
+
+class TopicMastery(SQLModel, table=True):
+    """Stores running mastery averages per (user, topic)."""
+
+    __tablename__ = "topic_mastery"
+
+    user_id: ULID = Field(foreign_key="user.id", primary_key=True, sa_type=ULIDType)
+    topic: str = Field(primary_key=True, max_length=50)
+
+    total_xp: int = Field(default=0, ge=0)
+    lesson_count: int = Field(default=0, ge=0)
+    avg_accuracy: float = Field(default=0.0)
+    avg_speed_ms: float = Field(default=0.0)
+
+    mastery_score: float = Field(default=0.0)
+    tier: MasteryTier = Field(default=MasteryTier.BRONZE)
+
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

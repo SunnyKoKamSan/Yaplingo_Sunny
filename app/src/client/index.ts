@@ -34,6 +34,7 @@ import type {
   MyRankResponse,
   Result,
   Topic,
+  TopicMasteryResponse,
   Transcripts,
   User,
 } from "./models";
@@ -332,6 +333,20 @@ export const useActiveEventsQuery = () =>
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
     refetchInterval: 60 * 1000,
+  });
+
+// ============================================================================
+// MASTERY QUERY
+// ============================================================================
+export const useMasteryQuery = (): UseQueryResult<TopicMasteryResponse[], AxiosError> =>
+  useQuery({
+    queryKey: [...GAMIFICATION_QUERY_KEY, "mastery"],
+    queryFn: async () => {
+      const { data } = await client.get<TopicMasteryResponse[]>("/gamification/mastery");
+      return data;
+    },
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
 export default client;

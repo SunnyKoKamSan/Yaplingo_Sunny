@@ -33,6 +33,11 @@ class CheckInRequest(BaseModel):
         le=100,
         description="Optional pronunciation score percentage for daily accuracy tracking.",
     )
+    completion_time_ms: int | None = Field(
+        default=None,
+        ge=0,
+        description="Lesson wall-clock duration in milliseconds. Used for mastery speed score.",
+    )
 
 
 class CheckInResponse(BaseModel):
@@ -73,5 +78,18 @@ class ActiveEventResponse(BaseModel):
     multiplier: float
     starts_at: datetime
     ends_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TopicMasteryResponse(BaseModel):
+    topic: str
+    total_xp: int
+    lesson_count: int
+    avg_accuracy: float
+    avg_speed_ms: float
+    mastery_score: float
+    tier: str
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

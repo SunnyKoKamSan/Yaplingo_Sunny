@@ -13,10 +13,11 @@ from sqlalchemy.orm import selectinload
 
 from server.core.gamification import get_period_key, get_visible_streak_utc, update_streak_utc
 from server.dependencies import Repository, SessionDep, current_user
-from server.repository.gamification import DailyAccuracy, DailyProgress, LeaderboardEntry, UserGamification, XPMultiplierEvent
+from server.repository.gamification import DailyAccuracy, DailyProgress, LeaderboardEntry, MasteryTier, TopicMastery, UserGamification, XPMultiplierEvent
 from server.repository.models import User
-from server.schemas import ActiveEventResponse, CheckInRequest, CheckInResponse, LeaderboardItem, MyRankResponse
+from server.schemas import ActiveEventResponse, CheckInRequest, CheckInResponse, LeaderboardItem, MyRankResponse, TopicMasteryResponse
 from server.utils import get_current_utc_period_key
+from server.settings import settings as app_settings
 
 router = APIRouter()
 
@@ -214,6 +215,59 @@ async def check_in(
                         session.add(topic_entry)
                 
                 # ════════════════════════════════════════════════════════════
+                # STEP 4.5: UPSERT TOPIC MASTERY (only when topic provided)
+                # ════════════════════════════════════════════════════════════
+                if request.topic:
+                    mastery_row = await session.get(
+                        TopicMastery,
+                        (current_user.id, request.topic),
+                    )
+                    acc = request.accuracy_percentage if request.accuracy_percentage is not None else 0
+                    spd = request.completion_time_ms if request.completion_time_ms is not None else app_settings.MASTERY_SPEED_CEILING
+
+                    if mastery_row:
+                        new_count = mastery_row.lesson_count + 1
+                        mastery_row.total_xp += effective_xp
+                        mastery_row.lesson_count = new_count
+                        mastery_row.avg_accuracy += (acc - mastery_row.avg_accuracy) / new_count
+                        mastery_row.avg_speed_ms += (spd - mastery_row.avg_speed_ms) / new_count
+                    else:
+                        mastery_row = TopicMastery(
+                            user_id=current_user.id,
+                            topic=request.topic,
+                            total_xp=effective_xp,
+                            lesson_count=1,
+                            avg_accuracy=float(acc),
+                            avg_speed_ms=float(spd),
+                        )
+                        session.add(mastery_row)
+
+                    # Recalculate mastery_score
+                    norm_xp = min(mastery_row.total_xp / app_settings.MASTERY_XP_CEILING, 1.0)
+                    speed_score = max(0.0, 1.0 - mastery_row.avg_speed_ms / app_settings.MASTERY_SPEED_CEILING)
+                    acc_score = mastery_row.avg_accuracy / 100.0
+                    mastery_row.mastery_score = (
+                        app_settings.MASTERY_WEIGHT_XP * norm_xp
+                        + app_settings.MASTERY_WEIGHT_ACC * acc_score
+                        + app_settings.MASTERY_WEIGHT_SPD * speed_score
+                    )
+
+                    # Assign tier
+                    s = mastery_row.mastery_score
+                    if s >= app_settings.MASTERY_TIER_DIAMOND:
+                        mastery_row.tier = MasteryTier.DIAMOND
+                    elif s >= app_settings.MASTERY_TIER_PLATINUM:
+                        mastery_row.tier = MasteryTier.PLATINUM
+                    elif s >= app_settings.MASTERY_TIER_GOLD:
+                        mastery_row.tier = MasteryTier.GOLD
+                    elif s >= app_settings.MASTERY_TIER_SILVER:
+                        mastery_row.tier = MasteryTier.SILVER
+                    else:
+                        mastery_row.tier = MasteryTier.BRONZE
+
+                    mastery_row.updated_at = datetime.utcnow()
+                
+                # ════════════════════════════════════════════════════════════
                 # STEP 5: COMMIT TRANSACTION
                 # ════════════════════════════════════════════════════════════
                 # Flush to database to get updated values
@@ -242,6 +296,20 @@ async def check_in(
         multiplier_active=active_event is not None,
         event_name=event_name,
     )
+
+
+@router.get("/mastery", response_model=list[TopicMasteryResponse], status_code=status.HTTP_200_OK)
+async def get_mastery(
+    session: SessionDep,
+    current_user: Annotated[User, Depends(current_user)],
+) -> list[TopicMasteryResponse]:
+    """Return all TopicMastery rows for the authenticated user."""
+    result = await session.exec(
+        select(TopicMastery).where(TopicMastery.user_id == current_user.id)
+    )
+    rows = result.all()
+    entries = [r[0] if isinstance(r, tuple) or hasattr(r, "__getitem__") else r for r in rows]
+    return [TopicMasteryResponse.model_validate(e) for e in entries]
 
 
 @router.get("/daily-progress", response_model=CheckInResponse, status_code=status.HTTP_200_OK)
