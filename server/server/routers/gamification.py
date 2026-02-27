@@ -4,7 +4,7 @@ Gamification Router
 Handles user check-ins, progress tracking, and gamification features.
 Uses server-side UTC time for anti-cheat protection.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -13,9 +13,9 @@ from sqlalchemy.orm import selectinload
 
 from server.core.gamification import get_period_key, get_visible_streak_utc, update_streak_utc
 from server.dependencies import Repository, SessionDep, current_user
-from server.repository.gamification import ACHIEVEMENTS, DailyAccuracy, DailyProgress, GEM_EARN_RATES, GEM_SPEND_RATES, GemBalance, GemTransaction, LeaderboardEntry, MasteryTier, TopicMastery, UserAchievement, UserGamification, XPMultiplierEvent
+from server.repository.gamification import ACHIEVEMENTS, DailyAccuracy, DailyProgress, GEM_EARN_RATES, GEM_SPEND_RATES, GemBalance, GemTransaction, LeaderboardEntry, MasteryTier, TopicMastery, UserAchievement, UserGamification, UserInventory, XPMultiplierEvent
 from server.repository.models import User
-from server.schemas import AchievementResponse, ActiveEventResponse, CheckInRequest, CheckInResponse, GemBalanceResponse, GemTransactionResponse, LeaderboardItem, MyRankResponse, SpendGemsRequest, SpendGemsResponse, TopicMasteryResponse
+from server.schemas import AchievementResponse, ActiveEventResponse, CheckInRequest, CheckInResponse, ClaimAchievementRequest, ClaimAchievementResponse, GemBalanceResponse, GemTransactionResponse, LeaderboardItem, MyRankResponse, SpendGemsRequest, SpendGemsResponse, TopicMasteryResponse, UserInventoryResponse
 from server.utils import get_current_utc_period_key
 from server.settings import settings as app_settings
 
@@ -735,6 +735,39 @@ async def spend_gems(
             session.add(GemTransaction(
                 user_id=current_user.id, amount=-cost, reason=request.item_key,
             ))
+
+            # ── Grant the purchased item ──────────────────────────────
+            inv_result = await session.exec(
+                select(UserInventory).where(UserInventory.user_id == current_user.id)
+            )
+            inventory = inv_result.one_or_none()
+            if inventory and (isinstance(inventory, tuple) or hasattr(inventory, "__getitem__")):
+                inventory = inventory[0]
+            if not inventory:
+                inventory = UserInventory(user_id=current_user.id)
+
+            if request.item_key == "streak_freeze":
+                inventory.streak_freezes += 1
+            elif request.item_key == "extra_attempts":
+                inventory.extra_attempts += 3
+            elif request.item_key == "hint_pack":
+                inventory.hint_packs += 5
+            elif request.item_key == "xp_boost_1h":
+                now = datetime.utcnow()
+                session.add(XPMultiplierEvent(
+                    name="Personal XP Boost",
+                    description="2x XP for 1 hour (purchased)",
+                    multiplier=2.0,
+                    starts_at=now,
+                    ends_at=now + timedelta(hours=1),
+                    is_active=True,
+                ))
+            elif request.item_key == "avatar_decoration":
+                inventory.has_avatar_decoration = True
+            elif request.item_key == "premium_scenario":
+                inventory.premium_scenarios += 1
+
+            session.add(inventory)
             await session.flush()
     return SpendGemsResponse(new_balance=balance_row.balance, item_key=request.item_key)
 
@@ -804,3 +837,121 @@ async def get_achievements(
             progress=round(progress, 2),
         ))
     return responses
+
+
+# ============================================================================
+# CLAIM ACHIEVEMENT
+# ============================================================================
+
+@router.post("/achievements/claim", response_model=ClaimAchievementResponse, status_code=status.HTTP_200_OK)
+async def claim_achievement(
+    request: ClaimAchievementRequest,
+    current_user: Annotated[User, Depends(current_user)],
+    repository: Repository,
+) -> ClaimAchievementResponse:
+    """Claim an achievement that has reached 100% progress, awarding gems."""
+    cfg = ACHIEVEMENTS.get(request.achievement_key)
+    if cfg is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown achievement")
+
+    async with repository.session() as session:
+        async with session.begin():
+            # Check not already unlocked
+            existing = await session.exec(
+                select(UserAchievement).where(
+                    UserAchievement.user_id == current_user.id,
+                    UserAchievement.achievement_key == request.achievement_key,
+                )
+            )
+            if existing.one_or_none() is not None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Already claimed")
+
+            # Verify threshold is met
+            t = cfg["threshold_type"]
+            met = False
+
+            if t == "lifetime_xp":
+                xp_r = await session.exec(
+                    select(func.coalesce(func.sum(DailyProgress.xp_earned), 0))
+                    .where(DailyProgress.user_id == current_user.id)
+                )
+                row = xp_r.one()
+                val = int(row[0] if isinstance(row, tuple) or hasattr(row, "__getitem__") else row)
+                met = val >= cfg["threshold"]
+            elif t == "streak":
+                gam = await session.get(UserGamification, current_user.id)
+                met = get_visible_streak_utc(gam) >= cfg["threshold"]
+            elif t == "lifetime_lessons":
+                l_r = await session.exec(
+                    select(func.coalesce(func.sum(DailyProgress.lessons_completed), 0))
+                    .where(DailyProgress.user_id == current_user.id)
+                )
+                row = l_r.one()
+                val = int(row[0] if isinstance(row, tuple) or hasattr(row, "__getitem__") else row)
+                met = val >= cfg["threshold"]
+            elif t == "mastery_tier":
+                topic = cfg.get("topic")
+                if topic:
+                    m_r = await session.exec(
+                        select(TopicMastery).where(
+                            TopicMastery.user_id == current_user.id,
+                            TopicMastery.topic == topic,
+                        )
+                    )
+                    mrow = m_r.one_or_none()
+                    if mrow and (isinstance(mrow, tuple) or hasattr(mrow, "__getitem__")):
+                        mrow = mrow[0]
+                    met = mrow is not None and mrow.tier.value == cfg["threshold"]
+
+            if not met:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Achievement criteria not met")
+
+            # Unlock + award gems
+            session.add(UserAchievement(
+                user_id=current_user.id, achievement_key=request.achievement_key,
+            ))
+            gem_amount = GEM_EARN_RATES["achievement_unlocked"]
+
+            gem_result = await session.exec(
+                select(GemBalance)
+                .where(GemBalance.user_id == current_user.id)
+                .with_for_update()
+            )
+            gem_row = gem_result.one_or_none()
+            if gem_row and (isinstance(gem_row, tuple) or hasattr(gem_row, "__getitem__")):
+                gem_row = gem_row[0]
+            if not gem_row:
+                gem_row = GemBalance(user_id=current_user.id, balance=0)
+            gem_row.balance += gem_amount
+            session.add(gem_row)
+            session.add(GemTransaction(
+                user_id=current_user.id, amount=gem_amount, reason=f"achievement:{request.achievement_key}",
+            ))
+            await session.flush()
+
+    return ClaimAchievementResponse(
+        achievement_key=request.achievement_key,
+        gems_awarded=gem_amount,
+        new_balance=gem_row.balance,
+    )
+
+
+# ============================================================================
+# USER INVENTORY
+# ============================================================================
+
+@router.get("/inventory", response_model=UserInventoryResponse, status_code=status.HTTP_200_OK)
+async def get_inventory(
+    session: SessionDep,
+    current_user: Annotated[User, Depends(current_user)],
+) -> UserInventoryResponse:
+    """Return the user's item inventory."""
+    result = await session.exec(
+        select(UserInventory).where(UserInventory.user_id == current_user.id)
+    )
+    row = result.one_or_none()
+    if row and (isinstance(row, tuple) or hasattr(row, "__getitem__")):
+        row = row[0]
+    if not row:
+        return UserInventoryResponse()
+    return UserInventoryResponse.model_validate(row)

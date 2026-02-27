@@ -3,13 +3,13 @@ import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@react-navigation/native";
 import { useAtomValue } from "jotai";
-import { CalendarIcon, FlameIcon, ZapIcon } from "lucide-react-native";
+import { CalendarIcon, DiamondIcon, FlameIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 import { useAchievementsQuery, useDailyProgressQuery, useGemBalanceQuery, useMyRankQuery } from "~/client";
-import { AchievementGrid, GemCounter, GemShop, Heatmap, Meter, Progress, Text } from "~/components";
+import { AchievementGrid, GemShop, Heatmap, Meter, Progress, Text } from "~/components";
 import { useNavigationOptions } from "~/hooks";
-import { $dailyAccuracyProgress, $dailyLessonProgress, $dailyProgress } from "~/store";
+import { $dailyAccuracyProgress, $dailyLessonProgress, $dailyProgress, $gemBalance } from "~/store";
 
 const STREAK_MILESTONE_STEP = 5;
 const formatXP = (xp: number) => xp.toLocaleString();
@@ -17,6 +17,8 @@ const formatXP = (xp: number) => xp.toLocaleString();
 const Header = ({ totalXP, isLoading }: { totalXP: number; isLoading: boolean }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const gemBalance = useAtomValue($gemBalance);
+
   return (
     <View
       style={[
@@ -28,20 +30,36 @@ const Header = ({ totalXP, isLoading }: { totalXP: number; isLoading: boolean })
         },
       ]}>
       <View style={tw`h-10 flex-row items-center justify-between px-4`}>
+        {/* Left: Date */}
         <View style={tw`flex-row items-center gap-1.5`}>
           <CalendarIcon size={18} strokeWidth={2.5} color={theme.colors.text} />
           <Text style={tw`text-lg font-medium`}>
             {new Date().toLocaleDateString("en-GB", { month: "short", day: "numeric" })}
           </Text>
         </View>
+
+        {/* Center: Logo */}
         <View style={tw`absolute inset-x-0 items-center justify-center`}>
           <Text style={[tw`text-3xl leading-[0] text-green-500`, { fontFamily: "Feather-Bold" }]}>yaplingo</Text>
         </View>
-        <View style={tw`flex-row items-center gap-3`}>
-          <GemCounter />
-          <View style={tw`flex-row items-center gap-1`}>
-            <ZapIcon size={18} color={tw.color("sky-500")} fill={tw.color("sky-500")} />
-            <Text style={tw`text-lg font-bold text-sky-500`}>{isLoading ? "..." : formatXP(totalXP)}</Text>
+
+        {/* Right: Stats capsule (XP + Gems) */}
+        <View style={tw`flex-row items-center gap-1 rounded-full bg-zinc-100 dark:bg-zinc-800 px-2 py-1`}>
+          {/* Gem pill */}
+          <View style={tw`flex-row items-center gap-0.5 rounded-full bg-green-500/15 px-2 py-0.5`}>
+            <DiamondIcon size={13} color="#22C55E" fill="#22C55E" />
+            <Text style={tw`text-xs font-bold text-green-600 dark:text-green-400`}>
+              {isLoading ? "..." : gemBalance.toLocaleString()}
+            </Text>
+          </View>
+          {/* Divider */}
+          <View style={tw`w-px h-3.5 bg-zinc-300 dark:bg-zinc-600`} />
+          {/* XP pill */}
+          <View style={tw`flex-row items-center gap-0.5 rounded-full bg-sky-500/15 px-2 py-0.5`}>
+            <ZapIcon size={13} color="#0EA5E9" fill="#0EA5E9" />
+            <Text style={tw`text-xs font-bold text-sky-600 dark:text-sky-400`}>
+              {isLoading ? "..." : formatXP(totalXP)}
+            </Text>
           </View>
         </View>
       </View>
@@ -146,7 +164,9 @@ const GemShopCard = ({ onPress }: { onPress: () => void }) => (
     style={tw`flex-row items-center justify-between rounded-2xl border-2 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30 p-4`}
   >
     <View style={tw`flex-row items-center gap-3`}>
-      <Text style={{ fontSize: 28 }}>💎</Text>
+      <View style={tw`w-10 h-10 rounded-xl bg-green-500/15 items-center justify-center`}>
+        <DiamondIcon size={22} color="#22C55E" fill="#22C55E" />
+      </View>
       <View>
         <Text style={tw`text-lg font-bold text-zinc-800 dark:text-zinc-100`}>Gem Shop</Text>
         <Text style={tw`text-xs text-zinc-500`}>Spend gems on boosts & rewards</Text>

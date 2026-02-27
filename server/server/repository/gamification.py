@@ -240,3 +240,16 @@ class UserAchievement(SQLModel, table=True):
     user_id: ULID = Field(foreign_key="user.id", primary_key=True, sa_type=ULIDType)
     achievement_key: str = Field(primary_key=True, max_length=50)
     unlocked_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class UserInventory(SQLModel, table=True):
+    """Tracks purchased items from the gem shop."""
+
+    __tablename__ = "user_inventory"
+
+    user_id: ULID = Field(foreign_key="user.id", primary_key=True, sa_type=ULIDType)
+    streak_freezes: int = Field(default=0, ge=0)
+    extra_attempts: int = Field(default=0, ge=0)
+    hint_packs: int = Field(default=0, ge=0)
+    has_avatar_decoration: bool = Field(default=False)
+    premium_scenarios: int = Field(default=0, ge=0)

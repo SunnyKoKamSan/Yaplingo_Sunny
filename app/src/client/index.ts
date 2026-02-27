@@ -30,6 +30,8 @@ import type {
   AchievementResponse,
   CheckInParams,
   CheckInResponse,
+  ClaimAchievementRequest,
+  ClaimAchievementResponse,
   ActiveEvent,
   GemBalanceResponse,
   LeaderboardItem,
@@ -41,6 +43,7 @@ import type {
   TopicMasteryResponse,
   Transcripts,
   User,
+  UserInventoryResponse,
 } from "./models";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
@@ -397,6 +400,7 @@ export const useSpendGemsMutation = () => {
     onSuccess: (data) => {
       setGemBalance(data.new_balance);
       queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "gems"] });
+      queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "inventory"] });
     },
   });
 };
@@ -410,6 +414,36 @@ export const useAchievementsQuery = (): UseQueryResult<AchievementResponse[], Ax
     },
     staleTime: 60 * 1000,
     gcTime: 10 * 60 * 1000,
+  });
+
+export const useClaimAchievementMutation = () => {
+  const queryClient = useQueryClient();
+  const setGemBalance = useSetAtom($gemBalance);
+  return useMutation<ClaimAchievementResponse, AxiosError, ClaimAchievementRequest>({
+    mutationFn: async (req) => {
+      const { data } = await client.post<ClaimAchievementResponse>(
+        "/gamification/achievements/claim",
+        req,
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      setGemBalance(data.new_balance);
+      queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "achievements"] });
+      queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "gems"] });
+    },
+  });
+};
+
+export const useInventoryQuery = (): UseQueryResult<UserInventoryResponse, AxiosError> =>
+  useQuery({
+    queryKey: [...GAMIFICATION_QUERY_KEY, "inventory"],
+    queryFn: async () => {
+      const { data } = await client.get<UserInventoryResponse>("/gamification/inventory");
+      return data;
+    },
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
 export default client;

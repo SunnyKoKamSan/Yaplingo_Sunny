@@ -10,7 +10,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from ulid import ULID
 
-from server.repository.gamification import UserGamification
+from server.repository.gamification import UserGamification, UserInventory
 
 
 def get_period_key(dt: date) -> str:
@@ -73,8 +73,8 @@ async def update_streak_utc(
     """
     Update the user's streak based on server UTC time.
     
-    This prevents users from cheating by manipulating device time.
-    Server-side authority ensures all users are judged by the same clock.
+    If the streak would break (missed >1 day), checks for an available streak
+    freeze in UserInventory and consumes it to preserve the streak.
 
     Args:
         session: Active async database session.
@@ -83,16 +83,13 @@ async def update_streak_utc(
     Returns:
         The updated current streak value.
     """
-    # Get today's date in UTC (server authority)
     today_utc: date = datetime.now(timezone.utc).date()
     
-    # Fetch or create user gamification profile
     query = select(UserGamification).where(UserGamification.user_id == user_id)
     result = await session.exec(query)
     user_gamification = result.one_or_none()
 
     if user_gamification is None:
-        # First time user - initialize with streak of 1
         user_gamification = UserGamification(
             user_id=user_id,
             current_streak=1,
@@ -101,7 +98,6 @@ async def update_streak_utc(
         session.add(user_gamification)
         return 1
 
-    # Parse last activity date
     last_activity_date: Optional[date] = None
     if user_gamification.last_activity_date:
         last_activity_date = datetime.strptime(
@@ -111,20 +107,34 @@ async def update_streak_utc(
 
     # Scenario A: Already practiced today
     if last_activity_date == today_utc:
-        # No change - user already checked in today
         pass
     
     # Scenario B: Consecutive day (yesterday)
     elif last_activity_date == today_utc - timedelta(days=1):
-        # Streak continues! Increment by 1
         user_gamification.current_streak += 1
         user_gamification.last_activity_date = today_utc.strftime("%Y-%m-%d")
     
-    # Scenario C: Missed day(s) or first time
+    # Scenario C: Missed day(s) — check for streak freeze
     else:
-        # Streak broken or first activity - reset to 1
-        user_gamification.current_streak = 1
-        user_gamification.last_activity_date = today_utc.strftime("%Y-%m-%d")
+        freeze_used = False
+        if last_activity_date and last_activity_date == today_utc - timedelta(days=2):
+            # Only missed exactly one day — eligible for streak freeze
+            inv_result = await session.exec(
+                select(UserInventory).where(UserInventory.user_id == user_id)
+            )
+            inventory = inv_result.one_or_none()
+            if inventory and (isinstance(inventory, tuple) or hasattr(inventory, "__getitem__")):
+                inventory = inventory[0]
+            if inventory and inventory.streak_freezes > 0:
+                inventory.streak_freezes -= 1
+                session.add(inventory)
+                user_gamification.current_streak += 1
+                user_gamification.last_activity_date = today_utc.strftime("%Y-%m-%d")
+                freeze_used = True
+
+        if not freeze_used:
+            user_gamification.current_streak = 1
+            user_gamification.last_activity_date = today_utc.strftime("%Y-%m-%d")
 
     session.add(user_gamification)
     return user_gamification.current_streak

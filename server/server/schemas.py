@@ -122,6 +122,26 @@ class SpendGemsResponse(BaseModel):
     item_key: str
 
 
+class ClaimAchievementRequest(BaseModel):
+    achievement_key: str
+
+
+class ClaimAchievementResponse(BaseModel):
+    achievement_key: str
+    gems_awarded: int
+    new_balance: int
+
+
+class UserInventoryResponse(BaseModel):
+    streak_freezes: int = 0
+    extra_attempts: int = 0
+    hint_packs: int = 0
+    has_avatar_decoration: bool = False
+    premium_scenarios: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class AchievementResponse(BaseModel):
     key: str
     title: str

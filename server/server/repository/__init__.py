@@ -11,7 +11,7 @@ from .models import User
 from .settings import settings
 
 # Import gamification models to ensure they're registered with SQLModel metadata
-from .gamification import DailyAccuracy, DailyProgress, GemBalance, GemTransaction, LeaderboardEntry, TopicMastery, UserAchievement, UserGamification, XPMultiplierEvent  # noqa: F401
+from .gamification import DailyAccuracy, DailyProgress, GemBalance, GemTransaction, LeaderboardEntry, TopicMastery, UserAchievement, UserGamification, UserInventory, XPMultiplierEvent  # noqa: F401
 
 
 class EntityExistsError(Exception):

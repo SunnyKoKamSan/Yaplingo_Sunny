@@ -133,3 +133,18 @@ export type AchievementResponse = {
 
 export type SpendGemsRequest = { item_key: string };
 export type SpendGemsResponse = { new_balance: number; item_key: string };
+
+export type ClaimAchievementRequest = { achievement_key: string };
+export type ClaimAchievementResponse = {
+  achievement_key: string;
+  gems_awarded: number;
+  new_balance: number;
+};
+
+export type UserInventoryResponse = {
+  streak_freezes: number;
+  extra_attempts: number;
+  hint_packs: number;
+  has_avatar_decoration: boolean;
+  premium_scenarios: number;
+};
