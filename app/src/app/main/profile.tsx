@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { Alert, View } from "react-native";
+import { UserIcon } from "lucide-react-native";
 import { useSetAtom } from "jotai";
 import tw from "twrnc";
 
@@ -20,9 +21,8 @@ export default function MainProfileScreen() {
 
   return (
     <View style={tw`flex-1 items-center justify-center gap-6 px-6`}>
-      {/* Avatar */}
-      <View style={tw`w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/40 items-center justify-center border-2 border-green-400/40`}>
-        <Text style={tw`text-3xl`}>🎙️</Text>
+      <View style={tw`w-20 h-20 rounded-full bg-zinc-100 dark:bg-zinc-800 items-center justify-center border-2 border-zinc-300/40`}>
+        <UserIcon size={36} color={tw.color("zinc-400")} strokeWidth={1.5} />
       </View>
 
       {!!user && (

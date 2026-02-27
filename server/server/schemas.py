@@ -122,10 +122,6 @@ class ClaimAchievementResponse(BaseModel):
 
 class UserInventoryResponse(BaseModel):
     streak_freezes: int = 0
-    extra_attempts: int = 0
-    hint_packs: int = 0
-    has_avatar_decoration: bool = False
-    premium_scenarios: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -137,3 +133,5 @@ class AchievementResponse(BaseModel):
     unlocked: bool
     unlocked_at: datetime | None = None
     progress: float = Field(default=0.0, ge=0.0, le=1.0)
+    gem_reward: int = 15
+    ultimate: bool = False

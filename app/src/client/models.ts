@@ -129,6 +129,8 @@ export type AchievementResponse = {
   unlocked: boolean;
   unlocked_at: string | null;
   progress: number;
+  gem_reward: number;
+  ultimate: boolean;
 };
 
 export type SpendGemsRequest = { item_key: string };
@@ -143,8 +145,4 @@ export type ClaimAchievementResponse = {
 
 export type UserInventoryResponse = {
   streak_freezes: number;
-  extra_attempts: number;
-  hint_packs: number;
-  has_avatar_decoration: boolean;
-  premium_scenarios: number;
 };

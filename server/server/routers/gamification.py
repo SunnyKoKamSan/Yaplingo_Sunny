@@ -266,7 +266,10 @@ async def check_in(
                     select(UserAchievement.achievement_key)
                     .where(UserAchievement.user_id == current_user.id)
                 )
-                existing_keys = set(existing_achievements_result.all())
+                existing_keys = {
+                    r[0] if isinstance(r, tuple) or hasattr(r, "__getitem__") else r
+                    for r in existing_achievements_result.all()
+                }
 
                 lifetime_xp_result = await session.exec(
                     select(func.coalesce(func.sum(DailyProgress.xp_earned), 0))
@@ -299,10 +302,6 @@ async def check_in(
                             and request.topic == cfg.get("topic")
                         )
                     if unlocked:
-                        session.add(UserAchievement(
-                            user_id=current_user.id, achievement_key=ach_key
-                        ))
-                        award_gems(GEM_EARN_RATES["achievement_unlocked"], f"achievement:{ach_key}")
                         newly_unlocked.append(ach_key)
 
                 # step 6: commit
@@ -611,10 +610,6 @@ async def spend_gems(
 
             if request.item_key == "streak_freeze":
                 inventory.streak_freezes += 1
-            elif request.item_key == "extra_attempts":
-                inventory.extra_attempts += 3
-            elif request.item_key == "hint_pack":
-                inventory.hint_packs += 5
             elif request.item_key == "xp_boost_1h":
                 now = datetime.utcnow()
                 session.add(XPMultiplierEvent(
@@ -625,10 +620,35 @@ async def spend_gems(
                     ends_at=now + timedelta(hours=1),
                     is_active=True,
                 ))
-            elif request.item_key == "avatar_decoration":
-                inventory.has_avatar_decoration = True
-            elif request.item_key == "premium_scenario":
-                inventory.premium_scenarios += 1
+            elif request.item_key == "xp_boost_30m_30x":
+                now = datetime.utcnow()
+                session.add(XPMultiplierEvent(
+                    name="Mega XP Boost",
+                    description="30x XP for 30 minutes (purchased)",
+                    multiplier=10.0,
+                    starts_at=now,
+                    ends_at=now + timedelta(minutes=30),
+                    is_active=True,
+                ))
+            elif request.item_key == "buy_xp_500":
+                dp_result = await session.exec(
+                    select(DailyProgress).where(
+                        DailyProgress.user_id == current_user.id,
+                        DailyProgress.date_key == datetime.utcnow().strftime("%Y-%m-%d"),
+                    )
+                )
+                dp_row = dp_result.one_or_none()
+                if dp_row and (isinstance(dp_row, tuple) or hasattr(dp_row, "__getitem__")):
+                    dp_row = dp_row[0]
+                if dp_row:
+                    dp_row.xp_earned += 500
+                else:
+                    dp_row = DailyProgress(
+                        user_id=current_user.id,
+                        date_key=datetime.utcnow().strftime("%Y-%m-%d"),
+                        xp_earned=500,
+                    )
+                session.add(dp_row)
 
             session.add(inventory)
             await session.flush()
@@ -691,11 +711,15 @@ async def get_achievements(
                 topic = cfg.get("topic")
                 if topic and topic in mastery_map:
                     progress = min(mastery_map[topic].mastery_score / app_settings.MASTERY_TIER_DIAMOND, 1.0)
+            elif t in ("weekly_rank", "alltime_rank"):
+                progress = 0.0
 
         responses.append(AchievementResponse(
             key=key, title=cfg["title"], desc=cfg["desc"],
             unlocked=is_unlocked, unlocked_at=unlocked_map.get(key),
             progress=round(progress, 2),
+            gem_reward=cfg.get("gem_reward", 15),
+            ultimate=cfg.get("ultimate", False),
         ))
     return responses
 
@@ -759,6 +783,36 @@ async def claim_achievement(
                     if mrow and (isinstance(mrow, tuple) or hasattr(mrow, "__getitem__")):
                         mrow = mrow[0]
                     met = mrow is not None and mrow.tier.value == cfg["threshold"]
+            elif t == "weekly_rank":
+                today_utc = datetime.now(timezone.utc).date()
+                current_pk = get_period_key(today_utc)
+                top_r = await session.exec(
+                    select(LeaderboardEntry)
+                    .where(LeaderboardEntry.period_key == current_pk)
+                    .order_by(LeaderboardEntry.total_xp.desc())
+                    .limit(1)
+                )
+                top_row = top_r.one_or_none()
+                if top_row and (isinstance(top_row, tuple) or hasattr(top_row, "__getitem__")):
+                    top_row = top_row[0]
+                met = top_row is not None and top_row.user_id == current_user.id
+            elif t == "alltime_rank":
+                global_filter = ~LeaderboardEntry.period_key.contains("::")
+                subq = (
+                    select(
+                        LeaderboardEntry.user_id,
+                        func.sum(LeaderboardEntry.total_xp).label("total_xp"),
+                    )
+                    .where(global_filter)
+                    .group_by(LeaderboardEntry.user_id)
+                    .order_by(func.sum(LeaderboardEntry.total_xp).desc())
+                    .limit(1)
+                ).subquery()
+                top_r = await session.exec(select(subq.c.user_id))
+                top_uid_row = top_r.one_or_none()
+                if top_uid_row:
+                    top_uid = top_uid_row[0] if isinstance(top_uid_row, tuple) or hasattr(top_uid_row, "__getitem__") else top_uid_row
+                    met = top_uid == current_user.id
 
             if not met:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Achievement criteria not met")
@@ -767,7 +821,7 @@ async def claim_achievement(
             session.add(UserAchievement(
                 user_id=current_user.id, achievement_key=request.achievement_key,
             ))
-            gem_amount = GEM_EARN_RATES["achievement_unlocked"]
+            gem_amount = cfg.get("gem_reward", 15)
 
             gem_result = await session.exec(
                 select(GemBalance)

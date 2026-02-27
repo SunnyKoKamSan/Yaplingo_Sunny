@@ -2,13 +2,11 @@ import { useCallback, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, View } from "react-native";
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from "react-native-reanimated";
 import {
-  BookOpenIcon,
-  LightbulbIcon,
   ShieldIcon,
-  SparklesIcon,
-  StarIcon,
   XIcon,
   ZapIcon,
+  RocketIcon,
+  ArrowUpCircleIcon,
   type LucideIcon,
 } from "lucide-react-native";
 import { useAtomValue } from "jotai";
@@ -34,16 +32,6 @@ type ShopItem = {
 
 const SHOP_ITEMS: ShopItem[] = [
   {
-    key: "extra_attempts",
-    title: "Extra Attempts",
-    description: "Get 3 additional pronunciation attempts",
-    cost: 40,
-    icon: BookOpenIcon,
-    color: "#22C55E",
-    inventoryKey: "extra_attempts",
-    inventoryLabel: (c) => `${c} attempts left`,
-  },
-  {
     key: "streak_freeze",
     title: "Streak Freeze",
     description: "Protect your streak for 1 missed day",
@@ -54,42 +42,28 @@ const SHOP_ITEMS: ShopItem[] = [
     inventoryLabel: (c) => `${c} freeze${c !== 1 ? "s" : ""} stored`,
   },
   {
-    key: "hint_pack",
-    title: "Hint Pack",
-    description: "Unlock 5 extra pronunciation hints",
-    cost: 75,
-    icon: LightbulbIcon,
-    color: "#F59E0B",
-    inventoryKey: "hint_packs",
-    inventoryLabel: (c) => `${c} hint${c !== 1 ? "s" : ""} left`,
-  },
-  {
     key: "xp_boost_1h",
-    title: "XP Boost",
-    description: "2× XP for the next 1 hour",
+    title: "2× XP Boost",
+    description: "Double XP for the next hour",
     cost: 100,
     icon: ZapIcon,
     color: "#EF4444",
   },
   {
-    key: "avatar_decoration",
-    title: "Avatar Flair",
-    description: "Permanent decoration for your profile",
-    cost: 150,
-    icon: SparklesIcon,
-    color: "#8B5CF6",
-    inventoryKey: "has_avatar_decoration",
-    inventoryLabel: () => "Owned ✓",
+    key: "buy_xp_500",
+    title: "Buy 500 XP",
+    description: "Instantly add 500 XP to your total",
+    cost: 50,
+    icon: ArrowUpCircleIcon,
+    color: "#22C55E",
   },
   {
-    key: "premium_scenario",
-    title: "Premium Scenario",
-    description: "Unlock an exclusive conversation scenario",
-    cost: 200,
-    icon: StarIcon,
-    color: "#EC4899",
-    inventoryKey: "premium_scenarios",
-    inventoryLabel: (c) => `${c} unlocked`,
+    key: "xp_boost_30m_30x",
+    title: "30× Mega Boost",
+    description: "30× XP for 30 minutes — go big!",
+    cost: 500,
+    icon: RocketIcon,
+    color: "#8B5CF6",
   },
 ];
 
@@ -105,16 +79,15 @@ const ShopItemCard = ({
   onBuy: () => void;
 }) => {
   const IconComponent = item.icon;
-  const isOwned = item.key === "avatar_decoration" && inventoryCount === 1;
 
   return (
     <View
       style={[
         tw`flex-row items-center rounded-2xl p-3.5 gap-3`,
         {
-          backgroundColor: canAfford && !isOwned ? item.color + "08" : "#FAFAFA",
+          backgroundColor: canAfford ? item.color + "08" : "#FAFAFA",
           borderWidth: 1,
-          borderColor: canAfford && !isOwned ? item.color + "25" : "#E5E7EB",
+          borderColor: canAfford ? item.color + "25" : "#E5E7EB",
         },
       ]}
     >
@@ -144,18 +117,18 @@ const ShopItemCard = ({
         )}
       </View>
       <Button
-        disabled={!canAfford || isOwned}
+        disabled={!canAfford}
         onPress={onBuy}
         style={tw.style(
           "px-3.5 py-2 rounded-xl border-transparent",
           {
-            backgroundColor: isOwned ? "#D1D5DB" : canAfford ? item.color : "#D1D5DB",
-            opacity: canAfford && !isOwned ? 1 : 0.5,
+            backgroundColor: canAfford ? item.color : "#D1D5DB",
+            opacity: canAfford ? 1 : 0.5,
           },
         )}
       >
         <Text style={tw`text-xs font-bold text-white`}>
-          {isOwned ? "Owned" : `💎 ${item.cost}`}
+          💎 {item.cost}
         </Text>
       </Button>
     </View>

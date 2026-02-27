@@ -15,6 +15,7 @@ import {
   AwardIcon,
   BookOpenIcon,
   BriefcaseIcon,
+  CpuIcon,
   CrownIcon,
   DiamondIcon,
   FlameIcon,
@@ -22,6 +23,7 @@ import {
   GemIcon,
   GraduationCapIcon,
   LockIcon,
+  MedalIcon,
   Mic2Icon,
   MicIcon,
   PlaneIcon,
@@ -67,11 +69,13 @@ const BADGE_CONFIG: Record<string, BadgeConfig> = {
   diamond_culture:  { color: "#8B5CF6", icon: PaletteIcon },
   diamond_travel:   { color: "#06B6D4", icon: PlaneIcon },
   diamond_business: { color: "#6366F1", icon: BriefcaseIcon },
+  diamond_tech:     { color: "#0EA5E9", icon: CpuIcon },
+  weekly_champ:     { color: "#F59E0B", icon: MedalIcon },
+  alltime_legend:   { color: "#FFD700", icon: TrophyIcon },
 };
 
 const DEFAULT_BADGE: BadgeConfig = { color: "#9CA3AF", icon: AwardIcon };
 const BADGE_SIZE = 72;
-const GEM_REWARD = 15;
 
 
 const FlyingGem = ({
@@ -146,19 +150,23 @@ const AchievementBadge = ({
 
   const progressPct = Math.round(item.progress * 100);
   const isClaimable = !item.unlocked && progressPct >= 100;
+  const isUltimate = item.ultimate;
 
   return (
     <Animated.View entering={entering} style={tw`flex-1 items-center py-2.5 px-1`}>
       <Pressable onPress={onPress} style={tw`items-center`}>
-        {/* Outer ring */}
         <View
           style={[
             {
               width: BADGE_SIZE,
               height: BADGE_SIZE,
               borderRadius: BADGE_SIZE / 2,
-              borderWidth: item.unlocked ? 3 : 2,
-              borderColor: item.unlocked ? cfg.color : isClaimable ? "#22C55E" : "#D1D5DB",
+              borderWidth: isUltimate ? 3.5 : item.unlocked ? 3 : 2,
+              borderColor: item.unlocked
+                ? cfg.color
+                : isClaimable
+                  ? "#22C55E"
+                  : "#D1D5DB",
               backgroundColor: item.unlocked
                 ? cfg.color + "15"
                 : isClaimable
@@ -170,9 +178,9 @@ const AchievementBadge = ({
             item.unlocked && {
               shadowColor: cfg.color,
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.4,
-              shadowRadius: 10,
-              elevation: 8,
+              shadowOpacity: isUltimate ? 0.7 : 0.4,
+              shadowRadius: isUltimate ? 16 : 10,
+              elevation: isUltimate ? 12 : 8,
             },
             isClaimable && {
               shadowColor: "#22C55E",
@@ -180,6 +188,10 @@ const AchievementBadge = ({
               shadowOpacity: 0.35,
               shadowRadius: 8,
               elevation: 6,
+            },
+            isUltimate && !item.unlocked && !isClaimable && {
+              borderColor: "#FFD70060",
+              borderWidth: 2.5,
             },
           ]}
         >
@@ -401,7 +413,7 @@ const DetailModal = ({
           <View style={tw`flex-row items-center gap-1 mt-2`}>
             <Text style={tw`text-xs text-zinc-400`}>Reward:</Text>
             <DiamondIcon size={12} color="#22C55E" fill="#22C55E" />
-            <Text style={tw`text-xs font-bold text-green-600`}>{GEM_REWARD} gems</Text>
+            <Text style={tw`text-xs font-bold text-green-600`}>{item.gem_reward} gems</Text>
           </View>
 
           {/* Action buttons */}
@@ -415,7 +427,7 @@ const DetailModal = ({
               <View style={tw`flex-row items-center gap-1.5`}>
                 <DiamondIcon size={16} color="white" fill="white" />
                 <Text style={tw`text-sm font-bold text-white`}>
-                  {isClaiming ? "Claiming..." : `Collect ${GEM_REWARD} 💎`}
+                  {isClaiming ? "Claiming..." : `Collect ${item.gem_reward} 💎`}
                 </Text>
               </View>
             </Button>
