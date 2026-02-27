@@ -55,6 +55,9 @@ const RECORDING_OPTIONS: RecordingOptions = {
     outputFormat: "aac_adts",
     audioEncoder: "aac",
   },
+  web: {
+    mimeType: "audio/wav",
+  },
 };
 
 const Header = ({
