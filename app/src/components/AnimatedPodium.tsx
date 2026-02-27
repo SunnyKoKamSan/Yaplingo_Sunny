@@ -320,7 +320,7 @@ export default function AnimatedPodium({
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
           style={tw`flex-1 items-center`}>
-          {/* Use RNText directly for the pillar number to avoid theming overrides and ensure color is applied */}
+          {/* RNText avoids theming overrides */}
           <RNText
             style={[
               tw`font-bold`,

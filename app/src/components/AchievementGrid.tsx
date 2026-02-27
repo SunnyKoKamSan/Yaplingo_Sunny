@@ -42,7 +42,6 @@ import type { AchievementResponse } from "~/client/models";
 import Text from "./Text";
 import Button from "./Button";
 
-// ── Badge visual config ──────────────────────────────────────────────────────
 
 type BadgeConfig = {
   color: string;
@@ -74,7 +73,6 @@ const DEFAULT_BADGE: BadgeConfig = { color: "#9CA3AF", icon: AwardIcon };
 const BADGE_SIZE = 72;
 const GEM_REWARD = 15;
 
-// ── Flying Gem Particle ──────────────────────────────────────────────────────
 
 const FlyingGem = ({
   index,
@@ -131,8 +129,6 @@ const FlyingGem = ({
 };
 
 
-// ── Badge Component ──────────────────────────────────────────────────────────
-
 const AchievementBadge = ({
   item,
   index,
@@ -154,7 +150,7 @@ const AchievementBadge = ({
   return (
     <Animated.View entering={entering} style={tw`flex-1 items-center py-2.5 px-1`}>
       <Pressable onPress={onPress} style={tw`items-center`}>
-        {/* Outer glow ring */}
+        {/* Outer ring */}
         <View
           style={[
             {
@@ -266,7 +262,6 @@ const AchievementBadge = ({
   );
 };
 
-// ── Detail Modal ─────────────────────────────────────────────────────────────
 
 const DetailModal = ({
   item,
@@ -438,7 +433,6 @@ const DetailModal = ({
   );
 };
 
-// ── Grid ─────────────────────────────────────────────────────────────────────
 
 export default function AchievementGrid({
   achievements,

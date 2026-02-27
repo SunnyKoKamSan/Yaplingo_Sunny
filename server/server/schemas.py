@@ -23,21 +23,11 @@ class UserCredentials(BaseModel):
     password: str
 
 
-# Gamification Schemas
 class CheckInRequest(BaseModel):
-    xp_amount: int = Field(gt=0, description="XP amount earned (must be positive)")
-    topic: str | None = Field(default=None, description="Topic category (e.g. Food, Culture, Travel, Business, Technology). None = Global only.")
-    accuracy_percentage: int | None = Field(
-        default=None,
-        ge=0,
-        le=100,
-        description="Optional pronunciation score percentage for daily accuracy tracking.",
-    )
-    completion_time_ms: int | None = Field(
-        default=None,
-        ge=0,
-        description="Lesson wall-clock duration in milliseconds. Used for mastery speed score.",
-    )
+    xp_amount: int = Field(gt=0)
+    topic: str | None = Field(default=None)
+    accuracy_percentage: int | None = Field(default=None, ge=0, le=100)
+    completion_time_ms: int | None = Field(default=None, ge=0)
 
 
 class CheckInResponse(BaseModel):
@@ -96,8 +86,6 @@ class TopicMasteryResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-# ── Gem & Achievement Schemas ─────────────────────────────────────────────────
 
 class GemTransactionResponse(BaseModel):
     id: int

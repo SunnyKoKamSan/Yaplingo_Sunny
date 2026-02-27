@@ -41,9 +41,7 @@ import {
 import { useNavigationOptions } from "~/hooks";
 import type { LeaderboardItem, MasteryTier, Topic, TopicMasteryResponse } from "~/client/models";
 
-// ─── Constants ───────────────────────────────────────────────────────────────
 
-// Background green intensified ~10% from #F0FDF4
 const BG_COLOR = "#ffffff";
 
 const LOTTIE_CROWN_URI =
@@ -60,7 +58,6 @@ const TOPICS: { key: Topic; label: string; emoji: string }[] = [
 
 type TimeTab = "this-week" | "all-time";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const getISOWeek = (date: Date) => {
   const d = new Date(
@@ -95,7 +92,6 @@ const buildPeriods = (count: number) => {
 
 const formatXP = (xp: number) => xp.toLocaleString();
 
-// ─── Animated Mascot (inside #1 bar) ────────────────────────────────────────
 
 const FloatingMascot = ({ showCrown }: { showCrown?: boolean }) => {
   const translateY = useSharedValue(0);
@@ -136,7 +132,6 @@ const FloatingMascot = ({ showCrown }: { showCrown?: boolean }) => {
   );
 };
 
-// ─── Header ──────────────────────────────────────────────────────────────────
 
 const StatCard = ({
   label,
@@ -203,7 +198,6 @@ const ScreenHeader = ({
   );
 };
 
-// ─── Climbing Tips ───────────────────────────────────────────────────────────
 
 const ClimbingTips = () => (
   <View
@@ -226,7 +220,6 @@ const ClimbingTips = () => (
   </View>
 );
 
-// ─── Topic Tabs ──────────────────────────────────────────────────────────────
 
 const TIER_BADGE_COLORS: Record<MasteryTier, string> = {
   Bronze: "#CD7F32",
@@ -300,7 +293,6 @@ const TopicTabs = ({
   </ScrollView>
 );
 
-// ─── Time Tabs (This Week + All Time only) ───────────────────────────────────
 
 const TimeTabs = ({
   selected,
@@ -346,7 +338,6 @@ const TimeTabs = ({
   </View>
 );
 
-// ─── Podium ──────────────────────────────────────────────────────────────────
 
 const PodiumSection = ({
   top3,
@@ -389,7 +380,6 @@ const PodiumSection = ({
   );
 };
 
-// ─── List Section ────────────────────────────────────────────────────────────
 
 const LeaderboardRow = ({
   item,
@@ -473,7 +463,6 @@ const LeaderboardRow = ({
   </Animated.View>
 );
 
-// ─── Empty / Error States ────────────────────────────────────────────────────
 
 const EmptyState = () => (
   <View style={tw`flex-1 items-center justify-center py-20`}>
@@ -498,7 +487,6 @@ const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
   </View>
 );
 
-// ─── Week Navigation ─────────────────────────────────────────────────────────
 
 const WeekNav = ({
   label,
@@ -532,7 +520,6 @@ const WeekNav = ({
   </View>
 );
 
-// ─── Sticky Footer ──────────────────────────────────────────────────────────
 
 const MyRankFooter = ({
   rank,
@@ -585,7 +572,6 @@ const MyRankFooter = ({
   );
 };
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function MainCommunityScreen() {
   const isFocused = useIsFocused();
@@ -725,7 +711,7 @@ export default function MainCommunityScreen() {
               onSelectTimeTab={setTimeTab}
             />
 
-            {/* remove spacer so podium and list touch */}
+            {/* remove spacer */}
           </View>
         }
         ListEmptyComponent={top3.length === 0 ? <EmptyState /> : null}

@@ -1,9 +1,3 @@
-"""
-Gamification Router
-===================
-Handles user check-ins, progress tracking, and gamification features.
-Uses server-side UTC time for anti-cheat protection.
-"""
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
@@ -21,9 +15,8 @@ from server.settings import settings as app_settings
 
 router = APIRouter()
 
-# Constants
-DAILY_GOAL_XP = 200  # XP required to meet daily goal
-HIGH_ACCURACY_THRESHOLD = 80  # score percentage counted as "Hit 80%"
+DAILY_GOAL_XP = 200
+HIGH_ACCURACY_THRESHOLD = 80
 
 
 @router.get("/active-events", response_model=list[ActiveEventResponse], status_code=status.HTTP_200_OK)
@@ -48,35 +41,10 @@ async def check_in(
     current_user: Annotated[User, Depends(current_user)],
     repository: Repository
 ) -> CheckInResponse:
-    """
-    Record user activity check-in for gamification tracking.
-    
-    **SERVER-SIDE AUTHORITY:** All dates/times use UTC on the server.
-    This prevents users from cheating by manipulating their device time.
-    
-    **ATOMIC TRANSACTION:** All updates (DailyProgress, Streak, Leaderboard)
-    are committed together or rolled back together, ensuring data consistency.
-    
-    **WRITE-THROUGH CACHING:** Leaderboard entries are updated incrementally
-    during check-in, eliminating expensive SUM() aggregations on reads.
-    
-    Args:
-        request: CheckInRequest containing xp_amount
-        current_user: Authenticated user (injected by JWT dependency)
-        repository: Database repository (injected dependency)
-        
-    Returns:
-        CheckInResponse with updated stats and streak
-        
-    Raises:
-        HTTPException: 500 if database operation fails
-    """
     async with repository.session() as session:
         async with session.begin():
             try:
-                # ════════════════════════════════════════════════════════════
-                # STEP 0: CHECK FOR ACTIVE XP MULTIPLIER EVENT (Anti-Cheat)
-                # ════════════════════════════════════════════════════════════
+                # step 0: xp multiplier
                 now_utc = datetime.utcnow()
                 event_query = select(XPMultiplierEvent).where(
                     XPMultiplierEvent.is_active == True,
@@ -101,17 +69,13 @@ async def check_in(
                     bonus_xp = 0
                     event_name = None
 
-                # ════════════════════════════════════════════════════════════
-                # STEP 1: GENERATE SERVER UTC DATE (Anti-Cheat Protection)
-                # ════════════════════════════════════════════════════════════
+                # step 1: server date
                 today_utc = now_utc
                 today_str = today_utc.strftime("%Y-%m-%d")
                 today_date = today_utc.date()
                 period_key = get_period_key(today_date)
                 
-                # ════════════════════════════════════════════════════════════
-                # STEP 2: UPSERT DAILY PROGRESS
-                # ════════════════════════════════════════════════════════════
+                # step 2: daily progress
                 query = select(DailyProgress).where(
                     DailyProgress.user_id == current_user.id,
                     DailyProgress.date_key == today_str
@@ -125,11 +89,9 @@ async def check_in(
                 )
                 
                 if daily_progress:
-                    # UPDATE: Increment XP and lesson count
                     daily_progress.xp_earned += effective_xp
                     daily_progress.lessons_completed += 1
                 else:
-                    # CREATE: New daily progress record
                     daily_progress = DailyProgress(
                         user_id=current_user.id,
                         date_key=today_str,
@@ -139,7 +101,6 @@ async def check_in(
                     )
                     session.add(daily_progress)
                 
-                # Check if daily goal threshold is reached
                 daily_progress.goal_met = daily_progress.xp_earned >= DAILY_GOAL_XP
 
                 accuracy_query = select(DailyAccuracy).where(
@@ -170,18 +131,13 @@ async def check_in(
                     )
                     session.add(daily_accuracy)
                 
-                # ════════════════════════════════════════════════════════════
-                # STEP 3: UPDATE STREAK (Server UTC Time Authority)
-                # ════════════════════════════════════════════════════════════
+                # step 3: streak
                 new_streak = await update_streak_utc(
                     session=session,
                     user_id=current_user.id,
                 )
                 
-                # ════════════════════════════════════════════════════════════
-                # STEP 4: UPSERT LEADERBOARD ENTRY (Write-Through)
-                # ════════════════════════════════════════════════════════════
-                # Always update the Global leaderboard entry
+                # step 4: leaderboard
                 leaderboard_entry = await session.get(
                     LeaderboardEntry,
                     (current_user.id, period_key)
@@ -197,7 +153,6 @@ async def check_in(
                     )
                     session.add(leaderboard_entry)
                 
-                # If a topic was provided, also update a topic-specific leaderboard entry
                 if request.topic:
                     topic_period_key = f"{period_key}::{request.topic}"
                     topic_entry = await session.get(
@@ -214,9 +169,7 @@ async def check_in(
                         )
                         session.add(topic_entry)
                 
-                # ════════════════════════════════════════════════════════════
-                # STEP 4.5: UPSERT TOPIC MASTERY (only when topic provided)
-                # ════════════════════════════════════════════════════════════
+                # step 4.5: topic mastery
                 old_mastery_tier = None
                 if request.topic:
                     mastery_row = await session.get(
@@ -269,9 +222,7 @@ async def check_in(
 
                     mastery_row.updated_at = datetime.utcnow()
                 
-                # ════════════════════════════════════════════════════════════
-                # STEP 5: GEM AWARDS (inside same transaction)
-                # ════════════════════════════════════════════════════════════
+                # step 5: gem awards
                 gems_earned_this_checkin = 0
                 newly_unlocked: list[str] = []
 
@@ -296,33 +247,27 @@ async def check_in(
                         user_id=current_user.id, amount=amount, reason=reason
                     ))
 
-                # Daily goal met — award only on the lesson that first triggers it
                 was_goal_met_before = (daily_progress.xp_earned - effective_xp) >= DAILY_GOAL_XP
                 if daily_progress.goal_met and not was_goal_met_before:
                     award_gems(GEM_EARN_RATES["daily_goal_met"], "daily_goal_met")
 
-                # Streak milestones
                 if new_streak == 7:
                     award_gems(GEM_EARN_RATES["streak_7"], "streak_7")
                 if new_streak == 30:
                     award_gems(GEM_EARN_RATES["streak_30"], "streak_30")
 
-                # Mastery tier upgrade
                 if request.topic and mastery_row:
                     old_tier = old_mastery_tier
                     if old_tier is not None and mastery_row.tier != old_tier:
                         award_gems(GEM_EARN_RATES["mastery_tier_upgrade"], "mastery_tier_upgrade")
 
-                # ════════════════════════════════════════════════════════════
-                # STEP 5.5: ACHIEVEMENT EVALUATION
-                # ════════════════════════════════════════════════════════════
+                # step 5.5: achievement evaluation
                 existing_achievements_result = await session.exec(
                     select(UserAchievement.achievement_key)
                     .where(UserAchievement.user_id == current_user.id)
                 )
                 existing_keys = set(existing_achievements_result.all())
 
-                # Calculate lifetime XP
                 lifetime_xp_result = await session.exec(
                     select(func.coalesce(func.sum(DailyProgress.xp_earned), 0))
                     .where(DailyProgress.user_id == current_user.id)
@@ -330,7 +275,6 @@ async def check_in(
                 lifetime_xp_row = lifetime_xp_result.one()
                 lifetime_xp = int(lifetime_xp_row[0] if isinstance(lifetime_xp_row, tuple) or hasattr(lifetime_xp_row, "__getitem__") else lifetime_xp_row)
 
-                # Calculate lifetime lessons
                 lifetime_lessons_result = await session.exec(
                     select(func.coalesce(func.sum(DailyProgress.lessons_completed), 0))
                     .where(DailyProgress.user_id == current_user.id)
@@ -361,23 +305,16 @@ async def check_in(
                         award_gems(GEM_EARN_RATES["achievement_unlocked"], f"achievement:{ach_key}")
                         newly_unlocked.append(ach_key)
 
-                # ════════════════════════════════════════════════════════════
-                # STEP 6: COMMIT TRANSACTION
-                # ════════════════════════════════════════════════════════════
-                # Flush to database to get updated values
+                # step 6: commit
                 await session.flush()
                 await session.refresh(daily_progress)
                 
-                # Transaction auto-commits on context manager exit
-                
             except Exception as e:
-                # Transaction auto-rolls back on exception
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail=f"Failed to process check-in: {str(e)}"
                 )
     
-    # Return updated progress (outside transaction)
     return CheckInResponse(
         user_id=current_user.id,
         date_key=daily_progress.date_key,
@@ -461,24 +398,11 @@ async def get_leaderboard(
     topic: str | None = Query(None, description="Topic filter (Food, Culture, etc.). None = Global."),
     all_time: bool = Query(False, description="If true, aggregate XP across all weeks."),
 ) -> list[LeaderboardItem]:
-    """
-    Get top 50 leaderboard entries for a given period.
-    
-    **UTC-First Architecture:**
-    - If no period_key is provided, automatically uses the current UTC week.
-    - This ensures all users globally see the same "current week" standings,
-      preventing timezone-based mismatches.
-    - If all_time=true, aggregates XP across all weeks.
-    """
+    """Get top 50 leaderboard entries for a given period."""
     if all_time:
-        # Aggregate XP across all period keys for each user
-        # For topic-specific: match period_keys ending with ::Topic
-        # For Global: match period_keys that are base WEEK-YYYY-WW (no :: suffix)
         if topic and topic != "Global":
-            # Sum all topic-specific entries
             period_filter = LeaderboardEntry.period_key.like(f"%::{topic}")
         else:
-            # Sum all Global entries (period_key has no :: suffix)
             period_filter = ~LeaderboardEntry.period_key.contains("::")
         
         query = (
@@ -498,7 +422,6 @@ async def get_leaderboard(
         for index, row in enumerate(rows, start=1):
             uid = row[0] if isinstance(row, tuple) or hasattr(row, "__getitem__") else row.user_id
             xp = row[1] if isinstance(row, tuple) or hasattr(row, "__getitem__") else row.total_xp
-            # Fetch user name
             user = await session.get(User, uid)
             name = user.name if user else "Unknown"
             leaderboard_items.append(
@@ -506,10 +429,8 @@ async def get_leaderboard(
             )
         return leaderboard_items
 
-    # UTC-First: Default to current week if not specified
     if period_key is None:
         period_key = get_current_utc_period_key()
-    # Append topic suffix for topic-specific queries (Global uses base period_key)
     if topic and topic != "Global":
         period_key = f"{period_key}::{topic}"
     query = (
@@ -546,53 +467,16 @@ async def get_my_rank(
     topic: str | None = Query(None, description="Topic filter (Food, Culture, etc.). None = Global."),
     all_time: bool = Query(False, description="If true, aggregate XP across all weeks."),
 ) -> MyRankResponse:
-    """
-    Get the authenticated user's rank and XP for a specific period.
-    
-    **Performance:** Uses optimized COUNT query instead of fetching all rows.
-    This scales to millions of users with O(1) complexity thanks to the
-    (period_key, total_xp) index.
-    
-    **Ranking Logic:**
-    - Rank = (number of users with higher XP) + 1
-    - Users with no entry get rank based on total participants + 1
-    - Ties are handled using ">" operator (dense ranking approximation)
-    
-    Args:
-        session: Async database session (injected)
-        current_user: Authenticated user (injected by JWT dependency)
-        period_key: Optional period identifier (e.g., "WEEK-2026-05").
-                   If None, defaults to current UTC week.
-                   Must match format WEEK-YYYY-WW if provided.
-    
-    Returns:
-        MyRankResponse with rank, total_xp, period_key, and is_current_period flag
-        
-    Examples:
-        # Get current week rank
-        GET /gamification/leaderboard/me
-        
-        # Get historical week rank
-        GET /gamification/leaderboard/me?period_key=WEEK-2026-04
-        
-    Edge Cases Handled:
-        - User has no entry yet: returns rank based on participant count + 1, xp = 0
-        - Zero participants: rank = 1 (user would be first if they played)
-        - Ties: Users with equal XP get consecutive ranks (not same rank)
-    """
+    """Get the authenticated user's rank and XP for a specific period."""
     gamification_profile = await session.get(UserGamification, current_user.id)
     current_streak = get_visible_streak_utc(gamification_profile)
 
-    # ════════════════════════════════════════════════════════════════
-    # ALL TIME MODE: Aggregate XP across all weeks
-    # ════════════════════════════════════════════════════════════════
     if all_time:
         if topic and topic != "Global":
             period_filter = LeaderboardEntry.period_key.like(f"%::{topic}")
         else:
             period_filter = ~LeaderboardEntry.period_key.contains("::")
         
-        # Get my total XP across all weeks
         my_xp_query = select(func.coalesce(func.sum(LeaderboardEntry.total_xp), 0)).where(
             LeaderboardEntry.user_id == current_user.id,
             period_filter,
@@ -601,7 +485,6 @@ async def get_my_rank(
         row = result.one()
         my_xp = int(row[0] if isinstance(row, tuple) or hasattr(row, "__getitem__") else row)
         
-        # Count users with higher total XP
         subquery = (
             select(
                 LeaderboardEntry.user_id,
@@ -624,40 +507,26 @@ async def get_my_rank(
             is_current_period=True,
         )
 
-    # ════════════════════════════════════════════════════════════════
-    # STEP 1: DETERMINE PERIOD KEY (Server UTC Authority)
-    # ════════════════════════════════════════════════════════════════
+    # step 1: determine period key
     if period_key is None:
         today_utc = datetime.now(timezone.utc).date()
         period_key = get_period_key(today_utc)
         is_current_period = True
     else:
-        # Historical period lookup
         current_period_key = get_period_key(datetime.now(timezone.utc).date())
         is_current_period = (period_key == current_period_key)
     
-    # Append topic suffix for topic-specific queries (Global uses base period_key)
     if topic and topic != "Global":
         period_key = f"{period_key}::{topic}"
     
-    # ════════════════════════════════════════════════════════════════
-    # STEP 2: FETCH USER'S LEADERBOARD ENTRY
-    # ════════════════════════════════════════════════════════════════
+    # step 2: fetch user's leaderboard entry
     user_entry = await session.get(
         LeaderboardEntry,
         (current_user.id, period_key)
     )
     my_xp = user_entry.total_xp if user_entry else 0
     
-    # ════════════════════════════════════════════════════════════════
-    # STEP 3: CALCULATE RANK USING EFFICIENT COUNT QUERY
-    # ════════════════════════════════════════════════════════════════
-    # Why COUNT instead of fetching all rows?
-    # - Fetching all: O(n) memory + network transfer + Python sorting
-    # - COUNT query: O(log n) with index, minimal memory, single number returned
-    # - With 10k users: COUNT = 1ms vs fetch+sort = 500ms
-    # - Database index on (period_key, total_xp) makes this blazing fast
-    
+    # step 3: calculate rank
     count_query = select(func.count()).select_from(LeaderboardEntry).where(
         LeaderboardEntry.period_key == period_key,
         LeaderboardEntry.total_xp > my_xp
@@ -666,7 +535,6 @@ async def get_my_rank(
     count_row = result.one()
     higher_count = count_row[0] if isinstance(count_row, tuple) or hasattr(count_row, "__getitem__") else count_row
     
-    # Rank = number of users with higher XP + 1
     rank = int(higher_count) + 1
     
     return MyRankResponse(
@@ -677,10 +545,6 @@ async def get_my_rank(
         is_current_period=is_current_period
     )
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# GEM & ACHIEVEMENT ENDPOINTS
-# ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/gems", response_model=GemBalanceResponse, status_code=status.HTTP_200_OK)
 async def get_gems(
@@ -736,7 +600,6 @@ async def spend_gems(
                 user_id=current_user.id, amount=-cost, reason=request.item_key,
             ))
 
-            # ── Grant the purchased item ──────────────────────────────
             inv_result = await session.exec(
                 select(UserInventory).where(UserInventory.user_id == current_user.id)
             )
@@ -778,7 +641,6 @@ async def get_achievements(
     current_user: Annotated[User, Depends(current_user)],
 ) -> list[AchievementResponse]:
     """Return all achievements with locked/unlocked status and progress."""
-    # Fetch unlocked achievements
     result = await session.exec(
         select(UserAchievement).where(UserAchievement.user_id == current_user.id)
     )
@@ -786,7 +648,6 @@ async def get_achievements(
     entries = [r[0] if isinstance(r, tuple) or hasattr(r, "__getitem__") else r for r in rows]
     unlocked_map = {e.achievement_key: e.unlocked_at for e in entries}
 
-    # Context for progress computation
     xp_result = await session.exec(
         select(func.coalesce(func.sum(DailyProgress.xp_earned), 0))
         .where(DailyProgress.user_id == current_user.id)
@@ -838,10 +699,6 @@ async def get_achievements(
         ))
     return responses
 
-
-# ============================================================================
-# CLAIM ACHIEVEMENT
-# ============================================================================
 
 @router.post("/achievements/claim", response_model=ClaimAchievementResponse, status_code=status.HTTP_200_OK)
 async def claim_achievement(
@@ -935,10 +792,6 @@ async def claim_achievement(
         new_balance=gem_row.balance,
     )
 
-
-# ============================================================================
-# USER INVENTORY
-# ============================================================================
 
 @router.get("/inventory", response_model=UserInventoryResponse, status_code=status.HTTP_200_OK)
 async def get_inventory(

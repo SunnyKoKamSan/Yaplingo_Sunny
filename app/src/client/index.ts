@@ -1,18 +1,3 @@
-/**
- * XP CALCULATION STRATEGY
- * ========================
- *
- * The backend check-in endpoint expects 'xp_amount' to be provided by the client.
- *
- * CURRENT APPROACH:
- * - After user completes a lesson via Echo API (POST /echo/analyze),
- * - Client receives analysis results with phoneme error counts in logs
- * - Client calculates XP score based on accuracy:
- *   Example: xp = Math.max(10, 100 - (error_count * 5))
- * - Client then calls useCheckInMutation().mutate({ xp_amount: calculatedXP })
- *
- * FUTURE: Echo could return 'xp_score' directly in response to simplify client logic.
- */
 import { useEffect } from "react";
 import {
   keepPreviousData,
@@ -58,14 +43,14 @@ const client = axios.create({
   responseType: "json",
 });
 
-// attach token to every request
+// attach token
 client.interceptors.request.use((config) => {
   const token = store.get($token);
   if (token) config.headers.setAuthorization(`Bearer ${token}`);
   return config;
 });
 
-// log error responses globally
+// log errors globally
 client.interceptors.response.use(undefined, (error) => {
   if (error instanceof AxiosError) {
     if (error.status === 401) store.set($token, ""); // clear token on unauthorized
@@ -214,9 +199,6 @@ export const useInvalidateGamification = () => {
   };
 };
 
-// ============================================================================
-// CHECK-IN MUTATION
-// ============================================================================
 export const useCheckInMutation = (): UseMutationResult<
   CheckInResponse,
   AxiosError,
@@ -295,9 +277,6 @@ export const useDailyProgressQuery = (): UseQueryResult<CheckInResponse, AxiosEr
   return query;
 };
 
-// ============================================================================
-// LEADERBOARD QUERIES
-// ============================================================================
 export const useLeaderboardQuery = (
   periodKey?: string,
   topic?: Topic
@@ -337,9 +316,6 @@ export const usePrefetchLeaderboard = () => {
   };
 };
 
-// ============================================================================
-// ACTIVE EVENTS QUERY
-// ============================================================================
 export const useActiveEventsQuery = () =>
   useQuery<ActiveEvent[], AxiosError>({
     queryKey: [...GAMIFICATION_QUERY_KEY, "active-events"],
@@ -352,9 +328,6 @@ export const useActiveEventsQuery = () =>
     refetchInterval: 60 * 1000,
   });
 
-// ============================================================================
-// MASTERY QUERY
-// ============================================================================
 export const useMasteryQuery = (): UseQueryResult<TopicMasteryResponse[], AxiosError> =>
   useQuery({
     queryKey: [...GAMIFICATION_QUERY_KEY, "mastery"],
@@ -365,10 +338,6 @@ export const useMasteryQuery = (): UseQueryResult<TopicMasteryResponse[], AxiosE
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
-
-// ============================================================================
-// GEM & ACHIEVEMENT HOOKS
-// ============================================================================
 
 export const useGemBalanceQuery = (): UseQueryResult<GemBalanceResponse, AxiosError> => {
   const setGemBalance = useSetAtom($gemBalance);
