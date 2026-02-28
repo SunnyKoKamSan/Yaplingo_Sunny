@@ -56,4 +56,12 @@ export const $activeEvent = atom<ActiveEvent | null>(null);
 
 export const $gemBalance = atom<number>(0);
 
+export const $lastKnownRanks = atomWithSecureStore<Record<string, number>>(
+  "last_known_ranks", {}, { getOnInit: true }
+);
+
+export const $rankAlertsEnabled = atomWithSecureStore<boolean>(
+  "rank_alerts_enabled", false, { getOnInit: true }
+);
+
 export default store;

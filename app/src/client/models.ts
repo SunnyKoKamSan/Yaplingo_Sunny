@@ -73,7 +73,22 @@ export type LeaderboardItem = {
   name: string;
   total_xp: number;
   user_id: string;
-  // Note: Backend doesn't return avatar_url yet
+  rank_delta?: number; // positive=climbed, negative=fell, 0=unchanged. Computed client-side.
+};
+
+export type ProximityNeighbour = {
+  user_id: string;
+  name: string;
+  total_xp: number;
+  rank: number;
+  xp_gap: number;
+};
+
+export type ProximityResponse = {
+  above: ProximityNeighbour[];
+  below: ProximityNeighbour[];
+  my_xp: number;
+  my_rank: number;
 };
 
 export type MyRankResponse = {

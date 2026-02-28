@@ -9,7 +9,7 @@ from server.core.gamification import get_period_key, get_visible_streak_utc, upd
 from server.dependencies import Repository, SessionDep, current_user
 from server.repository.gamification import ACHIEVEMENTS, DailyAccuracy, DailyProgress, GEM_EARN_RATES, GEM_SPEND_RATES, GemBalance, GemTransaction, LeaderboardEntry, MasteryTier, TopicMastery, UserAchievement, UserGamification, UserInventory, XPMultiplierEvent
 from server.repository.models import User
-from server.schemas import AchievementResponse, ActiveEventResponse, CheckInRequest, CheckInResponse, ClaimAchievementRequest, ClaimAchievementResponse, GemBalanceResponse, GemTransactionResponse, LeaderboardItem, MyRankResponse, SpendGemsRequest, SpendGemsResponse, TopicMasteryResponse, UserInventoryResponse
+from server.schemas import AchievementResponse, ActiveEventResponse, CheckInRequest, CheckInResponse, ClaimAchievementRequest, ClaimAchievementResponse, GemBalanceResponse, GemTransactionResponse, LeaderboardItem, MyRankResponse, ProximityNeighbour, ProximityResponse, SpendGemsRequest, SpendGemsResponse, TopicMasteryResponse, UserInventoryResponse
 from server.utils import get_current_utc_period_key
 from server.settings import settings as app_settings
 
@@ -862,3 +862,154 @@ async def get_inventory(
     if not row:
         return UserInventoryResponse()
     return UserInventoryResponse.model_validate(row)
+
+
+@router.get("/leaderboard/proximity", response_model=ProximityResponse, status_code=status.HTTP_200_OK)
+async def get_proximity(
+    current_user: Annotated[User, Depends(current_user)],
+    session: SessionDep,
+    topic: str | None = Query(None),
+    all_time: bool = Query(False),
+    xp_window: int = Query(200, ge=10, le=1000,
+        description="XP range above/below user to search. Default 200."),
+) -> ProximityResponse:
+    """Return users within xp_window above/below the current user."""
+
+    # Determine period key and filter (reuse logic from /leaderboard)
+    if all_time:
+        if topic and topic != "Global":
+            period_filter = LeaderboardEntry.period_key.like(f"%::{topic}")
+        else:
+            period_filter = ~LeaderboardEntry.period_key.contains("::")
+
+        # Current user's total XP across all periods
+        my_xp_q = select(func.coalesce(func.sum(LeaderboardEntry.total_xp), 0)).where(
+            LeaderboardEntry.user_id == current_user.id, period_filter,
+        )
+        result = await session.exec(my_xp_q)
+        row = result.one()
+        my_xp = int(row[0] if isinstance(row, tuple) or hasattr(row, "__getitem__") else row)
+
+        if my_xp == 0:
+            return ProximityResponse(above=[], below=[], my_xp=0, my_rank=1)
+
+        # Aggregated subquery
+        agg = (
+            select(
+                LeaderboardEntry.user_id,
+                func.sum(LeaderboardEntry.total_xp).label("total_xp"),
+            )
+            .where(period_filter)
+            .group_by(LeaderboardEntry.user_id)
+        ).subquery()
+
+        # my_rank (Standard Competition: count of users with strictly more XP + 1)
+        rank_q = select(func.count()).select_from(agg).where(agg.c.total_xp > my_xp)
+        result = await session.exec(rank_q)
+        rr = result.one()
+        my_rank = int(rr[0] if isinstance(rr, tuple) or hasattr(rr, "__getitem__") else rr) + 1
+
+        # Above: users with XP in (my_xp, my_xp + window], closest first
+        above_q = (
+            select(agg.c.user_id, agg.c.total_xp)
+            .where(agg.c.total_xp > my_xp, agg.c.total_xp <= my_xp + xp_window)
+            .order_by(agg.c.total_xp.asc())
+            .limit(5)
+        )
+        result = await session.exec(above_q)
+        above_rows = result.all()
+
+        # Below: users with XP in [my_xp - window, my_xp), closest first
+        below_q = (
+            select(agg.c.user_id, agg.c.total_xp)
+            .where(agg.c.total_xp < my_xp, agg.c.total_xp >= my_xp - xp_window)
+            .order_by(agg.c.total_xp.desc())
+            .limit(5)
+        )
+        result = await session.exec(below_q)
+        below_rows = result.all()
+
+        async def _to_neighbour_agg(row, my_xp_val):
+            uid = row[0] if isinstance(row, tuple) or hasattr(row, "__getitem__") else row.user_id
+            xp = int(row[1] if isinstance(row, tuple) or hasattr(row, "__getitem__") else row.total_xp)
+            user = await session.get(User, uid)
+            # Standard Competition Ranking for this neighbour
+            rq = select(func.count()).select_from(agg).where(agg.c.total_xp > xp)
+            res = await session.exec(rq)
+            rr2 = res.one()
+            nrank = int(rr2[0] if isinstance(rr2, tuple) or hasattr(rr2, "__getitem__") else rr2) + 1
+            return ProximityNeighbour(
+                user_id=str(uid), name=user.name if user else "Unknown",
+                total_xp=xp, rank=nrank, xp_gap=abs(xp - my_xp_val),
+            )
+
+        above = [await _to_neighbour_agg(r, my_xp) for r in above_rows]
+        below = [await _to_neighbour_agg(r, my_xp) for r in below_rows]
+        return ProximityResponse(above=above, below=below, my_xp=my_xp, my_rank=my_rank)
+
+    # Weekly period logic
+    effective_period_key = get_current_utc_period_key()
+    if topic and topic != "Global":
+        effective_period_key = f"{effective_period_key}::{topic}"
+
+    user_entry = await session.get(LeaderboardEntry, (current_user.id, effective_period_key))
+    my_xp = user_entry.total_xp if user_entry else 0
+
+    if my_xp == 0:
+        return ProximityResponse(above=[], below=[], my_xp=0, my_rank=1)
+
+    # my_rank
+    count_q = select(func.count()).select_from(LeaderboardEntry).where(
+        LeaderboardEntry.period_key == effective_period_key,
+        LeaderboardEntry.total_xp > my_xp,
+    )
+    result = await session.exec(count_q)
+    cr = result.one()
+    my_rank = int(cr[0] if isinstance(cr, tuple) or hasattr(cr, "__getitem__") else cr) + 1
+
+    # Above
+    above_q = (
+        select(LeaderboardEntry)
+        .where(
+            LeaderboardEntry.period_key == effective_period_key,
+            LeaderboardEntry.total_xp > my_xp,
+            LeaderboardEntry.total_xp <= my_xp + xp_window,
+        )
+        .options(selectinload(LeaderboardEntry.user))
+        .order_by(LeaderboardEntry.total_xp.asc())
+        .limit(5)
+    )
+    result = await session.exec(above_q)
+    above_entries = [r[0] if isinstance(r, tuple) or hasattr(r, "__getitem__") else r for r in result.all()]
+
+    # Below
+    below_q = (
+        select(LeaderboardEntry)
+        .where(
+            LeaderboardEntry.period_key == effective_period_key,
+            LeaderboardEntry.total_xp < my_xp,
+            LeaderboardEntry.total_xp >= my_xp - xp_window,
+        )
+        .options(selectinload(LeaderboardEntry.user))
+        .order_by(LeaderboardEntry.total_xp.desc())
+        .limit(5)
+    )
+    result = await session.exec(below_q)
+    below_entries = [r[0] if isinstance(r, tuple) or hasattr(r, "__getitem__") else r for r in result.all()]
+
+    async def _to_neighbour(entry, period_key, my_xp_val):
+        rq = select(func.count()).select_from(LeaderboardEntry).where(
+            LeaderboardEntry.period_key == period_key,
+            LeaderboardEntry.total_xp > entry.total_xp,
+        )
+        res = await session.exec(rq)
+        rr2 = res.one()
+        nrank = int(rr2[0] if isinstance(rr2, tuple) or hasattr(rr2, "__getitem__") else rr2) + 1
+        return ProximityNeighbour(
+            user_id=str(entry.user_id), name=entry.user.name if entry.user else "Unknown",
+            total_xp=entry.total_xp, rank=nrank, xp_gap=abs(entry.total_xp - my_xp_val),
+        )
+
+    above = [await _to_neighbour(e, effective_period_key, my_xp) for e in above_entries]
+    below = [await _to_neighbour(e, effective_period_key, my_xp) for e in below_entries]
+    return ProximityResponse(above=above, below=below, my_xp=my_xp, my_rank=my_rank)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -17,6 +17,7 @@ import Animated, {
   FadeInDown,
 } from "react-native-reanimated";
 import { useIsFocused } from "@react-navigation/native";
+import { useAtom } from "jotai";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ChevronLeftIcon,
@@ -26,20 +27,26 @@ import {
   TrophyIcon,
   UserIcon,
   ZapIcon,
+  BellIcon,
 } from "lucide-react-native";
 import LottieView from "lottie-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Notifications from "expo-notifications";
 import tw from "twrnc";
 
 import { AnimatedPodium, Button, Spinner, Text } from "~/components";
+import ProximityBanner from "~/components/ProximityBanner";
+import RankChangeIndicator from "~/components/RankChangeIndicator";
 import {
   useAuthedUserQuery,
   useLeaderboardQuery,
   useMasteryQuery,
   useMyRankQuery,
+  useProximityQuery,
 } from "~/client";
 import { useNavigationOptions } from "~/hooks";
 import type { LeaderboardItem, MasteryTier, Topic, TopicMasteryResponse } from "~/client/models";
+import { $rankAlertsEnabled } from "~/store";
 
 
 const BG_COLOR = "#ffffff";
@@ -436,7 +443,10 @@ const LeaderboardRow = ({
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 16, fontWeight: "800", color: isCurrentUser ? "#065F46" : "#111827" }} numberOfLines={1}>{item.name}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: isCurrentUser ? "#065F46" : "#111827" }} numberOfLines={1}>{item.name}</Text>
+          <RankChangeIndicator delta={item.rank_delta} />
+        </View>
       </View>
 
       <View
@@ -581,6 +591,16 @@ export default function MainCommunityScreen() {
   const [timeTab, setTimeTab] = useState<TimeTab>("this-week");
   const periods = useMemo(() => buildPeriods(5), []);
   const [periodIndex, setPeriodIndex] = useState(0);
+  const [rankAlertsEnabled, setRankAlertsEnabled] = useAtom($rankAlertsEnabled);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  const toggleRankAlerts = useCallback(async () => {
+    if (!rankAlertsEnabled) {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== "granted") return; // fail silently
+    }
+    setRankAlertsEnabled(!rankAlertsEnabled);
+  }, [rankAlertsEnabled, setRankAlertsEnabled]);
 
   const { data: masteryData } = useMasteryQuery();
   const masteryMap = useMemo(() => {
@@ -618,6 +638,15 @@ export default function MainCommunityScreen() {
     error,
     refetch,
   } = useLeaderboardQuery(periodKey, selectedTopic);
+
+  const { data: proximity } = useProximityQuery(
+    selectedTopic,
+    timeTab === "all-time",
+  );
+  const closestBelow = useMemo(() => {
+    const b = proximity?.below[0];
+    return b && b.xp_gap <= 50 ? b : null;
+  }, [proximity]);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -685,6 +714,31 @@ export default function MainCommunityScreen() {
               isLoading={headerLoading}
             />
             <ClimbingTips />
+
+            {/* Rank alerts toggle */}
+            <Pressable
+              onPress={toggleRankAlerts}
+              style={tw`flex-row items-center justify-between mx-4 mb-2 px-4 py-2.5 bg-zinc-50 rounded-xl border border-zinc-200`}
+            >
+              <View style={tw`flex-row items-center gap-2`}>
+                <BellIcon size={16} color={tw.color(rankAlertsEnabled ? "green-600" : "zinc-400")} />
+                <Text style={tw`text-sm font-semibold text-zinc-700`}>Rank Alerts</Text>
+              </View>
+              <View
+                style={tw.style(
+                  "w-10 h-6 rounded-full justify-center px-0.5",
+                  rankAlertsEnabled ? "bg-green-500" : "bg-zinc-300",
+                )}
+              >
+                <View
+                  style={tw.style(
+                    "w-5 h-5 rounded-full bg-white shadow",
+                    rankAlertsEnabled && "self-end",
+                  )}
+                />
+              </View>
+            </Pressable>
+
             <TopicTabs
               selected={selectedTopic}
               onSelect={setSelectedTopic}
@@ -738,6 +792,13 @@ export default function MainCommunityScreen() {
         hasError={rankUnavailable}
         userName={currentUser?.name}
       />
+
+      {!bannerDismissed && (
+        <ProximityBanner
+          neighbour={closestBelow}
+          onDismiss={() => setBannerDismissed(true)}
+        />
+      )}
     </View>
   );
 }

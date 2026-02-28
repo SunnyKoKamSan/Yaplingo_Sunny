@@ -1,12 +1,14 @@
 import { useEffect } from "react";
-import { Image, View, type ImageRequireSource } from "react-native";
+import { AppState, Image, View, type ImageRequireSource } from "react-native";
 import { Tabs } from "expo-router";
+import * as Notifications from "expo-notifications";
 import { useSetAtom } from "jotai";
 import tw from "twrnc";
 
 import { useActiveEventsQuery, usePrefetchLeaderboard } from "~/client";
+import client from "~/client";
 import EventBanner from "~/components/EventBanner";
-import { $activeEvent } from "~/store";
+import store, { $activeEvent, $rankAlertsEnabled } from "~/store";
 
 type Tab = {
   header?: boolean;
@@ -48,6 +50,40 @@ export default function MainLayout() {
   useEffect(() => {
     setActiveEvent(events?.[0] ?? null);
   }, [events, setActiveEvent]);
+
+  // Schedule local notification when app gains focus and a rival is close
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", async (state) => {
+      if (state !== "active") return;
+      const alertsEnabled = store.get($rankAlertsEnabled);
+      if (!alertsEnabled) return;
+      try {
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== "granted") return;
+        const { data } = await client.get("/gamification/leaderboard/proximity");
+        const below = data?.below?.[0];
+        if (below && below.xp_gap <= 50) {
+          await Notifications.dismissAllNotificationsAsync();
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Someone's catching up!",
+              body: `${below.name} is only ${below.xp_gap} XP behind. Study now!`,
+              sound: true,
+            },
+            trigger: null, // immediate
+          });
+        }
+      } catch {
+        // Fail silently — proximity fetch or notification may not be available
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+  // Future upgrade (NOT in scope for Week 15):
+  // Push notifications via Expo Push Service require:
+  //   - Device token registration endpoint on backend
+  //   - Server-side cron job polling proximity gaps
+  //   - Apple APNs + Google FCM credentials in Expo dashboard
 
   return (
     <View style={tw`flex-1`}>

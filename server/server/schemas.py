@@ -135,3 +135,18 @@ class AchievementResponse(BaseModel):
     progress: float = Field(default=0.0, ge=0.0, le=1.0)
     gem_reward: int = 15
     ultimate: bool = False
+
+
+class ProximityNeighbour(BaseModel):
+    user_id: str
+    name: str
+    total_xp: int
+    rank: int
+    xp_gap: int
+
+
+class ProximityResponse(BaseModel):
+    above: list[ProximityNeighbour]
+    below: list[ProximityNeighbour]
+    my_xp: int
+    my_rank: int

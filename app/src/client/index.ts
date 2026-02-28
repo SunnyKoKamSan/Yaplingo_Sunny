@@ -10,7 +10,7 @@ import {
 import axios, { AxiosError } from "axios";
 import { useSetAtom } from "jotai";
 
-import store, { $gemBalance, $lastCheckIn, $token } from "../store";
+import store, { $gemBalance, $lastCheckIn, $lastKnownRanks, $token } from "../store";
 import type {
   AchievementResponse,
   CheckInParams,
@@ -21,6 +21,7 @@ import type {
   GemBalanceResponse,
   LeaderboardItem,
   MyRankResponse,
+  ProximityResponse,
   Result,
   SpendGemsRequest,
   SpendGemsResponse,
@@ -289,6 +290,22 @@ export const useLeaderboardQuery = (
     placeholderData: keepPreviousData,
     retry: 2,
     refetchOnWindowFocus: false,
+    select: (data) => {
+      const rankKey = `${periodKey ?? "current"}:${topic ?? "Global"}`;
+      const lastRanks = store.get($lastKnownRanks) ?? {};
+      const enriched = data.map((item) => ({
+        ...item,
+        rank_delta: lastRanks[`${rankKey}:${item.user_id}`] != null
+          ? lastRanks[`${rankKey}:${item.user_id}`] - item.rank
+          : undefined,
+      }));
+      const newRanks = { ...lastRanks };
+      data.forEach((item) => {
+        newRanks[`${rankKey}:${item.user_id}`] = item.rank;
+      });
+      store.set($lastKnownRanks, newRanks);
+      return enriched;
+    },
   });
 };
 
@@ -413,6 +430,23 @@ export const useInventoryQuery = (): UseQueryResult<UserInventoryResponse, Axios
     },
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
+  });
+
+export const useProximityQuery = (topic?: Topic, allTime?: boolean) =>
+  useQuery<ProximityResponse, AxiosError>({
+    queryKey: [...GAMIFICATION_QUERY_KEY, "proximity", topic ?? "Global", allTime ?? false],
+    queryFn: async () => {
+      const params: Record<string, string> = {};
+      if (topic && topic !== "Global") params.topic = topic;
+      if (allTime) params.all_time = "true";
+      const { data } = await client.get<ProximityResponse>(
+        "/gamification/leaderboard/proximity",
+        { params },
+      );
+      return data;
+    },
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
 
 export default client;
