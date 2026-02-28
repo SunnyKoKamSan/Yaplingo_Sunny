@@ -1,18 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import Svg, { Polygon, Line, Text as SvgText } from "react-native-svg";
-import Animated, {
-  useSharedValue,
-  useAnimatedProps,
-  withTiming,
-} from "react-native-reanimated";
 import tw from "twrnc";
 
 import type { TopicMasteryResponse } from "~/client/models";
 
 import Text from "./Text";
-
-const AnimatedPolygon = Animated.createAnimatedComponent(Polygon);
 
 const TOPICS = ["Food", "Culture", "Travel", "Business", "Technology"] as const;
 const EMOJIS: Record<string, string> = {
@@ -42,7 +35,13 @@ const buildPolygonPoints = (scores: number[]) =>
     })
     .join(" ");
 
-export default function MasteryRadar({ data }: { data: TopicMasteryResponse[] }) {
+const easeOutBack = (t: number): number => {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+};
+
+export default function MasteryRadar({ data, playToken }: { data: TopicMasteryResponse[]; playToken?: number }) {
   const masteryMap = useMemo(() => {
     const map: Record<string, number> = {};
     for (const d of data) map[d.topic] = d.mastery_score;
@@ -54,24 +53,29 @@ export default function MasteryRadar({ data }: { data: TopicMasteryResponse[] })
     [masteryMap],
   );
 
-  const progress = useSharedValue(0);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    progress.value = withTiming(1, { duration: 1000 });
-  }, [progress]);
+    setProgress(0);
+    const start = Date.now();
+    const duration = 900;
+    const tick = () => {
+      const t = Math.min((Date.now() - start) / duration, 1);
+      setProgress(easeOutBack(t));
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [playToken]);
 
-  const animatedProps = useAnimatedProps(() => {
-    const animated = scores.map((s) => s * progress.value);
-    return { points: buildPolygonPoints(animated) };
-  });
+  const animatedScores = scores.map((s) => s * Math.max(progress, 0));
+  const points = buildPolygonPoints(animatedScores);
 
-  // Grid rings at 25%, 50%, 75%, 100%
   const gridRings = [0.25, 0.5, 0.75, 1.0];
 
   return (
-    <View style={tw`bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-sm items-center`}>
-      <Text style={tw`text-base font-bold text-zinc-800 dark:text-zinc-100 mb-2`}>
-        Mastery Radar
+    <View style={tw`rounded-2xl border-2 border-zinc-500/50 p-4 items-center`}>
+      <Text style={tw`text-base font-bold mb-2`}>
+        🎯 Mastery Radar
       </Text>
       <Svg width={SIZE} height={SIZE}>
         {/* Grid rings */}
@@ -105,8 +109,8 @@ export default function MasteryRadar({ data }: { data: TopicMasteryResponse[] })
         })}
 
         {/* Data polygon */}
-        <AnimatedPolygon
-          animatedProps={animatedProps}
+        <Polygon
+          points={points}
           fill="rgba(34,197,94,0.3)"
           stroke="#22C55E"
           strokeWidth={2}

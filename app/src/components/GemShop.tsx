@@ -193,7 +193,7 @@ export default function GemShop({
       >
         <Pressable style={tw`flex-1`} onPress={onClose} />
         <Animated.View
-          entering={SlideInDown.duration(300).springify().damping(18)}
+          entering={SlideInDown.duration(300)}
           exiting={SlideOutDown.duration(250)}
           style={tw`bg-white dark:bg-zinc-900 rounded-t-3xl px-6 pt-4 pb-10 shadow-2xl max-h-[80%]`}
         >

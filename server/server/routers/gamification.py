@@ -9,7 +9,7 @@ from server.core.gamification import get_period_key, get_visible_streak_utc, upd
 from server.dependencies import Repository, SessionDep, current_user
 from server.repository.gamification import ACHIEVEMENTS, DailyAccuracy, DailyProgress, GEM_EARN_RATES, GEM_SPEND_RATES, GemBalance, GemTransaction, LeaderboardEntry, MasteryTier, TopicMastery, UserAchievement, UserGamification, UserInventory, XPMultiplierEvent
 from server.repository.models import User
-from server.schemas import AchievementResponse, ActiveEventResponse, CheckInRequest, CheckInResponse, ClaimAchievementRequest, ClaimAchievementResponse, GemBalanceResponse, GemTransactionResponse, LeaderboardItem, MyRankResponse, ProximityNeighbour, ProximityResponse, SpendGemsRequest, SpendGemsResponse, TopicMasteryResponse, UserInventoryResponse
+from server.schemas import AchievementResponse, ActiveEventResponse, CheckInRequest, CheckInResponse, ClaimAchievementRequest, ClaimAchievementResponse, GemBalanceResponse, GemTransactionResponse, HistoryEntry, LeaderboardItem, MyRankResponse, ProximityNeighbour, ProximityResponse, SpendGemsRequest, SpendGemsResponse, StatsResponse, TopicMasteryResponse, UserInventoryResponse
 from server.utils import get_current_utc_period_key
 from server.settings import settings as app_settings
 
@@ -1013,3 +1013,93 @@ async def get_proximity(
     above = [await _to_neighbour(e, effective_period_key, my_xp) for e in above_entries]
     below = [await _to_neighbour(e, effective_period_key, my_xp) for e in below_entries]
     return ProximityResponse(above=above, below=below, my_xp=my_xp, my_rank=my_rank)
+
+
+# ── XP History & Stats (Week 16) ───────────────────────────────────────────
+
+async def _zero_filled_history(
+    session, user_id, days: int
+) -> list[HistoryEntry]:
+    """Return exactly `days` HistoryEntry items, zero-filling missing dates."""
+    today = datetime.now(timezone.utc).date()
+    start_date = today - timedelta(days=days - 1)
+
+    result = await session.exec(
+        select(DailyProgress).where(
+            DailyProgress.user_id == user_id,
+            DailyProgress.date_key >= start_date.isoformat(),
+            DailyProgress.date_key <= today.isoformat(),
+        )
+    )
+    rows = result.all()
+    data_map: dict[str, DailyProgress] = {}
+    for row in rows:
+        r = row[0] if isinstance(row, tuple) or hasattr(row, "__getitem__") else row
+        data_map[r.date_key] = r
+
+    history: list[HistoryEntry] = []
+    current = start_date
+    while current <= today:
+        key = current.isoformat()
+        if key in data_map:
+            dp = data_map[key]
+            history.append(HistoryEntry(
+                date_key=key,
+                xp_earned=dp.xp_earned,
+                goal_met=dp.goal_met,
+                lessons_completed=dp.lessons_completed,
+            ))
+        else:
+            history.append(HistoryEntry(
+                date_key=key, xp_earned=0, goal_met=False, lessons_completed=0,
+            ))
+        current += timedelta(days=1)
+    return history
+
+
+@router.get("/history", response_model=list[HistoryEntry], status_code=status.HTTP_200_OK)
+async def get_xp_history(
+    current_user: Annotated[User, Depends(current_user)],
+    session: SessionDep,
+    days: int = Query(30, ge=7, le=365),
+) -> list[HistoryEntry]:
+    """Return daily XP history with zero-filled gaps."""
+    return await _zero_filled_history(session, current_user.id, days)
+
+
+@router.get("/stats", response_model=StatsResponse, status_code=status.HTTP_200_OK)
+async def get_stats(
+    current_user: Annotated[User, Depends(current_user)],
+    session: SessionDep,
+) -> StatsResponse:
+    """Aggregated stats: 7-day avg, best 30-day streak, completion rate, lifetime XP."""
+    history = await _zero_filled_history(session, current_user.id, 30)
+
+    last_7 = history[-7:]
+    seven_day_avg = sum(e.xp_earned for e in last_7) / 7
+
+    goals_met = sum(1 for e in history if e.goal_met)
+    completion_rate = goals_met / 30 * 100
+
+    best_streak = 0
+    current_run = 0
+    for entry in history:
+        if entry.xp_earned > 0:
+            current_run += 1
+            best_streak = max(best_streak, current_run)
+        else:
+            current_run = 0
+
+    result = await session.exec(
+        select(func.coalesce(func.sum(DailyProgress.xp_earned), 0)).where(
+            DailyProgress.user_id == current_user.id,
+        )
+    )
+    lifetime_xp = result.one()[0]
+
+    return StatsResponse(
+        seven_day_avg_xp=round(seven_day_avg, 1),
+        thirty_day_best_streak=best_streak,
+        completion_rate_30d=round(completion_rate, 1),
+        lifetime_xp=lifetime_xp,
+    )

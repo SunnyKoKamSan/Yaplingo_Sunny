@@ -31,7 +31,6 @@ import {
 } from "lucide-react-native";
 import LottieView from "lottie-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Notifications from "expo-notifications";
 import tw from "twrnc";
 
 import { AnimatedPodium, Button, Spinner, Text } from "~/components";
@@ -596,8 +595,13 @@ export default function MainCommunityScreen() {
 
   const toggleRankAlerts = useCallback(async () => {
     if (!rankAlertsEnabled) {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== "granted") return; // fail silently
+      try {
+        const Notifications = await import("expo-notifications");
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== "granted") return;
+      } catch {
+        return;
+      }
     }
     setRankAlertsEnabled(!rankAlertsEnabled);
   }, [rankAlertsEnabled, setRankAlertsEnabled]);

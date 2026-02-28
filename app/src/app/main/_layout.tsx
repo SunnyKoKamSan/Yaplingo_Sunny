@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { AppState, Image, View, type ImageRequireSource } from "react-native";
 import { Tabs } from "expo-router";
-import * as Notifications from "expo-notifications";
 import { useSetAtom } from "jotai";
 import tw from "twrnc";
 
@@ -25,6 +24,11 @@ const TABS: Record<string, Tab> = {
     header: false,
     title: "Learn",
     icon: require("@/icons/tabs/learn.png"),
+  },
+  progress: {
+    header: false,
+    title: "Progress",
+    icon: require("@/icons/tabs/progress.png"),
   },
   community: {
     title: "Community",
@@ -58,6 +62,7 @@ export default function MainLayout() {
       const alertsEnabled = store.get($rankAlertsEnabled);
       if (!alertsEnabled) return;
       try {
+        const Notifications = await import("expo-notifications");
         const { status } = await Notifications.getPermissionsAsync();
         if (status !== "granted") return;
         const { data } = await client.get("/gamification/leaderboard/proximity");

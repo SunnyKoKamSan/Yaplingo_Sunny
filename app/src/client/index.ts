@@ -19,12 +19,14 @@ import type {
   ClaimAchievementResponse,
   ActiveEvent,
   GemBalanceResponse,
+  HistoryEntry,
   LeaderboardItem,
   MyRankResponse,
   ProximityResponse,
   Result,
   SpendGemsRequest,
   SpendGemsResponse,
+  StatsResponse,
   Topic,
   TopicMasteryResponse,
   Transcripts,
@@ -447,6 +449,26 @@ export const useProximityQuery = (topic?: Topic, allTime?: boolean) =>
     },
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
+  });
+
+export const useXPHistoryQuery = (days: 7 | 30 = 30) =>
+  useQuery<HistoryEntry[], AxiosError>({
+    queryKey: [...GAMIFICATION_QUERY_KEY, "history", days],
+    queryFn: async () => {
+      const { data } = await client.get<HistoryEntry[]>(`/gamification/history?days=${days}`);
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const useStatsQuery = () =>
+  useQuery<StatsResponse, AxiosError>({
+    queryKey: [...GAMIFICATION_QUERY_KEY, "stats"],
+    queryFn: async () => {
+      const { data } = await client.get<StatsResponse>("/gamification/stats");
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
   });
 
 export default client;
