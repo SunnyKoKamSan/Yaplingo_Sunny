@@ -179,3 +179,12 @@ export type StatsResponse = {
   completion_rate_30d: number;
   lifetime_xp: number;
 };
+
+// ============================================================================
+// CONFIG TYPES (server-authoritative rates & weights)
+// ============================================================================
+
+export type GemConfigResponse = {
+  earn_rates: Record<string, number>;
+  spend_rates: Record<string, number>;
+};

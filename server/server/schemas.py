@@ -164,3 +164,20 @@ class StatsResponse(BaseModel):
     thirty_day_best_streak: int
     completion_rate_30d: float
     lifetime_xp: int
+
+
+class MasteryConfigResponse(BaseModel):
+    weight_xp: float
+    weight_acc: float
+    weight_spd: float
+    xp_ceiling: int
+    speed_ceiling: int
+    tier_silver: float
+    tier_gold: float
+    tier_platinum: float
+    tier_diamond: float
+
+
+class GemConfigResponse(BaseModel):
+    earn_rates: dict[str, int]
+    spend_rates: dict[str, int]

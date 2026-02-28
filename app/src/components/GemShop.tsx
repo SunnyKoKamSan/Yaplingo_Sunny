@@ -12,7 +12,7 @@ import {
 import { useAtomValue } from "jotai";
 import tw from "twrnc";
 
-import { useInventoryQuery, useSpendGemsMutation } from "~/client";
+import { useGemConfigQuery, useInventoryQuery, useSpendGemsMutation } from "~/client";
 import { $gemBalance } from "~/store";
 
 import Text from "./Text";
@@ -23,7 +23,7 @@ type ShopItem = {
   key: string;
   title: string;
   description: string;
-  cost: number;
+  fallbackCost: number;
   icon: LucideIcon;
   color: string;
   inventoryKey?: string;
@@ -35,7 +35,7 @@ const SHOP_ITEMS: ShopItem[] = [
     key: "streak_freeze",
     title: "Streak Freeze",
     description: "Protect your streak for 1 missed day",
-    cost: 50,
+    fallbackCost: 50,
     icon: ShieldIcon,
     color: "#3B82F6",
     inventoryKey: "streak_freezes",
@@ -45,7 +45,7 @@ const SHOP_ITEMS: ShopItem[] = [
     key: "xp_boost_1h",
     title: "2× XP Boost",
     description: "Double XP for the next hour",
-    cost: 100,
+    fallbackCost: 100,
     icon: ZapIcon,
     color: "#EF4444",
   },
@@ -53,7 +53,7 @@ const SHOP_ITEMS: ShopItem[] = [
     key: "buy_xp_500",
     title: "Buy 500 XP",
     description: "Instantly add 500 XP to your total",
-    cost: 50,
+    fallbackCost: 50,
     icon: ArrowUpCircleIcon,
     color: "#22C55E",
   },
@@ -61,7 +61,7 @@ const SHOP_ITEMS: ShopItem[] = [
     key: "xp_boost_30m_30x",
     title: "30× Mega Boost",
     description: "30× XP for 30 minutes — go big!",
-    cost: 500,
+    fallbackCost: 500,
     icon: RocketIcon,
     color: "#8B5CF6",
   },
@@ -69,11 +69,13 @@ const SHOP_ITEMS: ShopItem[] = [
 
 const ShopItemCard = ({
   item,
+  cost,
   canAfford,
   inventoryCount,
   onBuy,
 }: {
   item: ShopItem;
+  cost: number;
   canAfford: boolean;
   inventoryCount?: number;
   onBuy: () => void;
@@ -128,7 +130,7 @@ const ShopItemCard = ({
         )}
       >
         <Text style={tw`text-xs font-bold text-white`}>
-          💎 {item.cost}
+          💎 {cost}
         </Text>
       </Button>
     </View>
@@ -145,7 +147,14 @@ export default function GemShop({
   const balance = useAtomValue($gemBalance);
   const spendMutation = useSpendGemsMutation();
   const { data: inventory } = useInventoryQuery();
+  const { data: gemConfig } = useGemConfigQuery();
   const [purchasing, setPurchasing] = useState(false);
+
+  const getCost = useCallback(
+    (item: ShopItem): number =>
+      gemConfig?.spend_rates[item.key] ?? item.fallbackCost,
+    [gemConfig],
+  );
 
   const getInventoryCount = (item: ShopItem): number | undefined => {
     if (!inventory || !item.inventoryKey) return undefined;
@@ -157,9 +166,10 @@ export default function GemShop({
 
   const handleBuy = useCallback(
     (item: ShopItem) => {
+      const cost = getCost(item);
       Alert.alert(
         "Confirm Purchase",
-        `Spend ${item.cost} 💎 on ${item.title}?`,
+        `Spend ${cost} 💎 on ${item.title}?`,
         [
           { text: "Cancel", style: "cancel" },
           {
@@ -179,7 +189,7 @@ export default function GemShop({
         ],
       );
     },
-    [spendMutation],
+    [spendMutation, getCost],
   );
 
   if (!visible) return null;
@@ -218,15 +228,19 @@ export default function GemShop({
           {/* Items */}
           <ScrollView showsVerticalScrollIndicator={false}>
             <View style={tw`gap-2.5 pb-2`}>
-              {SHOP_ITEMS.map((item) => (
-                <ShopItemCard
-                  key={item.key}
-                  item={item}
-                  canAfford={balance >= item.cost && !purchasing}
-                  inventoryCount={getInventoryCount(item)}
-                  onBuy={() => handleBuy(item)}
-                />
-              ))}
+              {SHOP_ITEMS.map((item) => {
+                const cost = getCost(item);
+                return (
+                  <ShopItemCard
+                    key={item.key}
+                    item={item}
+                    cost={cost}
+                    canAfford={balance >= cost && !purchasing}
+                    inventoryCount={getInventoryCount(item)}
+                    onBuy={() => handleBuy(item)}
+                  />
+                );
+              })}
             </View>
           </ScrollView>
         </Animated.View>

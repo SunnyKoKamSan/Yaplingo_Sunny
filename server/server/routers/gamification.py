@@ -9,7 +9,7 @@ from server.core.gamification import get_period_key, get_visible_streak_utc, upd
 from server.dependencies import Repository, SessionDep, current_user
 from server.repository.gamification import ACHIEVEMENTS, DailyAccuracy, DailyProgress, GEM_EARN_RATES, GEM_SPEND_RATES, GemBalance, GemTransaction, LeaderboardEntry, MasteryTier, TopicMastery, UserAchievement, UserGamification, UserInventory, XPMultiplierEvent
 from server.repository.models import User
-from server.schemas import AchievementResponse, ActiveEventResponse, CheckInRequest, CheckInResponse, ClaimAchievementRequest, ClaimAchievementResponse, GemBalanceResponse, GemTransactionResponse, HistoryEntry, LeaderboardItem, MyRankResponse, ProximityNeighbour, ProximityResponse, SpendGemsRequest, SpendGemsResponse, StatsResponse, TopicMasteryResponse, UserInventoryResponse
+from server.schemas import AchievementResponse, ActiveEventResponse, CheckInRequest, CheckInResponse, ClaimAchievementRequest, ClaimAchievementResponse, GemBalanceResponse, GemConfigResponse, GemTransactionResponse, HistoryEntry, LeaderboardItem, MasteryConfigResponse, MyRankResponse, ProximityNeighbour, ProximityResponse, SpendGemsRequest, SpendGemsResponse, StatsResponse, TopicMasteryResponse, UserInventoryResponse
 from server.utils import get_current_utc_period_key
 from server.settings import settings as app_settings
 
@@ -330,6 +330,24 @@ async def check_in(
     )
 
 
+@router.get("/mastery/config", response_model=MasteryConfigResponse, status_code=status.HTTP_200_OK)
+async def get_mastery_config(
+    current_user: Annotated[User, Depends(current_user)],
+) -> MasteryConfigResponse:
+    """Return current mastery weight configuration (read-only, authenticated users)."""
+    return MasteryConfigResponse(
+        weight_xp=app_settings.MASTERY_WEIGHT_XP,
+        weight_acc=app_settings.MASTERY_WEIGHT_ACC,
+        weight_spd=app_settings.MASTERY_WEIGHT_SPD,
+        xp_ceiling=app_settings.MASTERY_XP_CEILING,
+        speed_ceiling=app_settings.MASTERY_SPEED_CEILING,
+        tier_silver=app_settings.MASTERY_TIER_SILVER,
+        tier_gold=app_settings.MASTERY_TIER_GOLD,
+        tier_platinum=app_settings.MASTERY_TIER_PLATINUM,
+        tier_diamond=app_settings.MASTERY_TIER_DIAMOND,
+    )
+
+
 @router.get("/mastery", response_model=list[TopicMasteryResponse], status_code=status.HTTP_200_OK)
 async def get_mastery(
     session: SessionDep,
@@ -543,6 +561,12 @@ async def get_my_rank(
         period_key=period_key,
         is_current_period=is_current_period
     )
+
+
+@router.get("/gems/config", response_model=GemConfigResponse, status_code=status.HTTP_200_OK)
+async def get_gem_config() -> GemConfigResponse:
+    """Return server-side gem earn/spend rates so the frontend stays in sync."""
+    return GemConfigResponse(earn_rates=GEM_EARN_RATES, spend_rates=GEM_SPEND_RATES)
 
 
 @router.get("/gems", response_model=GemBalanceResponse, status_code=status.HTTP_200_OK)

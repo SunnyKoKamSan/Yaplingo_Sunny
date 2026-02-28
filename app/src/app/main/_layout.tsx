@@ -84,11 +84,12 @@ export default function MainLayout() {
     });
     return () => subscription.remove();
   }, []);
-  // Future upgrade (NOT in scope for Week 15):
-  // Push notifications via Expo Push Service require:
-  //   - Device token registration endpoint on backend
-  //   - Server-side cron job polling proximity gaps
-  //   - Apple APNs + Google FCM credentials in Expo dashboard
+    // Future: push via Expo Push Service (NOT in scope for Week 15).
+  // Infrastructure needed:
+  //   - Backend: POST /notifications/register device token endpoint
+  //   - Backend: APScheduler or Celery cron job for hourly proximity checks
+  //   - Expo Push Service API calls with APNs/FCM credentials
+  //   - Frontend: push token registration on app launch
 
   return (
     <View style={tw`flex-1`}>

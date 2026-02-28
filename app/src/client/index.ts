@@ -19,6 +19,7 @@ import type {
   ClaimAchievementResponse,
   ActiveEvent,
   GemBalanceResponse,
+  GemConfigResponse,
   HistoryEntry,
   LeaderboardItem,
   MyRankResponse,
@@ -432,6 +433,17 @@ export const useInventoryQuery = (): UseQueryResult<UserInventoryResponse, Axios
     },
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
+  });
+
+export const useGemConfigQuery = (): UseQueryResult<GemConfigResponse, AxiosError> =>
+  useQuery({
+    queryKey: [...GAMIFICATION_QUERY_KEY, "gems", "config"],
+    queryFn: async () => {
+      const { data } = await client.get<GemConfigResponse>("/gamification/gems/config");
+      return data;
+    },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
 export const useProximityQuery = (topic?: Topic, allTime?: boolean) =>
