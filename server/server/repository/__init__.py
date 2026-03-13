@@ -10,6 +10,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from .echo import EchoRepository
 from .user import UserRepository
 
+import server.repository.gamification as _gamification_models  # noqa: F401 — register tables
+
 if TYPE_CHECKING:
     cached_property = property
 else:

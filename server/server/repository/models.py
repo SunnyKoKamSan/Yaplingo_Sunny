@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from typing import TYPE_CHECKING, List
+
 import argon2
 from pydantic import field_validator
 from pydantic_extra_types.language_code import LanguageAlpha2
@@ -10,6 +12,9 @@ from typing_extensions import Self
 from ulid import ULID
 
 from server.store.echo import EchoSessionState
+
+if TYPE_CHECKING:
+    from .gamification import LeaderboardEntry
 
 
 class ULIDType(TypeDecorator):
@@ -38,6 +43,8 @@ class User(SQLModel, table=True):
     password: str
     language: LanguageAlpha2
     timezone: TimeZoneName
+
+    leaderboard_entries: List["LeaderboardEntry"] = Relationship(back_populates="user")
 
     @field_validator("password")
     @classmethod  # last wall of defense to ensure password is hashed before storing into database

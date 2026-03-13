@@ -1,17 +1,50 @@
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, FastAPI, WebSocket, WebSocketDisconnect
+from ulid import ULID
 
 from ..dependencies import Service, User
 from ..schemas.echo import EchoInput, EchoResponse
-from ..websocket import SessionManager, Sessions
+
+
+class SessionManager:
+    def __init__(self):
+        self.connections: dict[ULID, WebSocket] = {}
+
+    async def accept(self, user: User, ws: WebSocket):
+        if user.id in self.connections:
+            _ws = self.connections[user.id]
+            # Detach old connection so its finally block won't remove our new entry
+            self.connections[user.id] = ws
+            try:
+                await _ws.close()
+            except Exception:
+                pass
+        else:
+            self.connections[user.id] = ws
+        await ws.accept()
+
+    async def close(self, user: User, ws: WebSocket):
+        try:
+            await ws.close()
+        except Exception:
+            pass
+        if self.connections.get(user.id) is ws:
+            del self.connections[user.id]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.sessions = SessionManager()
     yield
+
+
+async def sessions(ws: WebSocket) -> SessionManager:
+    return ws.app.state.sessions
+
+
+Sessions = Annotated[SessionManager, Depends(sessions)]
 
 
 router = APIRouter(lifespan=lifespan)
@@ -24,6 +57,8 @@ async def websocket_session(
     sessions: Sessions,
     service: Service,
 ):
+    # Accept WebSocket FIRST so the client doesn't time out during session generation
+    await sessions.accept(user, ws)
 
     async def send_response(data: Any, t: EchoResponse.Type | None = None) -> None:
         data = await EchoResponse.dump(data, t)
@@ -33,13 +68,15 @@ async def websocket_session(
         data = await ws.receive_json()
         return EchoInput.model_validate(data)
 
-    await sessions.accept(user, ws)
-
-    session = await service.echo.session(user, generate=True)
-
     try:
+        session = await service.echo.session(user, generate=True)
         while not session.completed:
             if not session.state.attempted:
+                print(
+                    "current session state:",
+                    session.state.progress,
+                    [len(attempts) for attempts in session.state.attempts],
+                )
                 await send_response(session.state, EchoResponse.Type.SESSION)
                 while True:
                     input = await receive_input()
@@ -51,7 +88,7 @@ async def websocket_session(
                         case EchoInput.Type.AUDIO:
                             assert input.input is not None, "audio input cannot be none"
                             result = await session.attempt(input.input)
-                            await send_response(result)
+                            await send_response(result if result is not None else None)
             if await session.proceed():
                 await session.refresh()
             else:
@@ -59,6 +96,8 @@ async def websocket_session(
                 await ws.receive()  # wait for client to acknowledge completion before closing
     except WebSocketDisconnect:
         pass  # do not reraise on disconnect
+    except Exception as e:
+        print(f"ERROR in echo session: {e}")
     finally:
         await sessions.close(user, ws)
 

@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Dimensions, Modal, Pressable, ScrollView, View } from "react-native";
 import Animated, {
   FadeIn,
   interpolate,
@@ -12,7 +12,6 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { useTheme } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -24,7 +23,6 @@ import {
   useAudioRecorderState,
   type RecordingOptions,
 } from "expo-audio";
-import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import Color from "color";
 import {
@@ -38,17 +36,43 @@ import {
   MicIcon,
   PlayIcon,
   RedoIcon,
-  TargetIcon,
   XIcon,
 } from "lucide-react-native";
+import { Portal } from "@gorhom/portal";
 import tw from "twrnc";
 
 import { EchoSessionStatus, useEchoSession, type EchoSession, type Result, type Summary } from "~/client/echo";
-import { Spinner, Text } from "~/components";
+import { useCheckInMutation } from "~/client";
+import type { Topic } from "~/client/models";
+import { GainToast, Spinner, Text } from "~/components";
 import { useNavigationOptions } from "~/hooks";
 import { getLocalFileBase64 } from "~/utils";
 
 const RECORDING_DURATION_THRESHOLD = 1500; // ms
+
+// Score × 0.5 → XP, clamped to [10, 50]
+const calculateXP = (scorePercentage: number): number =>
+  Math.max(10, Math.min(50, Math.round(scorePercentage / 2)));
+
+// Combo milestones: consecutive sentences → bonus XP
+const COMBO_MILESTONES: Record<number, number> = { 5: 50, 10: 150, 20: 400 };
+
+const TOPIC_ALIASES: Record<string, Topic> = {
+  food: "Food",
+  culture: "Culture",
+  travel: "Travel",
+  business: "Business",
+  technology: "Technology",
+  tech: "Technology",
+  global: "Global",
+};
+
+const normalizeTopic = (topic?: string): Topic | undefined => {
+  if (!topic) return undefined;
+  return TOPIC_ALIASES[topic.trim().toLowerCase()];
+};
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const RECORDING_OPTIONS: RecordingOptions = {
   extension: ".wav",
@@ -66,8 +90,6 @@ const RECORDING_OPTIONS: RecordingOptions = {
   },
   web: {},
 };
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const Header = ({
   session,
@@ -100,20 +122,20 @@ const Header = ({
           { paddingTop: insets.top, backgroundColor: theme.colors.card },
         ]}>
         <Pressable onPress={onClose} style={({ pressed }) => tw.style(pressed && "opacity-50")}>
-          <XIcon color={tw.color("zinc-500")} size={26} strokeWidth={2.5} />
+          <XIcon color={tw.color("neutral-500")} size={26} strokeWidth={2.5} />
         </Pressable>
         <View style={[tw`absolute inset-x-0 items-center justify-center`, { top: insets.top }]}>
-          <Text style={tw`text-2xl font-bold leading-[0]`}>
-            {session.status === EchoSessionStatus.LOADING_NEW
-              ? "Loading..."
-              : session.status === EchoSessionStatus.COMPLETED
-                ? "Echo Summary"
-                : "Echo Session"}
-          </Text>
+          {session.status === EchoSessionStatus.LOADING_NEW ? (
+            <Text style={tw`text-2xl font-bold leading-[0]`}>Loading...</Text>
+          ) : session.status === EchoSessionStatus.COMPLETED ? (
+            <Text style={tw`text-2xl font-bold leading-[0]`}>Echo Summary</Text>
+          ) : (
+            <Text style={tw`text-2xl font-bold leading-[0]`}>
+              Echoing on {<Text style={tw`font-bold text-amber-500`}>#{session.data.topic}</Text>}
+            </Text>
+          )}
         </View>
-        {hideProceed ? (
-          session.status === EchoSessionStatus.LOADING_NEXT && <Spinner size={26} />
-        ) : (
+        {!hideProceed && (
           <Pressable
             disabled={disableProceed}
             onPress={() => onProceed()}
@@ -129,9 +151,10 @@ const Header = ({
             )}
           </Pressable>
         )}
+        {session.status === EchoSessionStatus.LOADING_NEXT && <Spinner size={26} />}
       </View>
       <View style={[tw`flex-row gap-1.5 px-2 pb-2 pt-1.5`, { backgroundColor: theme.colors.card }]}>
-        {Array.from({ length: session.data?.total ?? 1 }).map((_, index) => {
+        {Array.from({ length: 5 }).map((_, index) => {
           let color = theme.colors.border;
           if (session.status !== EchoSessionStatus.LOADING_NEW) {
             if (session.status === EchoSessionStatus.COMPLETED) {
@@ -162,28 +185,24 @@ const getScoreColor = (x: number) => {
   return tw.color("red-500");
 };
 
-const ResultSheet = ({
-  ref,
-  result,
-  onWillDismiss,
-}: {
-  ref?: React.Ref<TrueSheet>;
-  result: Result;
-  onWillDismiss?: () => void;
-}) => {
+const ResultSheet = ({ result, onWillDismiss }: { result: Result; onWillDismiss?: () => void }) => {
   const theme = useTheme();
 
   const [selection, setSelection] = useState<number | null>(null);
+  const sheetHeight = Dimensions.get("window").height * 0.5;
 
   return (
-    <TrueSheet
-      ref={ref}
-      detents={[0.5]}
-      initialDetentIndex={0}
-      initialDetentAnimated={true}
-      cornerRadius={16}
-      onWillDismiss={onWillDismiss}>
-      <ScrollView contentContainerStyle={tw`gap-2.5 p-4`}>
+    <Modal
+      visible={true}
+      transparent
+      animationType="slide"
+      onRequestClose={onWillDismiss}>
+      <Pressable style={tw`flex-1`} onPress={onWillDismiss} />
+      <View style={[tw`rounded-t-2xl`, { height: sheetHeight, backgroundColor: theme.colors.card }]}>
+        <View style={tw`items-center py-2`}>
+          <View style={tw`h-1 w-10 rounded-full bg-zinc-500/30`} />
+        </View>
+        <ScrollView contentContainerStyle={tw`gap-2.5 p-4`}>
         <View style={[tw`mb-2 rounded-lg p-4`, { backgroundColor: theme.colors.background }]}>
           <Text style={tw`text-base`}>{result.feedback}</Text>
         </View>
@@ -241,7 +260,8 @@ const ResultSheet = ({
           );
         })}
       </ScrollView>
-    </TrueSheet>
+      </View>
+    </Modal>
   );
 };
 
@@ -253,7 +273,7 @@ const SummaryView = ({ summary }: { summary: Summary }) => {
 
   const overallScore = useMemo(() => {
     const totalScore = summary.attempts.reduce((total, [attempt]) => {
-      const a = attempt?.pronunciation.alignments ?? [];
+      const a = attempt?.result.pronunciation.alignments ?? [];
       return total + calculateScorePercentage(a);
     }, 0);
     const percentage = summary.attempts.length > 0 ? Math.round(totalScore / summary.attempts.length) : 0;
@@ -288,8 +308,8 @@ const SummaryView = ({ summary }: { summary: Summary }) => {
         <View style={tw`flex-grow gap-2`}>
           <View style={tw`flex-row items-center justify-between gap-2`}>
             <Text
-              style={tw`text-base font-medium uppercase text-neutral-500`}>{`${summary.transcripts.length} Transcripts`}</Text>
-            <Text style={tw`text-base font-medium uppercase text-neutral-500`}>
+              style={tw`text-base font-medium uppercase text-zinc-500`}>{`${summary.transcripts.length} Transcripts`}</Text>
+            <Text style={tw`text-base font-medium uppercase text-zinc-500`}>
               {`${summary.attempts.reduce((total, attempts) => total + attempts.length, 0)} Attempts`}
             </Text>
           </View>
@@ -299,7 +319,7 @@ const SummaryView = ({ summary }: { summary: Summary }) => {
             {summary.transcripts.map((transcript, index) => {
               const attempts = summary.attempts[index];
               const attempt = attempts[0];
-              const percentage = attempt ? calculateScorePercentage(attempt.pronunciation.alignments) : null;
+              const percentage = attempt ? calculateScorePercentage(attempt.result.pronunciation.alignments) : null;
               const color = percentage !== null ? getScoreColor(percentage) : undefined;
               return (
                 <Pressable
@@ -324,13 +344,12 @@ const SummaryView = ({ summary }: { summary: Summary }) => {
           </ScrollView>
         </View>
       </View>
-      {selectionAttempt && <ResultSheet result={selectionAttempt} onWillDismiss={() => setSelection(null)} />}
+      {selectionAttempt && <ResultSheet result={selectionAttempt.result} onWillDismiss={() => setSelection(null)} />}
     </>
   );
 };
 
 export default function MainLearnEchoScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const client = useQueryClient();
@@ -338,24 +357,98 @@ export default function MainLearnEchoScreen() {
   const playerStatus = useAudioPlayerStatus(player);
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder);
+  const checkInMutation = useCheckInMutation();
 
-  const sheet = useRef<TrueSheet>(null);
-
-  const { session, submit, proceed, abort, end } = useEchoSession({
+  const { session, submit, proceed, abort, complete } = useEchoSession({
     onClose: () => {
       if (router.canDismiss()) router.dismissAll();
-      // refresh user activity after session complete
+      // refresh user activity and gamification data after session
       client.invalidateQueries({ queryKey: ["auth", "me"] });
+      client.invalidateQueries({ queryKey: ["gamification"] });
     },
   });
   const transcript = session.data && "transcript" in session.data ? session.data.transcript : undefined;
   const result = session.data && "result" in session.data ? session.data.result : undefined;
+  const sessionTopic = session.data && "topic" in session.data ? session.data.topic : undefined;
 
   const _flipped = useSharedValue(false);
   const [flipped, setFlipped] = useState(false);
   const [height, setHeight] = useState(0);
 
   const [playbacking, setPlaybacking] = useState(false);
+  const [showResultSheet, setShowResultSheet] = useState(false);
+  const [gainToasts, setGainToasts] = useState<{ id: string; message: string }[]>([]);
+
+  // XP check-in tracking
+  const recordedIndices = useRef(new Set<number>());
+  const attemptDurationsMs = useRef<Record<number, number>>({});
+  const [comboStreak, setComboStreak] = useState(0);
+
+  const currentProgress = session.data && "progress" in session.data ? session.data.progress : -1;
+
+  const removeGainToast = useCallback((id: string) => {
+    setGainToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const announceGain = useCallback((message: string) => {
+    setGainToasts((prev) => [...prev, { id: `${Date.now()}-${Math.random()}`, message }]);
+  }, []);
+
+  // Record XP when a score becomes available for a sentence
+  useEffect(() => {
+    if (!result || currentProgress < 0) return;
+    if (recordedIndices.current.has(currentProgress)) return;
+
+    const alignments = result.pronunciation.alignments;
+    const scorePercentage = calculateScorePercentage(alignments);
+    const xpEarned = calculateXP(scorePercentage);
+
+    recordedIndices.current.add(currentProgress);
+
+    const completionMsRaw = attemptDurationsMs.current[currentProgress];
+
+    const recordXP = async (
+      xp: number,
+      accuracy: number,
+      source: "practice_sentence" | "combo_bonus",
+      topic?: string,
+    ) => {
+      const safeXP = Number.isFinite(xp) ? Math.max(1, Math.round(xp)) : 10;
+      const safeAccuracy = Number.isFinite(accuracy) ? Math.min(100, Math.max(0, Math.round(accuracy))) : undefined;
+      const safeCompletionMs = source === "practice_sentence" && Number.isFinite(completionMsRaw)
+        ? Math.max(0, Math.round(completionMsRaw))
+        : undefined;
+      try {
+        const res = await checkInMutation.mutateAsync({
+          xp_amount: safeXP,
+          source,
+          topic: normalizeTopic(topic),
+          accuracy_percentage: safeAccuracy,
+          completion_time_ms: safeCompletionMs,
+        });
+        const gainParts = [`+${safeXP} XP`];
+        if (res.gems_earned > 0) {
+          gainParts.push(`+${res.gems_earned} 💎`);
+        }
+        if (res.gems_pending_collect > 0) {
+          gainParts.push(`${res.gems_pending_collect} 💎 ready to collect`);
+        }
+        announceGain(gainParts.join(" · "));
+      } catch {
+        // Non-fatal: XP recording failure should not block the session
+      }
+    };
+
+    void recordXP(xpEarned, scorePercentage, "practice_sentence", sessionTopic);
+
+    // Combo tracking
+    const newCombo = comboStreak + 1;
+    setComboStreak(newCombo);
+    const bonusXP = COMBO_MILESTONES[newCombo];
+    if (bonusXP !== undefined) {
+      void recordXP(bonusXP, 0, "combo_bonus");
+    }
+  }, [announceGain, checkInMutation, comboStreak, currentProgress, result, sessionTopic]);
 
   useAnimatedReaction(
     () => _flipped.value,
@@ -364,6 +457,7 @@ export default function MainLearnEchoScreen() {
 
   const handleProceed = () => {
     const callback = () => {
+      setShowResultSheet(false);
       proceed();
       player.replace("");
       _flipped.value = false;
@@ -383,7 +477,8 @@ export default function MainLearnEchoScreen() {
   };
 
   const handleClose = () => {
-    if (session.status === EchoSessionStatus.COMPLETED) return end();
+    setShowResultSheet(false);
+    if (session.status === EchoSessionStatus.COMPLETED) return complete();
     Alert.alert("Abort Session", "Are you sure you want to abort this session?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -422,7 +517,6 @@ export default function MainLearnEchoScreen() {
       await recorder.prepareToRecordAsync();
       recorder.record();
     }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
   };
 
   const handleStopRecording = async () => {
@@ -434,20 +528,24 @@ export default function MainLearnEchoScreen() {
         playsInSilentMode: true,
       });
     }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (recorder.uri && duration >= RECORDING_DURATION_THRESHOLD) {
+      if (session.data && "progress" in session.data && session.data.progress >= 0) {
+        attemptDurationsMs.current[session.data.progress] = Math.round(duration);
+      }
       const audio = await getLocalFileBase64(recorder.uri);
       const result = await submit(audio);
       if (result === null) {
         Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
-      } else if (session.data && "progress" in session.data) {
-        session.data.attempts[session.data.progress] += 1; // local optimistic update
+      } else {
+        setShowResultSheet(true);
+        if (session.data && "progress" in session.data) {
+          session.data.attempts[session.data.progress] += 1;
+        }
       }
     }
   };
 
   const handlePlayback = () => {
-    // FIXME: playback audio from attempt instead
     setPlaybacking(true);
     player.replace(recorder.uri!);
     player.seekTo(0);
@@ -521,20 +619,13 @@ export default function MainLearnEchoScreen() {
       {session.status === EchoSessionStatus.LOADING_NEW ? (
         <View style={tw`w-4/6 flex-grow items-center justify-center gap-8`}>
           <Spinner size={48} />
-          <Text style={tw`text-center text-base font-medium leading-tight text-neutral-500`}>
+          <Text style={tw`text-center text-base font-medium leading-tight text-zinc-500`}>
             Please ensure you are in a quiet environment for the best experience.
           </Text>
         </View>
       ) : (
         <>
-          <View style={tw`rounded-xl border-2 border-zinc-500/50 p-3`}>
-            <Text
-              style={[
-                tw`absolute -top-4 left-2.5 px-1.5 text-lg font-bold text-amber-500`,
-                { backgroundColor: theme.colors.background },
-              ]}>
-              #{session.data.topic}
-            </Text>
+          <View style={tw`rounded-xl border-2 border-zinc-500/50 p-2.5`}>
             <Text style={tw`text-lg font-medium leading-tight`}>{session.data.scenario}</Text>
           </View>
           <View style={tw`w-full flex-grow items-center justify-center`}>
@@ -578,17 +669,17 @@ export default function MainLearnEchoScreen() {
                   ))}
                 </Animated.View>
               )}
-              {session.status === EchoSessionStatus.READY_ATTEMPT && (
+              {session.status === EchoSessionStatus.PENDING_ATTEMPT && (
                 <View style={[tw`mt-5 items-center justify-center`, { top: height / 2 }]}>
                   <View style={tw`flex-row items-center gap-1`}>
-                    <FlipHorizontalIcon size={14} color={tw.color("neutral-500")} />
-                    <Text style={tw`text-sm font-medium text-neutral-500`}>
+                    <FlipHorizontalIcon size={14} color={tw.color("zinc-500")} />
+                    <Text style={tw`text-sm font-medium text-zinc-500`}>
                       Tap to see {flipped ? "text" : "IPA"} transcript
                     </Text>
                   </View>
                   <View style={tw`flex-row items-center gap-1`}>
-                    <EarIcon size={14} color={tw.color("neutral-500")} />
-                    <Text style={tw`text-sm font-medium text-neutral-500`}>
+                    <EarIcon size={14} color={tw.color("zinc-500")} />
+                    <Text style={tw`text-sm font-medium text-zinc-500`}>
                       Long Press to play reference pronunciation
                     </Text>
                   </View>
@@ -596,84 +687,71 @@ export default function MainLearnEchoScreen() {
               )}
             </View>
           </View>
-          <View style={tw`h-1/7 w-full items-center justify-center px-4`}>
-            {(session.status === EchoSessionStatus.READY_ATTEMPT ||
-              session.status === EchoSessionStatus.PENDING_RESULT) && (
+          <View style={tw`h-1/6 w-full items-center justify-center px-8`}>
+            {session.status === EchoSessionStatus.PENDING_RESULT && (
+              <View style={tw`flex-row items-center gap-2`}>
+                <Spinner />
+                <Text style={tw`font-medium text-neutral-500`}>Analyzing your pronunciation...</Text>
+              </View>
+            )}
+            {session.status === EchoSessionStatus.PENDING_ATTEMPT && (
               <>
+                {!recorderState.isRecording && (
+                  <Text style={tw`absolute -top-2 text-sm font-medium`}>Hold to Speak</Text>
+                )}
                 <Pressable
                   style={({ pressed }) =>
                     tw.style(
-                      "mx-auto rounded-full p-4",
+                      "mx-auto rounded-full p-6",
                       pressed && "opacity-80",
-                      session.status === EchoSessionStatus.READY_ATTEMPT
-                        ? recorderState.isRecording
-                          ? "bg-red-500"
-                          : "bg-green-500"
-                        : "bg-transparent",
+                      recorderState.isRecording ? "bg-red-500" : "bg-green-500",
                     )
                   }
                   onLongPress={handleStartRecording}
-                  onPressOut={handleStopRecording}
-                  disabled={session.status !== EchoSessionStatus.READY_ATTEMPT}>
-                  {session.status === EchoSessionStatus.READY_ATTEMPT ? (
-                    recorderState.isRecording ? (
-                      <AudioLinesIcon color="white" size={32} />
-                    ) : (
-                      <MicIcon color="white" size={32} />
-                    )
+                  onPressOut={handleStopRecording}>
+                  {recorderState.isRecording ? (
+                    <AudioLinesIcon color="white" size={32} />
                   ) : (
-                    <Spinner size={36} />
+                    <MicIcon color="white" size={32} />
                   )}
                 </Pressable>
-                <Text
-                  style={tw.style(
-                    "absolute bottom-0 text-sm font-medium",
-                    session.status === EchoSessionStatus.PENDING_RESULT && "text-neutral-500",
-                  )}>
-                  {session.status === EchoSessionStatus.PENDING_RESULT
-                    ? "Analyzing your pronunciation..."
-                    : !recorderState.isRecording
-                      ? "Hold to Speak"
-                      : ""}
-                </Text>
               </>
             )}
-            {session.status === EchoSessionStatus.READY_NEXT && (
+            {result && (
               <>
-                <View style={tw`w-full flex-row items-center justify-between`}>
-                  <Pressable
-                    onPress={() => sheet.current?.present()}
-                    style={({ pressed }) =>
-                      tw.style(
-                        "flex-row items-center gap-1.5 rounded-full bg-zinc-300/50 px-4 py-2 dark:bg-zinc-700/50",
-                        pressed && "opacity-80",
-                      )
-                    }>
-                    <TargetIcon color={theme.colors.text} size={22} />
-                    <Text style={tw`text-lg font-medium`}>Result</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) =>
-                      tw.style(
-                        "absolute left-1/2 -translate-x-1/2 rounded-full bg-sky-500 p-4",
-                        pressed && "opacity-80",
-                        playerStatus.playing && playbacking && "opacity-50",
-                      )
-                    }
-                    disabled={playerStatus.playing && playbacking}
-                    onPress={handlePlayback}>
-                    <PlayIcon color="white" fill="white" size={32} />
-                  </Pressable>
-                </View>
                 {!(playerStatus.playing && playbacking) && (
-                  <Text style={tw`absolute bottom-0 text-sm font-medium`}>Playback Your Speech</Text>
+                  <Text style={tw`absolute -top-2 text-sm font-medium`}>Playback Your Speech</Text>
                 )}
+                <Pressable
+                  style={({ pressed }) =>
+                    tw.style(
+                      "mx-auto rounded-full bg-sky-500 p-6",
+                      pressed && "opacity-80",
+                      playerStatus.playing && playbacking && "opacity-50",
+                    )
+                  }
+                  disabled={playerStatus.playing && playbacking}
+                  onPress={handlePlayback}>
+                  <PlayIcon color="white" fill="white" size={32} />
+                </Pressable>
               </>
             )}
           </View>
         </>
       )}
-      {result && <ResultSheet ref={sheet} result={result} />}
+      {showResultSheet && result && <ResultSheet result={result} onWillDismiss={() => setShowResultSheet(false)} />}
+      <Portal hostName="root">
+        <View style={tw`absolute inset-x-4 top-16 gap-2`}>
+          {gainToasts.map((toast) => (
+            <GainToast
+              key={toast.id}
+              id={toast.id}
+              message={toast.message}
+              onDone={removeGainToast}
+            />
+          ))}
+        </View>
+      </Portal>
     </View>
   );
 }
