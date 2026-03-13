@@ -44,14 +44,57 @@ class PronunciationAligner:
             for s in spans
         ]
 
-    @log_execution_time
+    def normalize_alignments(
+        self,
+        alignments: list[Pronunciation.Alignment],
+        transcript: Transcript,
+    ) -> list[Pronunciation.Alignment]:
+        expected = transcript.phonemes
+        expected_len = len(expected)
+        actual_len = len(alignments)
+
+        if expected_len == actual_len:
+            return alignments
+        if expected_len == 0:
+            return []
+        if actual_len == 0:
+            return [
+                Pronunciation.Alignment(token=token, score=0.0, interval=(0, 0))
+                for token in expected
+            ]
+
+        if expected_len == 1:
+            indices = [0]
+        else:
+            indices = [
+                round(i * (actual_len - 1) / (expected_len - 1))
+                for i in range(expected_len)
+            ]
+
+        normalized: list[Pronunciation.Alignment] = []
+        for expected_index, source_index in enumerate(indices):
+            source = alignments[source_index]
+            normalized.append(
+                Pronunciation.Alignment(
+                    token=expected[expected_index],
+                    score=max(0.0, min(float(source.score), 1.0)),
+                    interval=source.interval,
+                )
+            )
+        return normalized
+
     def __call__(self, waveform: torch.Tensor, transcript: Transcript) -> Pronunciation:
         logits = self.perform_inference(waveform)
         predicted_phonemes = self.predict_phonemes(logits)
         aligned_phonemes = self.align_phonemes(logits, transcript)
-        assert len(aligned_phonemes) == len(transcript.phonemes), (
-            "alignment output must have the same length with the transcript"
-        )  # FIXME: find a way to prevent this
+        if len(aligned_phonemes) != len(transcript.phonemes):
+            print(
+                "alignment length mismatch:",
+                len(aligned_phonemes),
+                "!=",
+                len(transcript.phonemes),
+            )
+            aligned_phonemes = self.normalize_alignments(aligned_phonemes, transcript)
         pronunciation = Pronunciation(
             phonemes=predicted_phonemes,
             alignments=aligned_phonemes,

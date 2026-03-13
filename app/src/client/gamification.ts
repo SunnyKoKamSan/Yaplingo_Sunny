@@ -250,8 +250,8 @@ export const useSpendGemsMutation = () => {
     },
     onSuccess: (data) => {
       setGemBalance(data.new_balance);
-      queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "gems"] });
-      queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "inventory"] });
+      queryClient.invalidateQueries({ queryKey: GAMIFICATION_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
     },
   });
 };
