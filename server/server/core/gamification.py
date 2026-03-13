@@ -5,7 +5,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from ulid import ULID
 
-from server.repository.gamification import UserGamification, UserInventory
+from server.repository.gamification import UserGamification
 
 
 def get_period_key(dt: date) -> str:
@@ -64,23 +64,8 @@ async def update_streak_utc(session: AsyncSession, user_id: ULID) -> int:
         user_gamification.current_streak += 1
         user_gamification.last_activity_date = today_utc.strftime("%Y-%m-%d")
     else:
-        freeze_used = False
-        if last_activity_date and last_activity_date == today_utc - timedelta(days=2):
-            inv_result = await session.exec(
-                select(UserInventory).where(UserInventory.user_id == user_id)
-            )
-            inventory = inv_result.one_or_none()
-            if inventory and (isinstance(inventory, tuple) or hasattr(inventory, "__getitem__")):
-                inventory = inventory[0]
-            if inventory and inventory.streak_freezes > 0:
-                inventory.streak_freezes -= 1
-                session.add(inventory)
-                user_gamification.current_streak += 1
-                user_gamification.last_activity_date = today_utc.strftime("%Y-%m-%d")
-                freeze_used = True
-        if not freeze_used:
-            user_gamification.current_streak = 1
-            user_gamification.last_activity_date = today_utc.strftime("%Y-%m-%d")
+        user_gamification.current_streak = 1
+        user_gamification.last_activity_date = today_utc.strftime("%Y-%m-%d")
 
     session.add(user_gamification)
     return user_gamification.current_streak

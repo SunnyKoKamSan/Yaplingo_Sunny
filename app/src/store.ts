@@ -52,8 +52,6 @@ export const $dailyAccuracyProgress = atom((get) => ({
 
 export const $activeEvent = atom<ActiveEvent | null>(null);
 
-export const $gemBalance = atom<number>(0);
-
 export const $lastKnownRanks = atom<Record<string, number>>({});
 
 export const $rankAlertsEnabled = atomWithSecureStore<boolean>(

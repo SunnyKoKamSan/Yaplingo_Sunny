@@ -22,8 +22,6 @@ class CheckInResponse(BaseModel):
     bonus_xp: int = Field(default=0)
     multiplier_active: bool = Field(default=False)
     event_name: str | None = Field(default=None)
-    gems_earned: int = Field(default=0)
-    newly_unlocked: list[str] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -67,57 +65,6 @@ class TopicMasteryResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-class GemTransactionResponse(BaseModel):
-    id: int
-    amount: int
-    reason: str
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class GemBalanceResponse(BaseModel):
-    balance: int
-    transactions: list[GemTransactionResponse] = Field(default_factory=list)
-
-
-class SpendGemsRequest(BaseModel):
-    item_key: str
-
-
-class SpendGemsResponse(BaseModel):
-    new_balance: int
-    item_key: str
-
-
-class ClaimAchievementRequest(BaseModel):
-    achievement_key: str
-
-
-class ClaimAchievementResponse(BaseModel):
-    achievement_key: str
-    gems_awarded: int
-    new_balance: int
-
-
-class UserInventoryResponse(BaseModel):
-    streak_freezes: int = 0
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class AchievementResponse(BaseModel):
-    key: str
-    title: str
-    desc: str
-    unlocked: bool
-    unlocked_at: datetime | None = None
-    progress: float = Field(default=0.0, ge=0.0, le=1.0)
-    gem_reward: int = 15
-    ultimate: bool = False
-
-
 class ProximityNeighbour(BaseModel):
     user_id: str
     name: str
@@ -157,14 +104,3 @@ class MasteryConfigResponse(BaseModel):
     tier_gold: float
     tier_platinum: float
     tier_diamond: float
-
-
-class GemConfigResponse(BaseModel):
-    earn_rates: dict[str, int]
-    spend_rates: dict[str, int]
-
-
-class UseSkillResponse(BaseModel):
-    skill_key: str
-    message: str
-    remaining: int

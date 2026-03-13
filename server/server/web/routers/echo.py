@@ -93,7 +93,9 @@ async def websocket_session(
                 await session.refresh()
             else:
                 await send_response(session.state, EchoResponse.Type.SUMMARY)
-                await ws.receive()  # wait for client to acknowledge completion before closing
+                # Keep the socket alive after summary; the client decides when to close.
+                while True:
+                    await ws.receive()
     except WebSocketDisconnect:
         pass  # do not reraise on disconnect
     except Exception as e:

@@ -10,28 +10,19 @@ import {
 import { type AxiosError } from "axios";
 import { useSetAtom } from "jotai";
 
-import store, { $gemBalance, $lastCheckIn, $lastKnownRanks } from "../store";
+import store, { $lastCheckIn, $lastKnownRanks } from "../store";
 import client from "./client";
 import type {
-  AchievementResponse,
+  ActiveEvent,
   CheckInParams,
   CheckInResponse,
-  ClaimAchievementRequest,
-  ClaimAchievementResponse,
-  ActiveEvent,
-  GemBalanceResponse,
-  GemConfigResponse,
   HistoryEntry,
   LeaderboardItem,
   MyRankResponse,
   ProximityResponse,
-  SpendGemsRequest,
-  SpendGemsResponse,
   StatsResponse,
   Topic,
   TopicMasteryResponse,
-  UseSkillResponse,
-  UserInventoryResponse,
 } from "./models";
 
 let supportsDailyProgressEndpoint: boolean | null = null;
@@ -85,7 +76,6 @@ export const useCheckInMutation = (): UseMutationResult<CheckInResponse, AxiosEr
   const queryClient = useQueryClient();
   const invalidateGamification = useInvalidateGamification();
   const setLastCheckIn = useSetAtom($lastCheckIn);
-  const setGemBalance = useSetAtom($gemBalance);
 
   return useMutation({
     mutationFn: async (params: CheckInParams) => {
@@ -95,13 +85,6 @@ export const useCheckInMutation = (): UseMutationResult<CheckInResponse, AxiosEr
     onSuccess: (data) => {
       setLastCheckIn(data);
       queryClient.setQueryData(GAMIFICATION_DAILY_PROGRESS_QUERY_KEY, data);
-      if (data.gems_earned > 0) {
-        setGemBalance((prev) => prev + data.gems_earned);
-        queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "gems"] });
-      }
-      if (data.newly_unlocked.length > 0) {
-        queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "achievements"] });
-      }
       invalidateGamification.all();
     },
   });
@@ -123,8 +106,6 @@ export const useDailyProgressQuery = (): UseQueryResult<CheckInResponse, AxiosEr
         bonus_xp: 0,
         multiplier_active: false,
         event_name: null,
-        gems_earned: 0,
-        newly_unlocked: [],
       };
       if (supportsDailyProgressEndpoint === false) return fallback;
       const response = await client.get<CheckInResponse>("/gamification/daily-progress", {
@@ -221,90 +202,6 @@ export const useMasteryQuery = (): UseQueryResult<TopicMasteryResponse[], AxiosE
     gcTime: 5 * 60 * 1000,
   });
 
-export const useGemBalanceQuery = (): UseQueryResult<GemBalanceResponse, AxiosError> => {
-  const setGemBalance = useSetAtom($gemBalance);
-  const query = useQuery<GemBalanceResponse, AxiosError>({
-    queryKey: [...GAMIFICATION_QUERY_KEY, "gems"],
-    queryFn: async () => {
-      const { data } = await client.get<GemBalanceResponse>("/gamification/gems");
-      return data;
-    },
-    staleTime: 30 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
-
-  useEffect(() => {
-    if (query.data) setGemBalance(query.data.balance);
-  }, [query.data, setGemBalance]);
-
-  return query;
-};
-
-export const useSpendGemsMutation = () => {
-  const queryClient = useQueryClient();
-  const setGemBalance = useSetAtom($gemBalance);
-  return useMutation<SpendGemsResponse, AxiosError, SpendGemsRequest>({
-    mutationFn: async (req) => {
-      const { data } = await client.post<SpendGemsResponse>("/gamification/gems/spend", req);
-      return data;
-    },
-    onSuccess: (data) => {
-      setGemBalance(data.new_balance);
-      queryClient.invalidateQueries({ queryKey: GAMIFICATION_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-    },
-  });
-};
-
-export const useAchievementsQuery = (): UseQueryResult<AchievementResponse[], AxiosError> =>
-  useQuery({
-    queryKey: [...GAMIFICATION_QUERY_KEY, "achievements"],
-    queryFn: async () => {
-      const { data } = await client.get<AchievementResponse[]>("/gamification/achievements");
-      return data;
-    },
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-
-export const useClaimAchievementMutation = () => {
-  const queryClient = useQueryClient();
-  const setGemBalance = useSetAtom($gemBalance);
-  return useMutation<ClaimAchievementResponse, AxiosError, ClaimAchievementRequest>({
-    mutationFn: async (req) => {
-      const { data } = await client.post<ClaimAchievementResponse>("/gamification/achievements/claim", req);
-      return data;
-    },
-    onSuccess: (data) => {
-      setGemBalance(data.new_balance);
-      queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "achievements"] });
-      queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "gems"] });
-    },
-  });
-};
-
-export const useInventoryQuery = (): UseQueryResult<UserInventoryResponse, AxiosError> =>
-  useQuery({
-    queryKey: [...GAMIFICATION_QUERY_KEY, "inventory"],
-    queryFn: async () => {
-      const { data } = await client.get<UserInventoryResponse>("/gamification/inventory");
-      return data;
-    },
-    staleTime: 30 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
-
-export const useGemConfigQuery = (): UseQueryResult<GemConfigResponse, AxiosError> =>
-  useQuery({
-    queryKey: [...GAMIFICATION_QUERY_KEY, "gems", "config"],
-    queryFn: async () => {
-      const { data } = await client.get<GemConfigResponse>("/gamification/gems/config");
-      return data;
-    },
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
-
 export const useProximityQuery = (topic?: Topic, allTime?: boolean) =>
   useQuery<ProximityResponse, AxiosError>({
     queryKey: [...GAMIFICATION_QUERY_KEY, "proximity", topic ?? "Global", allTime ?? false],
@@ -338,18 +235,3 @@ export const useStatsQuery = () =>
     },
     staleTime: 5 * 60 * 1000,
   });
-
-export const useUseSkillMutation = () => {
-  const queryClient = useQueryClient();
-  return useMutation<UseSkillResponse, AxiosError, string>({
-    mutationFn: async (item_key: string) => {
-      const { data } = await client.post<UseSkillResponse>(
-        `/gamification/inventory/use?item_key=${encodeURIComponent(item_key)}`,
-      );
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...GAMIFICATION_QUERY_KEY, "inventory"] });
-    },
-  });
-};

@@ -148,8 +148,10 @@ export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStat
     socket.onclose = () => {
       if (ws.current !== socket || intentionalClose.current) return;
       ws.current = undefined;
+      const currentStatus = stateRef.current.status;
+      if (currentStatus === EchoSessionStatus.COMPLETED) return;
       // Auto-retry if we never got past LOADING_NEW (server wasn't ready)
-      if (stateRef.current.status === EchoSessionStatus.LOADING_NEW && retryCount.current < MAX_RETRIES) {
+      if (currentStatus === EchoSessionStatus.LOADING_NEW && retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
         const delay = 1000 * retryCount.current; // 1s, 2s, 3s backoff
         setTimeout(() => {
@@ -157,7 +159,7 @@ export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStat
         }, delay);
         return;
       }
-      onCloseRef.current?.(stateRef.current.status);
+      onCloseRef.current?.(currentStatus);
     };
   }, []);
 

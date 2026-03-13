@@ -28,8 +28,6 @@ export type CheckInResponse = {
   bonus_xp: number;
   multiplier_active: boolean;
   event_name: string | null;
-  gems_earned: number;
-  newly_unlocked: string[];
 };
 
 export type LeaderboardItem = {
@@ -85,43 +83,6 @@ export type TopicMasteryResponse = {
   updated_at: string;
 };
 
-export type GemTransaction = {
-  id: number;
-  amount: number;
-  reason: string;
-  created_at: string;
-};
-
-export type GemBalanceResponse = {
-  balance: number;
-  transactions: GemTransaction[];
-};
-
-export type AchievementResponse = {
-  key: string;
-  title: string;
-  desc: string;
-  unlocked: boolean;
-  unlocked_at: string | null;
-  progress: number;
-  gem_reward: number;
-  ultimate: boolean;
-};
-
-export type SpendGemsRequest = { item_key: string };
-export type SpendGemsResponse = { new_balance: number; item_key: string };
-
-export type ClaimAchievementRequest = { achievement_key: string };
-export type ClaimAchievementResponse = {
-  achievement_key: string;
-  gems_awarded: number;
-  new_balance: number;
-};
-
-export type UserInventoryResponse = {
-  streak_freezes: number;
-};
-
 export type HistoryEntry = {
   date_key: string;
   xp_earned: number;
@@ -134,15 +95,4 @@ export type StatsResponse = {
   thirty_day_best_streak: number;
   completion_rate_30d: number;
   lifetime_xp: number;
-};
-
-export type GemConfigResponse = {
-  earn_rates: Record<string, number>;
-  spend_rates: Record<string, number>;
-};
-
-export type UseSkillResponse = {
-  skill_key: string;
-  message: string;
-  remaining: number;
 };

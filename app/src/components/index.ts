@@ -10,7 +10,4 @@ export { default as GamificationWidget } from "./GamificationWidget";
 export { default as AnimatedPodium } from "./AnimatedPodium";
 export { default as MasteryCard } from "./MasteryCard";
 export { default as MasteryRadar } from "./MasteryRadar";
-export { default as GemCounter } from "./GemCounter";
-export { default as AchievementGrid } from "./AchievementGrid";
-export { default as GemShop } from "./GemShop";
 export { default as XPBarChart } from "./XPBarChart";
