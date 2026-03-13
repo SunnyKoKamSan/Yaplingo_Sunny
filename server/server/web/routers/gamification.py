@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -57,6 +57,15 @@ router = APIRouter()
 
 DAILY_GOAL_XP = 200
 HIGH_ACCURACY_THRESHOLD = 80
+TOPIC_ALIASES: dict[str, str] = {
+    "global": "Global",
+    "food": "Food",
+    "culture": "Culture",
+    "travel": "Travel",
+    "business": "Business",
+    "technology": "Technology",
+    "tech": "Technology",
+}
 
 
 def _unwrap(row):
@@ -64,6 +73,71 @@ def _unwrap(row):
     if row is None:
         return None
     return row[0] if isinstance(row, tuple) or hasattr(row, "__getitem__") else row
+
+
+def _period_key_to_week_bounds(period_key: str) -> tuple[date, date]:
+    _, year_str, week_str = period_key.split("-")
+    week_start = date.fromisocalendar(int(year_str), int(week_str), 1)
+    return week_start, week_start + timedelta(days=6)
+
+
+async def _get_period_streak(session: AsyncSession, user_id, period_key: str) -> int:
+    week_start, week_end = _period_key_to_week_bounds(period_key)
+    result = await session.exec(
+        select(DailyProgress.date_key).where(
+            DailyProgress.user_id == user_id,
+            DailyProgress.date_key >= week_start.isoformat(),
+            DailyProgress.date_key <= week_end.isoformat(),
+            DailyProgress.xp_earned > 0,
+        )
+    )
+    active_days = {_unwrap(row) for row in result.all()}
+    best_run = 0
+    current_run = 0
+    day = week_start
+    while day <= week_end:
+        if day.isoformat() in active_days:
+            current_run += 1
+            best_run = max(best_run, current_run)
+        else:
+            current_run = 0
+        day += timedelta(days=1)
+    return best_run
+
+
+def _normalize_topic(topic: str | None) -> str | None:
+    if topic is None:
+        return None
+    value = topic.strip()
+    if not value:
+        return None
+    return TOPIC_ALIASES.get(value.casefold(), value)
+
+
+def _topic_period_keys(period_key: str, topic: str | None) -> list[str]:
+    normalized_topic = _normalize_topic(topic)
+    if normalized_topic is None or normalized_topic == "Global":
+        return [period_key]
+    keys = [f"{period_key}::{normalized_topic}"]
+    legacy_aliases = {normalized_topic.lower()}
+    if normalized_topic == "Technology":
+        legacy_aliases.add("tech")
+    keys.extend(
+        f"{period_key}::{alias}"
+        for alias in legacy_aliases
+        if alias != normalized_topic
+    )
+    return list(dict.fromkeys(keys))
+
+
+def _topic_all_time_filter(topic: str | None):
+    normalized_topic = _normalize_topic(topic)
+    if normalized_topic is None or normalized_topic == "Global":
+        return ~LeaderboardEntry.period_key.contains("::"), normalized_topic
+    aliases = {normalized_topic, normalized_topic.lower()}
+    if normalized_topic == "Technology":
+        aliases.add("tech")
+    return or_(*[LeaderboardEntry.period_key.like(f"%::{alias}") for alias in aliases]), normalized_topic
 
 
 # ── Active Events ───────────────────────────────────────────────────────────
@@ -116,6 +190,7 @@ async def check_in(
             today_str = now_utc.strftime("%Y-%m-%d")
             today_date = now_utc.date()
             period_key = get_period_key(today_date)
+            normalized_topic = _normalize_topic(request.topic)
 
             # Daily progress
             dp_result = await session.exec(
@@ -181,8 +256,8 @@ async def check_in(
                 session.add(leaderboard_entry)
 
             # Leaderboard (topic)
-            if request.topic:
-                topic_pk = f"{period_key}::{request.topic}"
+            if normalized_topic and normalized_topic != "Global":
+                topic_pk = f"{period_key}::{normalized_topic}"
                 topic_entry = await session.get(LeaderboardEntry, (current_user.id, topic_pk))
                 if topic_entry:
                     topic_entry.total_xp += effective_xp
@@ -195,8 +270,8 @@ async def check_in(
             # Topic mastery
             mastery_row = None
             old_mastery_tier = None
-            if request.topic:
-                mastery_row = await session.get(TopicMastery, (current_user.id, request.topic))
+            if normalized_topic and normalized_topic != "Global":
+                mastery_row = await session.get(TopicMastery, (current_user.id, normalized_topic))
                 acc = request.accuracy_percentage if request.accuracy_percentage is not None else 0
                 spd = request.completion_time_ms if request.completion_time_ms is not None else app_settings.MASTERY_SPEED_CEILING
 
@@ -210,7 +285,7 @@ async def check_in(
                 else:
                     mastery_row = TopicMastery(
                         user_id=current_user.id,
-                        topic=request.topic,
+                        topic=normalized_topic,
                         total_xp=effective_xp,
                         lesson_count=1,
                         avg_accuracy=float(acc),
@@ -281,7 +356,7 @@ async def check_in(
 
             daily_progress.goal_met = daily_progress.xp_earned >= DAILY_GOAL_XP
 
-            if request.topic and mastery_row and old_mastery_tier is not None:
+            if normalized_topic and normalized_topic != "Global" and mastery_row and old_mastery_tier is not None:
                 if mastery_row.tier != old_mastery_tier:
                     award_gems(GEM_EARN_RATES["mastery_tier_upgrade"], "mastery_tier_upgrade")
 
@@ -316,11 +391,11 @@ async def check_in(
                     unlocked = new_streak >= cfg["threshold"]
                 elif cfg["threshold_type"] == "lifetime_lessons":
                     unlocked = lifetime_lessons >= cfg["threshold"]
-                elif cfg["threshold_type"] == "mastery_tier" and request.topic:
+                elif cfg["threshold_type"] == "mastery_tier" and normalized_topic:
                     unlocked = (
                         mastery_row is not None
                         and mastery_row.tier.value == cfg["threshold"]
-                        and request.topic == cfg.get("topic")
+                        and normalized_topic == cfg.get("topic")
                     )
                 if unlocked:
                     newly_unlocked.append(ach_key)
@@ -413,9 +488,11 @@ async def get_leaderboard(
     topic: str | None = Query(None),
     all_time: bool = Query(False),
 ) -> list[LeaderboardItem]:
+    normalized_topic = _normalize_topic(topic)
+
     if all_time:
-        if topic and topic != "Global":
-            period_filter = LeaderboardEntry.period_key.like(f"%::{topic}")
+        if normalized_topic and normalized_topic != "Global":
+            period_filter, _ = _topic_all_time_filter(normalized_topic)
         else:
             period_filter = ~LeaderboardEntry.period_key.contains("::")
 
@@ -436,8 +513,22 @@ async def get_leaderboard(
 
     if period_key is None:
         period_key = get_current_utc_period_key()
-    if topic and topic != "Global":
-        period_key = f"{period_key}::{topic}"
+    if normalized_topic and normalized_topic != "Global":
+        topic_keys = _topic_period_keys(period_key, normalized_topic)
+        query = (
+            select(LeaderboardEntry.user_id, func.sum(LeaderboardEntry.total_xp).label("total_xp"))
+            .where(LeaderboardEntry.period_key.in_(topic_keys))
+            .group_by(LeaderboardEntry.user_id)
+            .order_by(func.sum(LeaderboardEntry.total_xp).desc())
+            .limit(50)
+        )
+        result = await session.exec(query)
+        items: list[LeaderboardItem] = []
+        for idx, row in enumerate(result.all(), start=1):
+            uid, xp = row[0], int(row[1])
+            u = await session.get(User, uid)
+            items.append(LeaderboardItem(rank=idx, name=u.name if u else "Unknown", total_xp=xp, user_id=uid))
+        return items
 
     query = (
         select(LeaderboardEntry)
@@ -462,12 +553,13 @@ async def get_my_rank(
     topic: str | None = Query(None),
     all_time: bool = Query(False),
 ) -> MyRankResponse:
+    normalized_topic = _normalize_topic(topic)
     gam = await session.get(UserGamification, current_user.id)
-    current_streak = get_visible_streak_utc(gam)
+    visible_streak = get_visible_streak_utc(gam)
 
     if all_time:
-        if topic and topic != "Global":
-            pf = LeaderboardEntry.period_key.like(f"%::{topic}")
+        if normalized_topic and normalized_topic != "Global":
+            pf, _ = _topic_all_time_filter(normalized_topic)
         else:
             pf = ~LeaderboardEntry.period_key.contains("::")
 
@@ -486,7 +578,7 @@ async def get_my_rank(
         higher = int(_unwrap(
             (await session.exec(select(func.count()).select_from(subq).where(subq.c.total_xp > my_xp))).one()
         ))
-        return MyRankResponse(rank=higher + 1, total_xp=my_xp, current_streak=current_streak, period_key="ALL_TIME")
+        return MyRankResponse(rank=higher + 1, total_xp=my_xp, current_streak=visible_streak, period_key="ALL_TIME")
 
     if period_key is None:
         today_utc = datetime.now(timezone.utc).date()
@@ -495,18 +587,36 @@ async def get_my_rank(
     else:
         is_current = period_key == get_period_key(datetime.now(timezone.utc).date())
 
-    effective_pk = f"{period_key}::{topic}" if topic and topic != "Global" else period_key
-    entry = await session.get(LeaderboardEntry, (current_user.id, effective_pk))
-    my_xp = entry.total_xp if entry else 0
-
-    higher = int(_unwrap(
-        (await session.exec(
-            select(func.count()).select_from(LeaderboardEntry).where(
-                LeaderboardEntry.period_key == effective_pk, LeaderboardEntry.total_xp > my_xp
-            )
-        )).one()
-    ))
-    return MyRankResponse(rank=higher + 1, total_xp=my_xp, current_streak=current_streak, period_key=period_key, is_current_period=is_current)
+    period_streak = visible_streak if is_current else await _get_period_streak(session, current_user.id, period_key)
+    if normalized_topic and normalized_topic != "Global":
+        topic_keys = _topic_period_keys(period_key, normalized_topic)
+        my_xp = int(_unwrap(
+            (await session.exec(
+                select(func.coalesce(func.sum(LeaderboardEntry.total_xp), 0)).where(
+                    LeaderboardEntry.user_id == current_user.id,
+                    LeaderboardEntry.period_key.in_(topic_keys),
+                )
+            )).one()
+        ))
+        subq = (
+            select(LeaderboardEntry.user_id, func.sum(LeaderboardEntry.total_xp).label("total_xp"))
+            .where(LeaderboardEntry.period_key.in_(topic_keys))
+            .group_by(LeaderboardEntry.user_id)
+        ).subquery()
+        higher = int(_unwrap(
+            (await session.exec(select(func.count()).select_from(subq).where(subq.c.total_xp > my_xp))).one()
+        ))
+    else:
+        entry = await session.get(LeaderboardEntry, (current_user.id, period_key))
+        my_xp = entry.total_xp if entry else 0
+        higher = int(_unwrap(
+            (await session.exec(
+                select(func.count()).select_from(LeaderboardEntry).where(
+                    LeaderboardEntry.period_key == period_key, LeaderboardEntry.total_xp > my_xp
+                )
+            )).one()
+        ))
+    return MyRankResponse(rank=higher + 1, total_xp=my_xp, current_streak=period_streak, period_key=period_key, is_current_period=is_current)
 
 
 # ── Gems ────────────────────────────────────────────────────────────────────
@@ -575,21 +685,37 @@ async def spend_gems(
                     multiplier=10.0, starts_at=now, ends_at=now + timedelta(minutes=30), is_active=True,
                 ))
             elif request.item_key == "buy_xp_500":
+                now_utc = datetime.utcnow()
+                today_key = now_utc.strftime("%Y-%m-%d")
+                period_key = get_period_key(now_utc.date())
+                xp_bonus = 500
                 dp = _unwrap(
                     (await session.exec(
                         select(DailyProgress).where(
                             DailyProgress.user_id == current_user.id,
-                            DailyProgress.date_key == datetime.utcnow().strftime("%Y-%m-%d"),
+                            DailyProgress.date_key == today_key,
                         )
                     )).one_or_none()
                 )
                 if dp:
-                    dp.xp_earned += 500
+                    dp.xp_earned += xp_bonus
                 else:
                     dp = DailyProgress(
-                        user_id=current_user.id, date_key=datetime.utcnow().strftime("%Y-%m-%d"), xp_earned=500,
+                        user_id=current_user.id, date_key=today_key, xp_earned=xp_bonus,
                     )
+                dp.goal_met = dp.xp_earned >= DAILY_GOAL_XP
                 session.add(dp)
+
+                leaderboard_entry = await session.get(LeaderboardEntry, (current_user.id, period_key))
+                if leaderboard_entry:
+                    leaderboard_entry.total_xp += xp_bonus
+                else:
+                    leaderboard_entry = LeaderboardEntry(
+                        user_id=current_user.id,
+                        period_key=period_key,
+                        total_xp=xp_bonus,
+                    )
+                session.add(leaderboard_entry)
 
             session.add(inv)
             await session.flush()
@@ -782,9 +908,11 @@ async def get_proximity(
     all_time: bool = Query(False),
     xp_window: int = Query(200, ge=10, le=1000),
 ) -> ProximityResponse:
+    normalized_topic = _normalize_topic(topic)
+
     if all_time:
-        if topic and topic != "Global":
-            pf = LeaderboardEntry.period_key.like(f"%::{topic}")
+        if normalized_topic and normalized_topic != "Global":
+            pf, _ = _topic_all_time_filter(normalized_topic)
         else:
             pf = ~LeaderboardEntry.period_key.contains("::")
 
@@ -834,10 +962,57 @@ async def get_proximity(
         )
 
     # Weekly
-    effective_pk = get_current_utc_period_key()
-    if topic and topic != "Global":
-        effective_pk = f"{effective_pk}::{topic}"
+    period_key = get_current_utc_period_key()
+    if normalized_topic and normalized_topic != "Global":
+        topic_keys = _topic_period_keys(period_key, normalized_topic)
+        my_xp = int(_unwrap(
+            (await session.exec(
+                select(func.coalesce(func.sum(LeaderboardEntry.total_xp), 0)).where(
+                    LeaderboardEntry.user_id == current_user.id,
+                    LeaderboardEntry.period_key.in_(topic_keys),
+                )
+            )).one()
+        ))
+        if my_xp == 0:
+            return ProximityResponse(above=[], below=[], my_xp=0, my_rank=1)
 
+        agg = (
+            select(LeaderboardEntry.user_id, func.sum(LeaderboardEntry.total_xp).label("total_xp"))
+            .where(LeaderboardEntry.period_key.in_(topic_keys))
+            .group_by(LeaderboardEntry.user_id)
+        ).subquery()
+        my_rank = int(_unwrap(
+            (await session.exec(select(func.count()).select_from(agg).where(agg.c.total_xp > my_xp))).one()
+        )) + 1
+
+        above_rows = (await session.exec(
+            select(agg.c.user_id, agg.c.total_xp)
+            .where(agg.c.total_xp > my_xp, agg.c.total_xp <= my_xp + xp_window)
+            .order_by(agg.c.total_xp.asc()).limit(5)
+        )).all()
+        below_rows = (await session.exec(
+            select(agg.c.user_id, agg.c.total_xp)
+            .where(agg.c.total_xp < my_xp, agg.c.total_xp >= my_xp - xp_window)
+            .order_by(agg.c.total_xp.desc()).limit(5)
+        )).all()
+
+        async def _topic_neighbour(row):
+            uid, xp = row[0], int(row[1])
+            u = await session.get(User, uid)
+            nrank = int(_unwrap(
+                (await session.exec(select(func.count()).select_from(agg).where(agg.c.total_xp > xp))).one()
+            )) + 1
+            return ProximityNeighbour(
+                user_id=str(uid), name=u.name if u else "Unknown", total_xp=xp, rank=nrank, xp_gap=abs(xp - my_xp),
+            )
+
+        return ProximityResponse(
+            above=[await _topic_neighbour(r) for r in above_rows],
+            below=[await _topic_neighbour(r) for r in below_rows],
+            my_xp=my_xp, my_rank=my_rank,
+        )
+
+    effective_pk = period_key
     entry = await session.get(LeaderboardEntry, (current_user.id, effective_pk))
     my_xp = entry.total_xp if entry else 0
 

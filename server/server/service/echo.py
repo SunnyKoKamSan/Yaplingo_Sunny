@@ -73,6 +73,9 @@ class EchoService:
                 await self._service.store.echo.increment_session_progress(self.state)
                 return True  # indicates has more
             # handle session completion
+            latest_state = await self._service.store.echo.get_session(self.state.uid)
+            if latest_state is not None:
+                self.state = latest_state
             self._completed = True
             await self._service.repository.echo.save(EchoSession.from_state(self.state))
             await self._service.store.echo.discard_session(self.state)

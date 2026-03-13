@@ -6,6 +6,14 @@ import Text from "./Text";
 import Tooltip from "./Tooltip";
 
 type Entry = { date: Date; count: number };
+const LOCAL_DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const toLocalDateKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 export default function Heatmap({
   entries = {},
@@ -20,6 +28,20 @@ export default function Heatmap({
   const scheme = useColorScheme();
 
   const ref = useRef<ScrollView>(null);
+  const normalizedEntries = useMemo(() => {
+    const mapped: Record<string, number> = {};
+    for (const [key, count] of Object.entries(entries)) {
+      if (LOCAL_DATE_KEY_PATTERN.test(key)) {
+        mapped[key] = count;
+        continue;
+      }
+      const parsed = new Date(key);
+      if (!Number.isNaN(parsed.getTime())) {
+        mapped[toLocalDateKey(parsed)] = count;
+      }
+    }
+    return mapped;
+  }, [entries]);
 
   const weeks = useMemo(() => {
     const today = new Date();
@@ -41,15 +63,14 @@ export default function Heatmap({
         const date = new Date(weekstart);
         date.setDate(weekstart.getDate() + d);
         if (date.getTime() > today.getTime()) break;
-        const key = Object.keys(entries).find((e) => new Date(e).toDateString() === date.toDateString());
-        const count = key ? entries[key] : 0;
+        const count = normalizedEntries[toLocalDateKey(date)] ?? 0;
         week.days.push({ date, count });
       }
       weeks.push(week);
       weekstart.setDate(weekstart.getDate() + 7);
     }
     return weeks;
-  }, [entries]);
+  }, [normalizedEntries]);
 
   useEffect(() => ref.current?.scrollToEnd({ animated: false }), []);
 

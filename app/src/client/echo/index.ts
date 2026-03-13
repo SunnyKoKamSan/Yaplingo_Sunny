@@ -221,6 +221,7 @@ export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStat
       }
     }
     close();
+    onCloseRef.current?.(stateRef.current.status);
   }, [close]);
 
   useEffect(() => {

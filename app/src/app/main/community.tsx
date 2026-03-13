@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -38,12 +38,11 @@ import RankChangeIndicator from "~/components/RankChangeIndicator";
 import {
   useAuthedUserQuery,
   useLeaderboardQuery,
-  useMasteryQuery,
   useMyRankQuery,
   useProximityQuery,
 } from "~/client";
 import { useNavigationOptions } from "~/hooks";
-import type { LeaderboardItem, MasteryTier, Topic, TopicMasteryResponse } from "~/client/models";
+import type { LeaderboardItem, Topic } from "~/client/models";
 
 const BG_COLOR = "#ffffff";
 
@@ -224,22 +223,12 @@ const ClimbingTips = () => (
 );
 
 
-const TIER_BADGE_COLORS: Record<MasteryTier, string> = {
-  Bronze: "#CD7F32",
-  Silver: "#C0C0C0",
-  Gold: "#FFD700",
-  Platinum: "#E5E4E2",
-  Diamond: "#B9F2FF",
-};
-
 const TopicTabs = ({
   selected,
   onSelect,
-  masteryMap,
 }: {
   selected: Topic;
   onSelect: (topic: Topic) => void;
-  masteryMap: Partial<Record<Topic, TopicMasteryResponse>>;
 }) => (
   <ScrollView
     horizontal
@@ -248,7 +237,6 @@ const TopicTabs = ({
   >
     {TOPICS.map((topic) => {
       const active = selected === topic.key;
-      const mastery = topic.key !== "Global" ? masteryMap[topic.key] : undefined;
       return (
         <Pressable
           key={topic.key}
@@ -273,23 +261,6 @@ const TopicTabs = ({
               {topic.label}
             </Text>
           </View>
-          {mastery && (
-            <View
-              style={[
-                tw`rounded-full px-1.5 py-0`,
-                { backgroundColor: TIER_BADGE_COLORS[mastery.tier] + "33" },
-              ]}
-            >
-              <Text
-                style={[
-                  tw`text-[10px] font-bold`,
-                  { color: TIER_BADGE_COLORS[mastery.tier] },
-                ]}
-              >
-                {mastery.tier}
-              </Text>
-            </View>
-          )}
         </Pressable>
       );
     })}
@@ -589,15 +560,6 @@ export default function MainCommunityScreen() {
   const [periodIndex, setPeriodIndex] = useState(0);
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
-  const { data: masteryData } = useMasteryQuery();
-  const masteryMap = useMemo(() => {
-    const map: Partial<Record<Topic, TopicMasteryResponse>> = {};
-    if (masteryData) {
-      for (const m of masteryData) map[m.topic as Topic] = m;
-    }
-    return map;
-  }, [masteryData]);
-
   useEffect(() => {
     if (isFocused) {
       setPodiumPlayToken((token) => token + 1);
@@ -705,7 +667,6 @@ export default function MainCommunityScreen() {
             <TopicTabs
               selected={selectedTopic}
               onSelect={setSelectedTopic}
-              masteryMap={masteryMap}
             />
             {timeTab === "this-week" && (
               <WeekNav

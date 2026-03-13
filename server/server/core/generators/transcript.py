@@ -7,7 +7,7 @@ from . import BaseGenerator, reloadable_property
 
 
 class TranscriptGenerator(BaseGenerator):
-    TOPICS = ["food", "culture", "travel", "business"]
+    TOPICS = ["Food", "Culture", "Travel", "Business", "Technology"]
 
     @reloadable_property
     def system_prompt(self) -> str:

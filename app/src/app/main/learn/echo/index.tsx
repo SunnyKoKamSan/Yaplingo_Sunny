@@ -56,6 +56,21 @@ const calculateXP = (scorePercentage: number): number =>
 // Combo milestones: consecutive sentences → bonus XP
 const COMBO_MILESTONES: Record<number, number> = { 5: 50, 10: 150, 20: 400 };
 
+const TOPIC_ALIASES: Record<string, Topic> = {
+  food: "Food",
+  culture: "Culture",
+  travel: "Travel",
+  business: "Business",
+  technology: "Technology",
+  tech: "Technology",
+  global: "Global",
+};
+
+const normalizeTopic = (topic?: string): Topic | undefined => {
+  if (!topic) return undefined;
+  return TOPIC_ALIASES[topic.trim().toLowerCase()];
+};
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const RECORDING_OPTIONS: RecordingOptions = {
@@ -385,7 +400,7 @@ export default function MainLearnEchoScreen() {
       try {
         await checkInMutation.mutateAsync({
           xp_amount: safeXP,
-          topic: topic as Topic | undefined,
+          topic: normalizeTopic(topic),
           accuracy_percentage: safeAccuracy,
         });
       } catch {
