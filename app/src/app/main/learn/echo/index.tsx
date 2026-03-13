@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Dimensions, Modal, Pressable, ScrollView, View } from "react-native";
 import Animated, {
   FadeIn,
   interpolate,
@@ -12,7 +12,6 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { useTheme } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -42,11 +41,20 @@ import {
 import tw from "twrnc";
 
 import { EchoSessionStatus, useEchoSession, type EchoSession, type Result, type Summary } from "~/client/echo";
+import { useCheckInMutation } from "~/client";
+import type { Topic } from "~/client/models";
 import { Spinner, Text } from "~/components";
 import { useNavigationOptions } from "~/hooks";
 import { getLocalFileBase64 } from "~/utils";
 
 const RECORDING_DURATION_THRESHOLD = 1500; // ms
+
+// Score × 0.5 → XP, clamped to [10, 50]
+const calculateXP = (scorePercentage: number): number =>
+  Math.max(10, Math.min(50, Math.round(scorePercentage / 2)));
+
+// Combo milestones: consecutive sentences → bonus XP
+const COMBO_MILESTONES: Record<number, number> = { 5: 50, 10: 150, 20: 400 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -164,19 +172,21 @@ const getScoreColor = (x: number) => {
 const ResultSheet = ({ result, onWillDismiss }: { result: Result; onWillDismiss?: () => void }) => {
   const theme = useTheme();
 
-  const sheet = useRef<TrueSheet>(null);
-
   const [selection, setSelection] = useState<number | null>(null);
+  const sheetHeight = Dimensions.get("window").height * 0.5;
 
   return (
-    <TrueSheet
-      ref={sheet}
-      detents={[0.5]}
-      initialDetentIndex={0}
-      initialDetentAnimated={true}
-      cornerRadius={16}
-      onWillDismiss={onWillDismiss}>
-      <ScrollView contentContainerStyle={tw`gap-2.5 p-4`}>
+    <Modal
+      visible={true}
+      transparent
+      animationType="slide"
+      onRequestClose={onWillDismiss}>
+      <Pressable style={tw`flex-1`} onPress={onWillDismiss} />
+      <View style={[tw`rounded-t-2xl`, { height: sheetHeight, backgroundColor: theme.colors.card }]}>
+        <View style={tw`items-center py-2`}>
+          <View style={tw`h-1 w-10 rounded-full bg-zinc-500/30`} />
+        </View>
+        <ScrollView contentContainerStyle={tw`gap-2.5 p-4`}>
         <View style={[tw`mb-2 rounded-lg p-4`, { backgroundColor: theme.colors.background }]}>
           <Text style={tw`text-base`}>{result.feedback}</Text>
         </View>
@@ -234,7 +244,8 @@ const ResultSheet = ({ result, onWillDismiss }: { result: Result; onWillDismiss?
           );
         })}
       </ScrollView>
-    </TrueSheet>
+      </View>
+    </Modal>
   );
 };
 
@@ -330,22 +341,68 @@ export default function MainLearnEchoScreen() {
   const playerStatus = useAudioPlayerStatus(player);
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder);
+  const checkInMutation = useCheckInMutation();
 
   const { session, submit, proceed, abort, complete } = useEchoSession({
     onClose: () => {
       if (router.canDismiss()) router.dismissAll();
-      // refresh user activity after session complete
+      // refresh user activity and gamification data after session
       client.invalidateQueries({ queryKey: ["auth", "me"] });
+      client.invalidateQueries({ queryKey: ["gamification"] });
     },
   });
   const transcript = session.data && "transcript" in session.data ? session.data.transcript : undefined;
   const result = session.data && "result" in session.data ? session.data.result : undefined;
+  const sessionTopic = session.data && "topic" in session.data ? session.data.topic : undefined;
 
   const _flipped = useSharedValue(false);
   const [flipped, setFlipped] = useState(false);
   const [height, setHeight] = useState(0);
 
   const [playbacking, setPlaybacking] = useState(false);
+  const [showResultSheet, setShowResultSheet] = useState(false);
+
+  // XP check-in tracking
+  const recordedIndices = useRef(new Set<number>());
+  const [comboStreak, setComboStreak] = useState(0);
+
+  const currentProgress = session.data && "progress" in session.data ? session.data.progress : -1;
+
+  // Record XP when a score becomes available for a sentence
+  useEffect(() => {
+    if (!result || currentProgress < 0) return;
+    if (recordedIndices.current.has(currentProgress)) return;
+
+    const alignments = result.pronunciation.alignments;
+    const scorePercentage = calculateScorePercentage(alignments);
+    const xpEarned = calculateXP(scorePercentage);
+
+    recordedIndices.current.add(currentProgress);
+
+    const recordXP = async (xp: number, accuracy: number, topic?: string) => {
+      const safeXP = Number.isFinite(xp) ? Math.max(1, Math.round(xp)) : 10;
+      const safeAccuracy = Number.isFinite(accuracy) ? Math.min(100, Math.max(0, Math.round(accuracy))) : undefined;
+      try {
+        await checkInMutation.mutateAsync({
+          xp_amount: safeXP,
+          topic: topic as Topic | undefined,
+          accuracy_percentage: safeAccuracy,
+        });
+      } catch {
+        // Non-fatal: XP recording failure should not block the session
+      }
+    };
+
+    void recordXP(xpEarned, scorePercentage, sessionTopic);
+
+    // Combo tracking
+    const newCombo = comboStreak + 1;
+    setComboStreak(newCombo);
+    const bonusXP = COMBO_MILESTONES[newCombo];
+    if (bonusXP !== undefined) {
+      void recordXP(bonusXP, 0, sessionTopic);
+    }
+  }, [result, currentProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useAnimatedReaction(
     () => _flipped.value,
@@ -354,6 +411,7 @@ export default function MainLearnEchoScreen() {
 
   const handleProceed = () => {
     const callback = () => {
+      setShowResultSheet(false);
       proceed();
       player.replace("");
       _flipped.value = false;
@@ -373,6 +431,7 @@ export default function MainLearnEchoScreen() {
   };
 
   const handleClose = () => {
+    setShowResultSheet(false);
     if (session.status === EchoSessionStatus.COMPLETED) return complete();
     Alert.alert("Abort Session", "Are you sure you want to abort this session?", [
       { text: "Cancel", style: "cancel" },
@@ -428,8 +487,11 @@ export default function MainLearnEchoScreen() {
       const result = await submit(audio);
       if (result === null) {
         Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
-      } else if (session.data && "progress" in session.data) {
-        session.data.attempts[session.data.progress] += 1;
+      } else {
+        setShowResultSheet(true);
+        if (session.data && "progress" in session.data) {
+          session.data.attempts[session.data.progress] += 1;
+        }
       }
     }
   };
@@ -628,7 +690,7 @@ export default function MainLearnEchoScreen() {
           </View>
         </>
       )}
-      {result && <ResultSheet result={result} />}
+      {showResultSheet && result && <ResultSheet result={result} onWillDismiss={() => setShowResultSheet(false)} />}
     </View>
   );
 }

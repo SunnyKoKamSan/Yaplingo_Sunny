@@ -1,9 +1,10 @@
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, TypeAlias, cast
 
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, ValidationError
+from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.requests import HTTPConnection
 from ulid import ULID
 
@@ -18,6 +19,15 @@ async def service(connection: HTTPConnection) -> _Service:
 
 
 Service = Annotated[_Service, Depends(service)]
+
+
+async def _session_dep(request: Request) -> AsyncSession:
+    svc: _Service = request.app.state.service
+    async with svc._repository.session() as db_session:
+        yield db_session
+
+
+SessionDep: TypeAlias = Annotated[AsyncSession, Depends(_session_dep)]
 
 
 class TokenClaims(BaseModel):
@@ -58,4 +68,4 @@ async def user(
 User = Annotated[_User, Depends(user)]
 
 
-__all__ = ["Service", "User"]
+__all__ = ["Service", "SessionDep", "User"]

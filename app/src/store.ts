@@ -3,6 +3,8 @@ import { atom, getDefaultStore } from "jotai";
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
 import { type SyncStringStorage } from "jotai/vanilla/utils/atomWithStorage";
 
+import type { CheckInResponse, ActiveEvent } from "~/client/models";
+
 const store = getDefaultStore();
 
 const createSecureStorage = (): SyncStringStorage => ({
@@ -21,5 +23,43 @@ const atomWithSecureStore = <T>(key: string, initialValue: T, { getOnInit = fals
 export const $token = atomWithSecureStore("token", "", { getOnInit: true });
 
 export const $authed = atom((get) => !!get($token));
+
+// ── Gamification Atoms ─────────────────────────────────────────────────────
+
+export const $lastCheckIn = atomWithSecureStore<CheckInResponse | null>("last_check_in", null, {
+  getOnInit: true,
+});
+
+const DAILY_XP_TARGET = 200;
+
+export const $streak = atom((get) => get($lastCheckIn)?.new_streak ?? 0);
+
+export const $dailyProgress = atom((get) => {
+  const data = get($lastCheckIn);
+  const current = data?.xp_earned ?? 0;
+  return { current, target: DAILY_XP_TARGET, met: current >= DAILY_XP_TARGET };
+});
+
+export const $dailyLessonProgress = atom((get) => ({
+  current: get($lastCheckIn)?.lessons_completed ?? 0,
+  target: 5,
+}));
+
+export const $dailyAccuracyProgress = atom((get) => ({
+  current: get($lastCheckIn)?.high_accuracy_hits ?? 0,
+  target: 5,
+}));
+
+export const $activeEvent = atom<ActiveEvent | null>(null);
+
+export const $gemBalance = atom<number>(0);
+
+export const $lastKnownRanks = atom<Record<string, number>>({});
+
+export const $rankAlertsEnabled = atomWithSecureStore<boolean>(
+  "rank_alerts_enabled", false, { getOnInit: true },
+);
+
+export const $comboStreak = atom<number>(0);
 
 export default store;

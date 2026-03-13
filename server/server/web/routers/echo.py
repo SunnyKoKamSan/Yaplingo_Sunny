@@ -15,12 +15,15 @@ class SessionManager:
     async def accept(self, user: User, ws: WebSocket):
         if user.id in self.connections:
             _ws = self.connections[user.id]
+            # Detach old connection so its finally block won't remove our new entry
+            self.connections[user.id] = ws
             try:
                 await _ws.close()
             except Exception:
                 pass
+        else:
+            self.connections[user.id] = ws
         await ws.accept()
-        self.connections[user.id] = ws
 
     async def close(self, user: User, ws: WebSocket):
         try:
@@ -54,7 +57,8 @@ async def websocket_session(
     sessions: Sessions,
     service: Service,
 ):
-    session = await service.echo.session(user, generate=True)
+    # Accept WebSocket FIRST so the client doesn't time out during session generation
+    await sessions.accept(user, ws)
 
     async def send_response(data: Any, t: EchoResponse.Type | None = None) -> None:
         data = await EchoResponse.dump(data, t)
@@ -65,7 +69,7 @@ async def websocket_session(
         return EchoInput.model_validate(data)
 
     try:
-        await sessions.accept(user, ws)
+        session = await service.echo.session(user, generate=True)
         while not session.completed:
             if not session.state.attempted:
                 print(
@@ -92,6 +96,8 @@ async def websocket_session(
                 await ws.receive()  # wait for client to acknowledge completion before closing
     except WebSocketDisconnect:
         pass  # do not reraise on disconnect
+    except Exception as e:
+        print(f"ERROR in echo session: {e}")
     finally:
         await sessions.close(user, ws)
 
