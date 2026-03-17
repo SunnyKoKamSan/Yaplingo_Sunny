@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, FastAPI, WebSocket, WebSocketDisconnect
@@ -6,6 +7,8 @@ from ulid import ULID
 
 from ..dependencies import Service, User
 from ..schemas.echo import EchoInput, EchoResponse
+
+logger = logging.getLogger(__name__)
 
 
 class SessionManager:
@@ -96,8 +99,8 @@ async def websocket_session(
                 await ws.receive()  # wait for client to acknowledge completion before closing
     except WebSocketDisconnect:
         pass  # do not reraise on disconnect
-    except Exception as e:
-        print(f"ERROR in echo session: {e}")
+    except Exception:
+        logger.exception("Unhandled error in echo websocket session for user %s", user.id)
     finally:
         await sessions.close(user, ws)
 

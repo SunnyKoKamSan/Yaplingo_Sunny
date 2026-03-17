@@ -175,8 +175,12 @@ async def check_in(
                     XPMultiplierEvent.ends_at >= now_utc,
                 )
             )
-            event_rows = event_result.all()
-            active_event = _unwrap(event_rows[0]) if event_rows else None
+            event_rows = [_unwrap(row) for row in event_result.all()]
+            active_event = (
+                max(event_rows, key=lambda event: (event.multiplier, event.ends_at))
+                if event_rows
+                else None
+            )
 
             if active_event:
                 effective_xp = int(request.xp_amount * active_event.multiplier)
@@ -652,6 +656,10 @@ async def spend_gems(
     if cost is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown item")
 
+    xp_added = 0
+    weekly_total_xp: int | None = None
+    lifetime_total_xp: int | None = None
+
     repository = service._repository
     async with repository.session() as session:
         async with session.begin():
@@ -682,13 +690,14 @@ async def spend_gems(
                 now = datetime.utcnow()
                 session.add(XPMultiplierEvent(
                     name="Mega XP Boost", description="30x XP for 30 minutes",
-                    multiplier=10.0, starts_at=now, ends_at=now + timedelta(minutes=30), is_active=True,
+                    multiplier=30.0, starts_at=now, ends_at=now + timedelta(minutes=30), is_active=True,
                 ))
             elif request.item_key == "buy_xp_500":
                 now_utc = datetime.utcnow()
                 today_key = now_utc.strftime("%Y-%m-%d")
                 period_key = get_period_key(now_utc.date())
                 xp_bonus = 500
+                xp_added = xp_bonus
                 dp = _unwrap(
                     (await session.exec(
                         select(DailyProgress).where(
@@ -716,10 +725,26 @@ async def spend_gems(
                         total_xp=xp_bonus,
                     )
                 session.add(leaderboard_entry)
+                weekly_total_xp = leaderboard_entry.total_xp
 
             session.add(inv)
+
+            if xp_added > 0:
+                lifetime_total_xp = int(_unwrap(
+                    (await session.exec(
+                        select(func.coalesce(func.sum(DailyProgress.xp_earned), 0)).where(
+                            DailyProgress.user_id == current_user.id
+                        )
+                    )).one()
+                ))
             await session.flush()
-    return SpendGemsResponse(new_balance=balance_row.balance, item_key=request.item_key)
+    return SpendGemsResponse(
+        new_balance=balance_row.balance,
+        item_key=request.item_key,
+        xp_added=xp_added,
+        weekly_total_xp=weekly_total_xp,
+        lifetime_total_xp=lifetime_total_xp,
+    )
 
 
 # ── Achievements ────────────────────────────────────────────────────────────
@@ -884,17 +909,16 @@ async def use_skill(item_key: str, session: SessionDep, current_user: AuthUser) 
     if item_key not in USABLE_SKILLS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Item '{item_key}' cannot be manually activated")
 
-    async with session.begin():
-        inv = _unwrap(
-            (await session.exec(select(UserInventory).where(UserInventory.user_id == current_user.id))).one_or_none()
-        )
-        if not inv or inv.streak_freezes < 1:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No streak freezes available")
-        inv.streak_freezes -= 1
-        session.add(inv)
+    inv = _unwrap(
+        (await session.exec(select(UserInventory).where(UserInventory.user_id == current_user.id))).one_or_none()
+    )
+    if not inv or inv.streak_freezes < 1:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No streak freezes available")
 
     return UseSkillResponse(
-        skill_key=item_key, message="Streak Freeze activated! Your streak is protected for today.", remaining=inv.streak_freezes,
+        skill_key=item_key,
+        message="Streak Freeze is passive and auto-activates when you miss a day.",
+        remaining=inv.streak_freezes,
     )
 
 

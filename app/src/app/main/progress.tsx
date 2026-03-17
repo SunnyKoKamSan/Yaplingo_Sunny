@@ -117,11 +117,13 @@ export default function ProgressScreen() {
   const [playToken, setPlayToken] = useState(0);
   const { data: history, isLoading: historyLoading } = useXPHistoryQuery(range);
   const { data: stats, isLoading: statsLoading } = useStatsQuery();
-  const { data: mastery } = useMasteryQuery();
+  const { data: mastery, refetch: refetchMastery } = useMasteryQuery();
 
   useEffect(() => {
-    if (isFocused) setPlayToken((t) => t + 1);
-  }, [isFocused]);
+    if (!isFocused) return;
+    setPlayToken((t) => t + 1);
+    void refetchMastery();
+  }, [isFocused, refetchMastery]);
 
   useEffect(() => {
     setPlayToken((t) => t + 1);

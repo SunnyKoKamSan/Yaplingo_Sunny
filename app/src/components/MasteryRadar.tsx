@@ -49,8 +49,16 @@ export default function MasteryRadar({ data, playToken }: { data: TopicMasteryRe
   }, [data]);
 
   const scores = useMemo(
-    () => TOPICS.map((t) => masteryMap[t] ?? 0),
+    () => TOPICS.map((t) => {
+      const score = masteryMap[t] ?? 0;
+      if (!Number.isFinite(score)) return 0;
+      return Math.min(Math.max(score, 0), 1);
+    }),
     [masteryMap],
+  );
+  const scoreKey = useMemo(
+    () => scores.map((score) => score.toFixed(4)).join("|"),
+    [scores],
   );
 
   const [progress, setProgress] = useState(0);
@@ -65,7 +73,7 @@ export default function MasteryRadar({ data, playToken }: { data: TopicMasteryRe
       if (t < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-  }, [playToken]);
+  }, [playToken, scoreKey]);
 
   const animatedScores = scores.map((s) => s * Math.max(progress, 0));
   const points = buildPolygonPoints(animatedScores);

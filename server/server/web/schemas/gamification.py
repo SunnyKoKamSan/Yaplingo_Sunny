@@ -89,6 +89,9 @@ class SpendGemsRequest(BaseModel):
 class SpendGemsResponse(BaseModel):
     new_balance: int
     item_key: str
+    xp_added: int = 0
+    weekly_total_xp: int | None = None
+    lifetime_total_xp: int | None = None
 
 
 class ClaimAchievementRequest(BaseModel):

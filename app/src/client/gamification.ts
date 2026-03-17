@@ -248,8 +248,32 @@ export const useSpendGemsMutation = () => {
       const { data } = await client.post<SpendGemsResponse>("/gamification/gems/spend", req);
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       setGemBalance(data.new_balance);
+
+      const xpAdded =
+        data.xp_added > 0
+          ? data.xp_added
+          : variables.item_key === "buy_xp_500"
+            ? 500
+            : 0;
+      if (xpAdded > 0) {
+        queryClient.setQueryData<MyRankResponse>(getMyRankQueryKey(), (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            total_xp: data.weekly_total_xp ?? prev.total_xp + xpAdded,
+          };
+        });
+        queryClient.setQueryData<StatsResponse>([...GAMIFICATION_QUERY_KEY, "stats"], (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            lifetime_xp: data.lifetime_total_xp ?? prev.lifetime_xp + xpAdded,
+          };
+        });
+      }
+
       queryClient.invalidateQueries({ queryKey: GAMIFICATION_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
     },
