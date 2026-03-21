@@ -2,12 +2,12 @@ import torch
 import torchaudio
 from transformers import Wav2Vec2ForCTC, Wav2Vec2PhonemeCTCTokenizer, Wav2Vec2Processor
 
-from ..models import Pronunciation, Transcript
-from .processor import AudioProcessor
+from .models.echo import Pronunciation, Transcript
 
 
 class PronunciationAligner:
     MODEL_ID = "facebook/wav2vec2-lv-60-espeak-cv-ft"
+    SR = 16_000
 
     def __init__(self):
         self.model = Wav2Vec2ForCTC.from_pretrained(PronunciationAligner.MODEL_ID)
@@ -17,7 +17,7 @@ class PronunciationAligner:
     def perform_inference(self, waveform: torch.Tensor) -> torch.Tensor:
         inputs = self.processor(
             waveform,
-            sampling_rate=AudioProcessor.SR,
+            sampling_rate=PronunciationAligner.SR,
             return_tensors="pt",  # required
         )
         with torch.inference_mode():

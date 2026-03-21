@@ -1,16 +1,15 @@
-import functools
 import re
+from typing import TYPE_CHECKING, Annotated
 
-from isodate.version import TYPE_CHECKING
 from phonemizer import phonemize
 from phonemizer.punctuation import Punctuation
 from phonemizer.separator import Separator
-from pydantic import BaseModel, PrivateAttr, computed_field
+from pydantic import BaseModel, Field, PrivateAttr, computed_field
 from typing_extensions import Self
 
-from server.core.textspeech import data_urlencode, gtts
-
-from .levenshtein import OperationCode, levenshtein
+from .._utils import cached_method
+from ..levenshtein import OperationCode, levenshtein
+from ..textspeech import data_urlencode, gtts
 
 if TYPE_CHECKING:
     cached_property = property
@@ -24,21 +23,9 @@ PUNCTUATION = Punctuation()
 DIFFERENCE_CUTOFF = 0.75  # for filtering out differences with high enough confidence
 
 
-def cached_method(f):
-    attr = f"@{f.__name__}"
-
-    @functools.wraps(f)
-    def wrapper(self):
-        if hasattr(self, attr):
-            return object.__getattribute__(self, attr)
-        object.__setattr__(self, attr, result := f(self))
-        return result
-
-    return wrapper
-
-
 class Transcript(BaseModel):
     text: str
+    audio: Annotated[str | None, Field(repr=False)] = None
 
     @computed_field
     @cached_property
@@ -74,23 +61,13 @@ class Transcript(BaseModel):
     # cannot decorate with `cached_method` here because this method is async
     #   and would cause "RuntimeError: cannot reuse already awaited coroutine"
     async def get_audio(self) -> str:
-        attr = "@audio"
-        if hasattr(self, attr):
-            audio = object.__getattribute__(self, attr)
-        else:
-            audio = data_urlencode(await gtts(self.text), gtts.MIME)
-            object.__setattr__(self, attr, audio)
-        return audio
-
-
-class Transcripts(BaseModel):
-    topic: str
-    scenario: str
-    items: list[Transcript]
+        if self.audio is None:
+            self.audio = data_urlencode(await gtts(self.text), gtts.MIME)
+        return self.audio
 
 
 class Pronunciation(BaseModel):
-    _transcript: Transcript = PrivateAttr()
+    _transcript: Transcript = PrivateAttr()  # ref: https://github.com/pydantic/pydantic/issues/9048
 
     class Alignment(BaseModel):
         token: str
@@ -167,16 +144,3 @@ class Pronunciation(BaseModel):
             )
             for word, start, end in boundaries
         ]
-
-
-class Result(BaseModel):
-    feedback: str
-    pronunciation: Pronunciation
-
-
-__all__ = [
-    "Transcript",
-    "Transcripts",
-    "Pronunciation",
-    "Result",
-]

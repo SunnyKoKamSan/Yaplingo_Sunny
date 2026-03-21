@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from functools import partial
 
 import soundfile
-from gtts import agTTS
 
 
 def data_urlencode(data: bytes, mime: str) -> str:
@@ -17,14 +16,15 @@ class BaseTextSpeech(ABC):
     MIME: str
 
     @abstractmethod
-    async def __call__(self, text: str) -> bytes:
-        raise NotImplementedError
+    async def __call__(self, text: str) -> bytes: ...
 
 
 class GoogleTextSpeech(BaseTextSpeech):
     MIME = "audio/mpeg"
 
     def __init__(self):
+        from gtts import agTTS
+
         self.synthesize = partial(agTTS, lang="en", tld="us", slow=False)
 
     async def __call__(self, text: str) -> bytes:

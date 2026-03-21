@@ -6,9 +6,9 @@ import torchaudio
 
 
 class AudioProcessor:
-    SR = 16_000  # 16kHz for Wav2Vec2
+    def __init__(self, sr: int):
+        self.sr = sr
 
-    def __init__(self):
         self.df_model, self.df_state, _ = df.init_df()
 
     def __call__(self, data: bytes) -> torch.Tensor | None:
@@ -17,13 +17,13 @@ class AudioProcessor:
         if sr == self.df_state.sr():
             waveform = df.enhance(self.df_model, self.df_state, waveform)
         # resample if necessary
-        if sr != AudioProcessor.SR:
-            waveform = torchaudio.functional.resample(waveform, sr, AudioProcessor.SR)
+        if sr != self.sr:
+            waveform = torchaudio.functional.resample(waveform, sr, self.sr)
         # ensure waveform is mono
         if waveform.shape[0] > 1:
             waveform = waveform.mean(dim=0, keepdim=True)
         # trim silence in both ends
-        waveform = torchaudio.functional.vad(waveform, AudioProcessor.SR)
+        waveform = torchaudio.functional.vad(waveform, self.sr)
 
         waveform = waveform.squeeze()  # flatten to 1D tensor
         if waveform.numel() == 0:

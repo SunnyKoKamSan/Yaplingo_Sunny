@@ -1,12 +1,12 @@
 from datetime import timedelta
-from typing import TYPE_CHECKING, Annotated, Awaitable, cast
+from typing import TYPE_CHECKING, Annotated, Any, Awaitable, cast
 
-from pydantic import Base64Bytes, BaseModel, ConfigDict, Field, computed_field
+from pydantic import Base64Bytes, BaseModel, ConfigDict, Field, PrivateAttr, computed_field
 from redis.asyncio import Redis
 from typing_extensions import Self
 from ulid import ULID
 
-from server.core import Result, Transcript, Transcripts
+from server.core.models.echo import Result, Scenario, Transcript
 
 if TYPE_CHECKING:
     cached_property = property
@@ -16,8 +16,8 @@ else:
 SESSION_TTL = timedelta(hours=1)
 
 
-class EchoSessionState(Transcripts):
-    class Attempt(BaseModel):
+class EchoSessionState(BaseModel):
+    class Attempt(Result):
         audio_b64: Annotated[
             Base64Bytes,
             Field(
@@ -25,46 +25,51 @@ class EchoSessionState(Transcripts):
                 repr=False,
             ),
         ]
-        result: Result
 
         model_config = ConfigDict(frozen=True)
 
-    uid: Annotated[ULID, Field(exclude=True)]
+    topic: str
+    scenario: str
+    transcripts: list[Transcript]
+
+    _uid: Annotated[ULID, PrivateAttr()]
+
     progress: int = 0
     attempts: list[list[Attempt]]
 
     model_config = ConfigDict(frozen=True)
 
     def __repr__(self) -> str:
-        return f"echo:{str(self.uid)}"
+        return f"echo:{str(self._uid)}"
 
-    @classmethod
-    def init(cls, uid: ULID, transcripts: Transcripts) -> Self:
-        return cls(
-            **transcripts.model_dump(),
-            uid=uid,
-            attempts=[[] for _ in range(len(transcripts.items))],
-        )
-
-    @classmethod
-    def load(cls, uid: ULID, **data) -> Self:
-        self = cls(**data, uid=uid)
+    def model_post_init(self, context: Any) -> None:
+        super().model_post_init(context)
         # recover the `_transcript` private field in `Pronunciation` for each attempt result
         #   because it was excluded from serialization to the store
         for index, attempts in enumerate(self.attempts):
             for attempt in attempts:
-                attempt.result.pronunciation.with_transcript(self.items[index])
+                attempt.pronunciation.with_transcript(self.transcripts[index])
+
+    @classmethod
+    def new(cls, uid: ULID, scenario: Scenario) -> Self:
+        return cls(
+            **scenario.model_dump(),
+            attempts=[[] for _ in range(len(scenario.transcripts))],
+        ).with_uid(uid)
+
+    def with_uid(self, uid: ULID) -> Self:
+        self._uid = uid
         return self
 
     @computed_field
     @cached_property
     def total(self) -> int:
-        return len(self.items)
+        return len(self.transcripts)
 
     @computed_field
     @cached_property
     def transcript(self) -> Transcript:
-        return self.items[self.progress]
+        return self.transcripts[self.progress]
 
     @computed_field
     @cached_property
@@ -95,13 +100,14 @@ class EchoStore:
     async def get_session(self, uid: ULID) -> EchoSessionState | None:
         op = self._client.json().get(f"echo:{str(uid)}")
         data = await cast(Awaitable[dict | None], op)
-        return EchoSessionState.load(uid=uid, **data) if data else None
+        if data is not None:
+            return EchoSessionState(**data).with_uid(uid)
 
     async def increment_session_progress(self, session: EchoSessionState) -> None:
         op = self._client.json().numincrby(repr(session), "$.progress", 1)
         await cast(Awaitable[str], op)
 
-    async def stash_session_attempt(self, session: EchoSessionState, attempt: EchoSessionState.Attempt) -> None:
+    async def record_session_attempt(self, session: EchoSessionState, attempt: EchoSessionState.Attempt) -> None:
         op = self._client.json().arrappend(
             repr(session),
             f"$.attempts[{session.progress}]",
@@ -113,8 +119,7 @@ class EchoStore:
         await cast(Awaitable[list[int | None]], op)
 
     async def discard_session(self, session: EchoSessionState) -> None:
-        op = self._client.delete(repr(session))
-        await cast(Awaitable[int], op)
+        await self._client.delete(repr(session))
 
 
 __all__ = ["EchoStore", "EchoSessionState"]
