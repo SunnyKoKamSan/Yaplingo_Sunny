@@ -6,7 +6,7 @@ import type { Response, Result, Session, Summary } from "./models";
 export enum EchoSessionStatus {
   LOADING_NEW,
   LOADING_NEXT,
-  PENDING_ATTEMPT,
+  READY_ATTEMPT,
   PENDING_RESULT,
   READY_NEXT,
   COMPLETED,
@@ -24,7 +24,7 @@ export type EchoSession =
       data: Session;
     }
   | {
-      status: EchoSessionStatus.PENDING_ATTEMPT | EchoSessionStatus.READY_NEXT;
+      status: EchoSessionStatus.READY_ATTEMPT | EchoSessionStatus.READY_NEXT;
       data: Session & { result?: Result | null };
     }
   | {
@@ -64,14 +64,14 @@ const reduceState = (state: State, [type, payload]: Action): State => {
       switch (type) {
         case "session": {
           return {
-            status: EchoSessionStatus.PENDING_ATTEMPT,
+            status: EchoSessionStatus.READY_ATTEMPT,
             data: response, // result not included
             next: "result",
           };
         }
         case "result": {
           return {
-            status: response !== null ? EchoSessionStatus.READY_NEXT : EchoSessionStatus.PENDING_ATTEMPT,
+            status: response !== null ? EchoSessionStatus.READY_NEXT : EchoSessionStatus.READY_ATTEMPT,
             data: { ...(state.data as Session), result: response },
             next: "session",
           };
@@ -99,9 +99,6 @@ export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStat
   const resolveSubmit = useRef<(result: Result | null) => void>(undefined);
 
   const [state, dispatch] = useReducer(reduceState, initialState);
-
-  // // DEBUG: log state changes
-  // useEffect(() => console.log("status:", state.status, "\t", "next:", state.next), [state]);
 
   const handleMessage = useRef(async ({ data }: { data: any }) => {
     try {
@@ -137,7 +134,7 @@ export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStat
     (audio: string): Promise<Result | null> => {
       return new Promise((resolve) => {
         if (!ws.current) throw new Error("WebSocket undefined");
-        if (state.status !== EchoSessionStatus.PENDING_ATTEMPT) {
+        if (state.status !== EchoSessionStatus.READY_ATTEMPT) {
           throw new Error("session not ready for attempt");
         }
         resolveSubmit.current = resolve;
@@ -150,21 +147,21 @@ export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStat
 
   const proceed = useCallback(() => {
     if (!ws.current) throw new Error("WebSocket undefined");
-    if (![EchoSessionStatus.READY_NEXT, EchoSessionStatus.PENDING_ATTEMPT].includes(state.status)) {
+    if (![EchoSessionStatus.READY_NEXT, EchoSessionStatus.READY_ATTEMPT].includes(state.status)) {
       throw new Error("session not ready to proceed");
     }
-    ws.current.send(JSON.stringify({ type: "next", input: null }));
+    ws.current.send(JSON.stringify({ type: "next" }));
     dispatch(["PROCEED"]);
   }, [state.status]);
 
   const abort = useCallback(() => {
     // FIXME: handle abort during loading new session
     if (!ws.current) throw new Error("WebSocket undefined");
-    ws.current.send(JSON.stringify({ type: "abort", input: null }));
+    ws.current.send(JSON.stringify({ type: "abort" }));
     close();
   }, [close]);
 
-  const complete = useCallback(() => {
+  const end = useCallback(() => {
     if (!ws.current) throw new Error("WebSocket undefined");
     if (state.status !== EchoSessionStatus.COMPLETED) {
       throw new Error("session not completed");
@@ -186,7 +183,7 @@ export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStat
     submit,
     proceed,
     abort,
-    complete,
+    end,
   } as const;
 };
 

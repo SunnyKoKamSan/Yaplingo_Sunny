@@ -54,7 +54,12 @@ export default function Heatmap({
   useEffect(() => ref.current?.scrollToEnd({ animated: false }), []);
 
   return (
-    <ScrollView ref={ref} horizontal={true} showsHorizontalScrollIndicator={false} {...props}>
+    <ScrollView
+      ref={ref}
+      horizontal={true}
+      alwaysBounceHorizontal={false}
+      showsHorizontalScrollIndicator={false}
+      {...props}>
       <View style={tw`gap-2`}>
         <View style={[tw`flex-row`, { gap: squareGap }]}>
           {weeks.map((week, index) => (
@@ -92,7 +97,7 @@ export default function Heatmap({
           {weeks.map((week, index) => (
             <View key={index} style={[tw`flex-row`, { width: squareSize + squareGap }]}>
               {(index === 0 || week.month !== weeks[index - 1]?.month) && (
-                <Text style={[tw`text-xs text-zinc-500`, { width: (squareSize + squareGap) * 2 }]} numberOfLines={1}>
+                <Text style={[tw`text-xs text-neutral-500`, { width: (squareSize + squareGap) * 2 }]} numberOfLines={1}>
                   {week.month}
                 </Text>
               )}

@@ -1,8 +1,4 @@
-export type Transcript = {
-  text: string;
-  audio: string;
-  sequence: string;
-};
+import type { Pronunciation, Transcript } from "../models";
 
 export type Session = {
   total: number;
@@ -13,25 +9,6 @@ export type Session = {
   transcript: Transcript;
 };
 
-type PronunciationAlignment = {
-  token: string;
-  score: number;
-  interval: [number, number];
-};
-
-type PronunciationDifference = {
-  operation: "replace" | "insert" | "delete";
-  word: string;
-  expected?: string;
-  predicted?: string;
-};
-
-type Pronunciation = {
-  phonemes: string[];
-  alignments: PronunciationAlignment[];
-  differences: PronunciationDifference[];
-};
-
 export type Result = {
   feedback: string;
   pronunciation: Pronunciation & {
@@ -39,11 +16,11 @@ export type Result = {
   };
 };
 
-export type Summary = Omit<Session, "progress" | "attempts" | "transcript"> & {
-  attempts: {
-    audio: string;
-    result: Result;
-  }[][];
+export type Summary = {
+  total: number;
+  topic: string;
+  scenario: string;
+  attempts: (Result & { audio: string })[][];
   transcripts: Transcript[];
 };
 

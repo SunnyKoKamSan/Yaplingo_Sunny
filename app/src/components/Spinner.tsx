@@ -21,7 +21,7 @@ export default function Spinner({
   useEffect(() => {
     rotation.value = withRepeat(
       withTiming(360, {
-        duration: 1000,
+        duration: 750,
         easing: Easing.linear,
       }),
       -1,

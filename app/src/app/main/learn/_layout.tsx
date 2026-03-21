@@ -15,7 +15,6 @@ export default function MainLearnLayout() {
         }}
       />
       <Stack.Screen name="echo" />
-      <Stack.Screen name="yap" />
       <Stack.Screen name="chat" />
     </Stack>
   );

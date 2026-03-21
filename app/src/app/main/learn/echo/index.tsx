@@ -24,6 +24,7 @@ import {
   useAudioRecorderState,
   type RecordingOptions,
 } from "expo-audio";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import Color from "color";
 import {
@@ -37,6 +38,7 @@ import {
   MicIcon,
   PlayIcon,
   RedoIcon,
+  TargetIcon,
   XIcon,
 } from "lucide-react-native";
 import tw from "twrnc";
@@ -47,8 +49,6 @@ import { useNavigationOptions } from "~/hooks";
 import { getLocalFileBase64 } from "~/utils";
 
 const RECORDING_DURATION_THRESHOLD = 1500; // ms
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const RECORDING_OPTIONS: RecordingOptions = {
   extension: ".wav",
@@ -66,6 +66,8 @@ const RECORDING_OPTIONS: RecordingOptions = {
   },
   web: {},
 };
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const Header = ({
   session,
@@ -98,20 +100,20 @@ const Header = ({
           { paddingTop: insets.top, backgroundColor: theme.colors.card },
         ]}>
         <Pressable onPress={onClose} style={({ pressed }) => tw.style(pressed && "opacity-50")}>
-          <XIcon color={tw.color("neutral-500")} size={26} strokeWidth={2.5} />
+          <XIcon color={tw.color("zinc-500")} size={26} strokeWidth={2.5} />
         </Pressable>
         <View style={[tw`absolute inset-x-0 items-center justify-center`, { top: insets.top }]}>
-          {session.status === EchoSessionStatus.LOADING_NEW ? (
-            <Text style={tw`text-2xl font-bold leading-[0]`}>Loading...</Text>
-          ) : session.status === EchoSessionStatus.COMPLETED ? (
-            <Text style={tw`text-2xl font-bold leading-[0]`}>Echo Summary</Text>
-          ) : (
-            <Text style={tw`text-2xl font-bold leading-[0]`}>
-              Echoing on {<Text style={tw`font-bold text-amber-500`}>#{session.data.topic}</Text>}
-            </Text>
-          )}
+          <Text style={tw`text-2xl font-bold leading-[0]`}>
+            {session.status === EchoSessionStatus.LOADING_NEW
+              ? "Loading..."
+              : session.status === EchoSessionStatus.COMPLETED
+                ? "Echo Summary"
+                : "Echo Session"}
+          </Text>
         </View>
-        {!hideProceed && (
+        {hideProceed ? (
+          session.status === EchoSessionStatus.LOADING_NEXT && <Spinner size={26} />
+        ) : (
           <Pressable
             disabled={disableProceed}
             onPress={() => onProceed()}
@@ -127,10 +129,9 @@ const Header = ({
             )}
           </Pressable>
         )}
-        {session.status === EchoSessionStatus.LOADING_NEXT && <Spinner size={26} />}
       </View>
       <View style={[tw`flex-row gap-1.5 px-2 pb-2 pt-1.5`, { backgroundColor: theme.colors.card }]}>
-        {Array.from({ length: 5 }).map((_, index) => {
+        {Array.from({ length: session.data?.total ?? 1 }).map((_, index) => {
           let color = theme.colors.border;
           if (session.status !== EchoSessionStatus.LOADING_NEW) {
             if (session.status === EchoSessionStatus.COMPLETED) {
@@ -161,16 +162,22 @@ const getScoreColor = (x: number) => {
   return tw.color("red-500");
 };
 
-const ResultSheet = ({ result, onWillDismiss }: { result: Result; onWillDismiss?: () => void }) => {
+const ResultSheet = ({
+  ref,
+  result,
+  onWillDismiss,
+}: {
+  ref?: React.Ref<TrueSheet>;
+  result: Result;
+  onWillDismiss?: () => void;
+}) => {
   const theme = useTheme();
-
-  const sheet = useRef<TrueSheet>(null);
 
   const [selection, setSelection] = useState<number | null>(null);
 
   return (
     <TrueSheet
-      ref={sheet}
+      ref={ref}
       detents={[0.5]}
       initialDetentIndex={0}
       initialDetentAnimated={true}
@@ -246,7 +253,7 @@ const SummaryView = ({ summary }: { summary: Summary }) => {
 
   const overallScore = useMemo(() => {
     const totalScore = summary.attempts.reduce((total, [attempt]) => {
-      const a = attempt?.result.pronunciation.alignments ?? [];
+      const a = attempt?.pronunciation.alignments ?? [];
       return total + calculateScorePercentage(a);
     }, 0);
     const percentage = summary.attempts.length > 0 ? Math.round(totalScore / summary.attempts.length) : 0;
@@ -281,8 +288,8 @@ const SummaryView = ({ summary }: { summary: Summary }) => {
         <View style={tw`flex-grow gap-2`}>
           <View style={tw`flex-row items-center justify-between gap-2`}>
             <Text
-              style={tw`text-base font-medium uppercase text-zinc-500`}>{`${summary.transcripts.length} Transcripts`}</Text>
-            <Text style={tw`text-base font-medium uppercase text-zinc-500`}>
+              style={tw`text-base font-medium uppercase text-neutral-500`}>{`${summary.transcripts.length} Transcripts`}</Text>
+            <Text style={tw`text-base font-medium uppercase text-neutral-500`}>
               {`${summary.attempts.reduce((total, attempts) => total + attempts.length, 0)} Attempts`}
             </Text>
           </View>
@@ -292,7 +299,7 @@ const SummaryView = ({ summary }: { summary: Summary }) => {
             {summary.transcripts.map((transcript, index) => {
               const attempts = summary.attempts[index];
               const attempt = attempts[0];
-              const percentage = attempt ? calculateScorePercentage(attempt.result.pronunciation.alignments) : null;
+              const percentage = attempt ? calculateScorePercentage(attempt.pronunciation.alignments) : null;
               const color = percentage !== null ? getScoreColor(percentage) : undefined;
               return (
                 <Pressable
@@ -317,12 +324,13 @@ const SummaryView = ({ summary }: { summary: Summary }) => {
           </ScrollView>
         </View>
       </View>
-      {selectionAttempt && <ResultSheet result={selectionAttempt.result} onWillDismiss={() => setSelection(null)} />}
+      {selectionAttempt && <ResultSheet result={selectionAttempt} onWillDismiss={() => setSelection(null)} />}
     </>
   );
 };
 
 export default function MainLearnEchoScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const client = useQueryClient();
@@ -331,7 +339,9 @@ export default function MainLearnEchoScreen() {
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder);
 
-  const { session, submit, proceed, abort, complete } = useEchoSession({
+  const sheet = useRef<TrueSheet>(null);
+
+  const { session, submit, proceed, abort, end } = useEchoSession({
     onClose: () => {
       if (router.canDismiss()) router.dismissAll();
       // refresh user activity after session complete
@@ -373,7 +383,7 @@ export default function MainLearnEchoScreen() {
   };
 
   const handleClose = () => {
-    if (session.status === EchoSessionStatus.COMPLETED) return complete();
+    if (session.status === EchoSessionStatus.COMPLETED) return end();
     Alert.alert("Abort Session", "Are you sure you want to abort this session?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -412,6 +422,7 @@ export default function MainLearnEchoScreen() {
       await recorder.prepareToRecordAsync();
       recorder.record();
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
   };
 
   const handleStopRecording = async () => {
@@ -423,13 +434,14 @@ export default function MainLearnEchoScreen() {
         playsInSilentMode: true,
       });
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (recorder.uri && duration >= RECORDING_DURATION_THRESHOLD) {
       const audio = await getLocalFileBase64(recorder.uri);
       const result = await submit(audio);
       if (result === null) {
         Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
       } else if (session.data && "progress" in session.data) {
-        session.data.attempts[session.data.progress] += 1;
+        session.data.attempts[session.data.progress] += 1; // local optimistic update
       }
     }
   };
@@ -508,13 +520,20 @@ export default function MainLearnEchoScreen() {
       {session.status === EchoSessionStatus.LOADING_NEW ? (
         <View style={tw`w-4/6 flex-grow items-center justify-center gap-8`}>
           <Spinner size={48} />
-          <Text style={tw`text-center text-base font-medium leading-tight text-zinc-500`}>
+          <Text style={tw`text-center text-base font-medium leading-tight text-neutral-500`}>
             Please ensure you are in a quiet environment for the best experience.
           </Text>
         </View>
       ) : (
         <>
-          <View style={tw`rounded-xl border-2 border-zinc-500/50 p-2.5`}>
+          <View style={tw`rounded-xl border-2 border-zinc-500/50 p-3`}>
+            <Text
+              style={[
+                tw`absolute -top-4 left-2.5 px-1.5 text-lg font-bold text-amber-500`,
+                { backgroundColor: theme.colors.background },
+              ]}>
+              #{session.data.topic}
+            </Text>
             <Text style={tw`text-lg font-medium leading-tight`}>{session.data.scenario}</Text>
           </View>
           <View style={tw`w-full flex-grow items-center justify-center`}>
@@ -558,17 +577,17 @@ export default function MainLearnEchoScreen() {
                   ))}
                 </Animated.View>
               )}
-              {session.status === EchoSessionStatus.PENDING_ATTEMPT && (
+              {session.status === EchoSessionStatus.READY_ATTEMPT && (
                 <View style={[tw`mt-5 items-center justify-center`, { top: height / 2 }]}>
                   <View style={tw`flex-row items-center gap-1`}>
-                    <FlipHorizontalIcon size={14} color={tw.color("zinc-500")} />
-                    <Text style={tw`text-sm font-medium text-zinc-500`}>
+                    <FlipHorizontalIcon size={14} color={tw.color("neutral-500")} />
+                    <Text style={tw`text-sm font-medium text-neutral-500`}>
                       Tap to see {flipped ? "text" : "IPA"} transcript
                     </Text>
                   </View>
                   <View style={tw`flex-row items-center gap-1`}>
-                    <EarIcon size={14} color={tw.color("zinc-500")} />
-                    <Text style={tw`text-sm font-medium text-zinc-500`}>
+                    <EarIcon size={14} color={tw.color("neutral-500")} />
+                    <Text style={tw`text-sm font-medium text-neutral-500`}>
                       Long Press to play reference pronunciation
                     </Text>
                   </View>
@@ -576,59 +595,84 @@ export default function MainLearnEchoScreen() {
               )}
             </View>
           </View>
-          <View style={tw`h-1/6 w-full items-center justify-center px-8`}>
-            {session.status === EchoSessionStatus.PENDING_RESULT && (
-              <View style={tw`flex-row items-center gap-2`}>
-                <Spinner />
-                <Text style={tw`font-medium text-neutral-500`}>Analyzing your pronunciation...</Text>
-              </View>
-            )}
-            {session.status === EchoSessionStatus.PENDING_ATTEMPT && (
+          <View style={tw`h-1/7 w-full items-center justify-center px-4`}>
+            {(session.status === EchoSessionStatus.READY_ATTEMPT ||
+              session.status === EchoSessionStatus.PENDING_RESULT) && (
               <>
-                {!recorderState.isRecording && (
-                  <Text style={tw`absolute -top-2 text-sm font-medium`}>Hold to Speak</Text>
-                )}
                 <Pressable
                   style={({ pressed }) =>
                     tw.style(
-                      "mx-auto rounded-full p-6",
+                      "mx-auto rounded-full p-4",
                       pressed && "opacity-80",
-                      recorderState.isRecording ? "bg-red-500" : "bg-green-500",
+                      session.status === EchoSessionStatus.READY_ATTEMPT
+                        ? recorderState.isRecording
+                          ? "bg-red-500"
+                          : "bg-green-500"
+                        : "bg-transparent",
                     )
                   }
                   onLongPress={handleStartRecording}
-                  onPressOut={handleStopRecording}>
-                  {recorderState.isRecording ? (
-                    <AudioLinesIcon color="white" size={32} />
+                  onPressOut={handleStopRecording}
+                  disabled={session.status !== EchoSessionStatus.READY_ATTEMPT}>
+                  {session.status === EchoSessionStatus.READY_ATTEMPT ? (
+                    recorderState.isRecording ? (
+                      <AudioLinesIcon color="white" size={32} />
+                    ) : (
+                      <MicIcon color="white" size={32} />
+                    )
                   ) : (
-                    <MicIcon color="white" size={32} />
+                    <Spinner size={36} />
                   )}
                 </Pressable>
+                <Text
+                  style={tw.style(
+                    "absolute bottom-0 text-sm font-medium",
+                    session.status === EchoSessionStatus.PENDING_RESULT && "text-neutral-500",
+                  )}>
+                  {session.status === EchoSessionStatus.PENDING_RESULT
+                    ? "Analyzing your pronunciation..."
+                    : !recorderState.isRecording
+                      ? "Hold to Speak"
+                      : ""}
+                </Text>
               </>
             )}
-            {result && (
+            {session.status === EchoSessionStatus.READY_NEXT && (
               <>
+                <View style={tw`w-full flex-row items-center justify-between`}>
+                  <Pressable
+                    onPress={() => sheet.current?.present()}
+                    style={({ pressed }) =>
+                      tw.style(
+                        "flex-row items-center gap-1.5 rounded-full bg-zinc-300/50 px-4 py-2 dark:bg-zinc-700/50",
+                        pressed && "opacity-80",
+                      )
+                    }>
+                    <TargetIcon color={theme.colors.text} size={22} />
+                    <Text style={tw`text-lg font-medium`}>Result</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) =>
+                      tw.style(
+                        "absolute left-1/2 -translate-x-1/2 rounded-full bg-sky-500 p-4",
+                        pressed && "opacity-80",
+                        playerStatus.playing && playbacking && "opacity-50",
+                      )
+                    }
+                    disabled={playerStatus.playing && playbacking}
+                    onPress={handlePlayback}>
+                    <PlayIcon color="white" fill="white" size={32} />
+                  </Pressable>
+                </View>
                 {!(playerStatus.playing && playbacking) && (
-                  <Text style={tw`absolute -top-2 text-sm font-medium`}>Playback Your Speech</Text>
+                  <Text style={tw`absolute bottom-0 text-sm font-medium`}>Playback Your Speech</Text>
                 )}
-                <Pressable
-                  style={({ pressed }) =>
-                    tw.style(
-                      "mx-auto rounded-full bg-sky-500 p-6",
-                      pressed && "opacity-80",
-                      playerStatus.playing && playbacking && "opacity-50",
-                    )
-                  }
-                  disabled={playerStatus.playing && playbacking}
-                  onPress={handlePlayback}>
-                  <PlayIcon color="white" fill="white" size={32} />
-                </Pressable>
               </>
             )}
           </View>
         </>
       )}
-      {result && <ResultSheet result={result} />}
+      {result && <ResultSheet ref={sheet} result={result} />}
     </View>
   );
 }

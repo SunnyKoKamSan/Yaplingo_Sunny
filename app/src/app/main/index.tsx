@@ -5,7 +5,7 @@ import { CalendarIcon, FlameIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 import { useAuthedUserQuery } from "~/client";
-import { Heatmap, Meter, Progress, Text } from "~/components";
+import { Heatmap, Text } from "~/components";
 import { useNavigationOptions } from "~/hooks";
 
 const Header = () => {
@@ -43,13 +43,11 @@ const Header = () => {
 const StreakMeter = () => {
   return (
     <View style={tw`mt-4 items-center justify-center`}>
-      <Meter percentage={80}>
-        <View style={tw`flex-row items-center`}>
-          <FlameIcon color={tw.color("orange-500")} fill={tw.color("orange-500")} size={36} />
-          <Text style={tw`text-5xl font-bold leading-[0] tracking-tighter text-orange-500`}>12</Text>
-        </View>
-        <Text style={tw`text-center text-xl font-medium text-orange-500`}>Day Streak</Text>
-      </Meter>
+      <View style={tw`flex-row items-center`}>
+        <FlameIcon color={tw.color("orange-500")} fill={tw.color("orange-500")} size={36} />
+        <Text style={tw`text-5xl font-bold leading-[0] tracking-tighter text-orange-500`}>12</Text>
+      </View>
+      <Text style={tw`text-center text-xl font-medium text-orange-500`}>Day Streak</Text>
       <Text style={tw`text-base font-medium text-orange-500/80`}>3 days until next milestone</Text>
     </View>
   );
@@ -77,25 +75,9 @@ const ActivityCard = () => {
   const query = useAuthedUserQuery();
   const entries = query.data?.activity ?? {};
   return (
-    <View style={tw`gap-4 rounded-2xl border-2 border-zinc-500/50 py-4`}>
-      <Text style={tw`px-4 text-xl font-bold`}>Activity</Text>
+    <View style={tw`gap-4 rounded-2xl border-2 border-zinc-500/50 py-2.5`}>
+      <Text style={tw`px-4 text-2xl font-bold`}>Activity</Text>
       <Heatmap entries={entries} contentContainerStyle={tw`px-4`} />
-    </View>
-  );
-};
-
-const DailyGoalsCard = () => {
-  return (
-    <View style={tw`gap-4 rounded-2xl border-2 border-zinc-500/50 p-4`}>
-      <Text style={tw`text-xl font-bold`}>Daily Goals</Text>
-      <View style={tw`gap-4`}>
-        <Text style={tw`text-lg leading-tight`}>Complete 5 practices in Echo mode.</Text>
-        <Progress value={3} total={5} />
-      </View>
-      <View style={tw`gap-4`}>
-        <Text style={tw`text-lg leading-tight`}>Hit 85% accuracy 5 times in Echo mode.</Text>
-        <Progress value={1} total={5} />
-      </View>
     </View>
   );
 };
@@ -103,11 +85,10 @@ const DailyGoalsCard = () => {
 export default function MainHomeScreen() {
   useNavigationOptions({ header: () => <Header /> });
   return (
-    <ScrollView contentContainerStyle={tw`flex-1 gap-4 p-4`}>
+    <ScrollView alwaysBounceVertical={false} contentContainerStyle={tw`flex-1 gap-8 p-4`}>
       <StreakMeter />
       <WelcomeMessage />
       <ActivityCard />
-      <DailyGoalsCard />
     </ScrollView>
   );
 }

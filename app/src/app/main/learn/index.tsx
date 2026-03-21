@@ -23,17 +23,9 @@ const MODES: Mode[] = [
     icon: require("@/icons/modes/echo.png"),
   },
   {
-    disabled: true,
-    href: "/main/learn/yap",
-    title: "YAP",
-    description: "Speak freely on a selected topic without a script.",
-    icon: require("@/icons/modes/yap.png"),
-  },
-  {
-    disabled: true,
     href: "/main/learn/chat",
     title: "CHAT",
-    description: "Engage in a conversation with Yappie based on a selected scenario.",
+    description: "Engage in a conversation with Yappie based on a given scenario.",
     icon: require("@/icons/modes/chat.png"),
   },
 ];
@@ -47,11 +39,8 @@ const ModeCard = ({ mode }: { mode: Mode }) => {
         <Text style={tw`text-xl leading-tight`}>{mode.description}</Text>
       </View>
       <Image source={mode.icon} style={tw`absolute right-4 top-4 size-16`} />
-      <Button
-        disabled={mode.disabled}
-        onPress={() => router.navigate(mode.href)}
-        style={tw`m-4 bg-zinc-100 dark:bg-zinc-800`}>
-        <Text style={tw`text-center text-base font-medium`}>{mode.disabled ? "COMING SOON" : "START"}</Text>
+      <Button onPress={() => router.navigate(mode.href)} style={tw`m-4 bg-zinc-100 dark:bg-zinc-800`}>
+        <Text style={tw`text-center text-base font-medium`}>START</Text>
       </Button>
     </View>
   );
@@ -78,7 +67,10 @@ const Header = () => {
 export default function MainLearnIndexScreen() {
   useNavigationOptions({ header: () => <Header /> });
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`flex-1 gap-4 px-4 py-6`}>
+    <ScrollView
+      alwaysBounceVertical={false}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={tw`flex-1 justify-center gap-8 px-4 py-6`}>
       {MODES.map((mode) => (
         <ModeCard key={mode.title} mode={mode} />
       ))}
