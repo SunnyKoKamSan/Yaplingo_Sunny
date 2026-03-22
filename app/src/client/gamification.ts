@@ -124,6 +124,7 @@ export const useDailyProgressQuery = (): UseQueryResult<CheckInResponse, AxiosEr
         multiplier_active: false,
         event_name: null,
         gems_earned: 0,
+        gems_pending_collect: 0,
         newly_unlocked: [],
       };
       if (supportsDailyProgressEndpoint === false) return fallback;

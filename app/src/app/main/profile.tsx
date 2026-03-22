@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { Alert, View } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSetAtom } from "jotai";
 import tw from "twrnc";
 
@@ -9,6 +10,7 @@ import { $token } from "~/store";
 
 export default function MainProfileScreen() {
   const setToken = useSetAtom($token);
+  const queryClient = useQueryClient();
 
   const { data: user } = useAuthedUserQuery();
 
@@ -21,10 +23,14 @@ export default function MainProfileScreen() {
       {
         text: "Logout",
         style: "destructive",
-        onPress: () => setToken(""),
+        onPress: async () => {
+          setToken("");
+          await queryClient.removeQueries({ queryKey: ["auth", "me"] });
+          await queryClient.invalidateQueries({ queryKey: ["gamification"] });
+        },
       },
     ]);
-  }, [setToken]);
+  }, [queryClient, setToken]);
 
   return (
     <View style={tw`flex-1 items-center justify-center gap-5`}>

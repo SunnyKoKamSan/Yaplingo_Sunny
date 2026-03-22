@@ -1,5 +1,13 @@
 import React, { useCallback, useState } from "react";
-import { Alert, FlatList, Modal, Pressable, View } from "react-native";
+import {
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  View,
+  type ImageSourcePropType,
+} from "react-native";
 import Animated, {
   FadeIn,
   ZoomIn,
@@ -13,28 +21,7 @@ import Animated, {
 } from "react-native-reanimated";
 import {
   AwardIcon,
-  BookOpenIcon,
-  BriefcaseIcon,
-  CpuIcon,
-  CrownIcon,
   DiamondIcon,
-  FlameIcon,
-  FootprintsIcon,
-  GemIcon,
-  GraduationCapIcon,
-  LockIcon,
-  MedalIcon,
-  Mic2Icon,
-  MicIcon,
-  PlaneIcon,
-  RocketIcon,
-  StarIcon,
-  TrophyIcon,
-  UtensilsCrossedIcon,
-  ZapIcon,
-  type LucideIcon,
-  CalendarIcon,
-  PaletteIcon,
 } from "lucide-react-native";
 import tw from "twrnc";
 
@@ -47,35 +34,57 @@ import Button from "./Button";
 
 type BadgeConfig = {
   color: string;
-  icon: LucideIcon;
+  icon: ImageSourcePropType;
+  iconScale?: number;
 };
 
 const BADGE_CONFIG: Record<string, BadgeConfig> = {
-  first_step:       { color: "#22C55E", icon: FootprintsIcon },
-  bronze_mic:       { color: "#CD7F32", icon: MicIcon },
-  silver_mic:       { color: "#9CA3AF", icon: Mic2Icon },
-  gold_mic:         { color: "#F59E0B", icon: AwardIcon },
-  platinum_mic:     { color: "#A78BFA", icon: CrownIcon },
-  diamond_mic:      { color: "#06B6D4", icon: GemIcon },
-  streak_5:         { color: "#F97316", icon: FlameIcon },
-  streak_14:        { color: "#EF4444", icon: CalendarIcon },
-  streak_30:        { color: "#8B5CF6", icon: ZapIcon },
-  streak_100:       { color: "#EC4899", icon: RocketIcon },
-  streak_365:       { color: "#FBBF24", icon: StarIcon },
-  lesson_50:        { color: "#3B82F6", icon: BookOpenIcon },
-  lesson_200:       { color: "#6366F1", icon: GraduationCapIcon },
-  lesson_500:       { color: "#14B8A6", icon: TrophyIcon },
-  diamond_food:     { color: "#22C55E", icon: UtensilsCrossedIcon },
-  diamond_culture:  { color: "#8B5CF6", icon: PaletteIcon },
-  diamond_travel:   { color: "#06B6D4", icon: PlaneIcon },
-  diamond_business: { color: "#6366F1", icon: BriefcaseIcon },
-  diamond_tech:     { color: "#0EA5E9", icon: CpuIcon },
-  weekly_champ:     { color: "#F59E0B", icon: MedalIcon },
-  alltime_legend:   { color: "#FFD700", icon: TrophyIcon },
+  first_step:      { color: "#22C55E", icon: require("@/icons/achievements/firststep.png") },
+  bronze_mic:      { color: "#CD7F32", icon: require("@/icons/achievements/bronzemic.png"), iconScale: 1.45 },
+  silver_mic:      { color: "#9CA3AF", icon: require("@/icons/achievements/silvermic.png"), iconScale: 1.45 },
+  gold_mic:        { color: "#F59E0B", icon: require("@/icons/achievements/goldmic.png"), iconScale: 1.45 },
+  platinum_mic:    { color: "#A78BFA", icon: require("@/icons/achievements/platinummic.png"), iconScale: 1.45 },
+  diamond_mic:     { color: "#06B6D4", icon: require("@/icons/achievements/diamondmic.png"), iconScale: 1.45 },
+  streak_5:        { color: "#F97316", icon: require("@/icons/achievements/onfire.png") },
+  streak_14:       { color: "#EF4444", icon: require("@/icons/achievements/2weeks.png") },
+  streak_30:       { color: "#8B5CF6", icon: require("@/icons/achievements/unstoppable.png") },
+  streak_100:      { color: "#EC4899", icon: require("@/icons/achievements/century.png") },
+  streak_365:      { color: "#FBBF24", icon: require("@/icons/achievements/yearofyap.png") },
+  lesson_50:       { color: "#3B82F6", icon: require("@/icons/achievements/halfcentury.png") },
+  lesson_200:      { color: "#6366F1", icon: require("@/icons/achievements/dedicated.png") },
+  lesson_500:      { color: "#14B8A6", icon: require("@/icons/achievements/lessonlegend.png") },
+  weekly_champ:    { color: "#F59E0B", icon: require("@/icons/achievements/weeklychampion.png") },
+  alltime_legend:  { color: "#FFD700", icon: require("@/icons/achievements/alltimelegend.png") },
 };
 
-const DEFAULT_BADGE: BadgeConfig = { color: "#9CA3AF", icon: AwardIcon };
 const BADGE_SIZE = 72;
+const BADGE_ICON_SIZE = 32;
+const MODAL_ICON_SIZE = 46;
+
+const AchievementImageIcon = ({
+  config,
+  size,
+  dimmed = false,
+}: {
+  config?: BadgeConfig;
+  size: number;
+  dimmed?: boolean;
+}) => {
+  if (!config) {
+    return <AwardIcon size={size} color="#9CA3AF" strokeWidth={2} opacity={dimmed ? 0.35 : 1} />;
+  }
+
+  const scaledSize = size * (config.iconScale ?? 1);
+  return (
+    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+      <Image
+        source={config.icon}
+        resizeMode="contain"
+        style={{ width: scaledSize, height: scaledSize, opacity: dimmed ? 0.35 : 1 }}
+      />
+    </View>
+  );
+};
 
 
 const FlyingGem = ({
@@ -114,7 +123,7 @@ const FlyingGem = ({
         if (index === 0) runOnJS(onComplete)();
       }),
     );
-  }, []);
+  }, [index, onComplete, opacity, scale, startX, translateX, translateY]);
 
   const style = useAnimatedStyle(() => ({
     transform: [
@@ -142,8 +151,7 @@ const AchievementBadge = ({
   index: number;
   onPress: () => void;
 }) => {
-  const cfg = BADGE_CONFIG[item.key] ?? DEFAULT_BADGE;
-  const IconComponent = cfg.icon;
+  const cfg = BADGE_CONFIG[item.key];
   const entering = item.unlocked
     ? ZoomIn.delay(index * 40).duration(250)
     : FadeIn.delay(index * 25).duration(200);
@@ -151,6 +159,7 @@ const AchievementBadge = ({
   const progressPct = Math.round(item.progress * 100);
   const isClaimable = !item.unlocked && progressPct >= 100;
   const isUltimate = item.ultimate;
+  const isLocked = !item.unlocked && !isClaimable;
 
   return (
     <Animated.View entering={entering} style={tw`flex-1 items-center py-2.5 px-1`}>
@@ -163,12 +172,12 @@ const AchievementBadge = ({
               borderRadius: BADGE_SIZE / 2,
               borderWidth: isUltimate ? 3.5 : item.unlocked ? 3 : 2,
               borderColor: item.unlocked
-                ? cfg.color
+                ? cfg?.color ?? "#9CA3AF"
                 : isClaimable
                   ? "#22C55E"
                   : "#D1D5DB",
               backgroundColor: item.unlocked
-                ? cfg.color + "15"
+                ? `${cfg?.color ?? "#9CA3AF"}15`
                 : isClaimable
                   ? "#22C55E10"
                   : "#F9FAFB",
@@ -176,7 +185,7 @@ const AchievementBadge = ({
               justifyContent: "center",
             },
             item.unlocked && {
-              shadowColor: cfg.color,
+              shadowColor: cfg?.color ?? "#9CA3AF",
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: isUltimate ? 0.7 : 0.4,
               shadowRadius: isUltimate ? 16 : 10,
@@ -195,21 +204,7 @@ const AchievementBadge = ({
             },
           ]}
         >
-          {item.unlocked ? (
-            <IconComponent
-              size={28}
-              color={cfg.color}
-              strokeWidth={2}
-            />
-          ) : isClaimable ? (
-            <IconComponent
-              size={28}
-              color="#22C55E"
-              strokeWidth={2}
-            />
-          ) : (
-            <LockIcon size={22} color="#C4C4C4" strokeWidth={1.8} />
-          )}
+          <AchievementImageIcon config={cfg} size={BADGE_ICON_SIZE} dimmed={isLocked} />
         </View>
 
         {/* Title */}
@@ -237,7 +232,7 @@ const AchievementBadge = ({
                 tw`h-full rounded-full`,
                 {
                   width: `${progressPct}%`,
-                  backgroundColor: isClaimable ? "#22C55E" : progressPct > 0 ? cfg.color : "transparent",
+                  backgroundColor: isClaimable ? "#22C55E" : progressPct > 0 ? (cfg?.color ?? "#9CA3AF") : "transparent",
                 },
               ]}
             />
@@ -249,10 +244,10 @@ const AchievementBadge = ({
           <View
             style={[
               tw`mt-1 rounded-full px-2 py-0.5`,
-              { backgroundColor: cfg.color + "18" },
+              { backgroundColor: `${cfg?.color ?? "#9CA3AF"}18` },
             ]}
           >
-            <Text style={[tw`text-[9px] font-bold`, { color: cfg.color }]}>
+            <Text style={[tw`text-[9px] font-bold`, { color: cfg?.color ?? "#9CA3AF" }]}>
               ✓ Earned
             </Text>
           </View>
@@ -286,11 +281,12 @@ const DetailModal = ({
   onClaim: (key: string) => void;
   isClaiming: boolean;
 }) => {
+  const [showGems, setShowGems] = useState(false);
   if (!item) return null;
-  const cfg = BADGE_CONFIG[item.key] ?? DEFAULT_BADGE;
-  const IconComponent = cfg.icon;
+  const cfg = BADGE_CONFIG[item.key];
   const progressPct = Math.round(item.progress * 100);
   const isClaimable = !item.unlocked && progressPct >= 100;
+  const isLocked = !item.unlocked && !isClaimable;
 
   const getProgressMessage = () => {
     if (item.unlocked) {
@@ -302,9 +298,6 @@ const DetailModal = ({
     if (progressPct > 0) return "Great start — keep it up!";
     return "Start practicing to make progress.";
   };
-
-  // Flying gem state
-  const [showGems, setShowGems] = useState(false);
 
   const handleClaim = () => {
     setShowGems(true);
@@ -329,9 +322,9 @@ const DetailModal = ({
                 height: 96,
                 borderRadius: 48,
                 borderWidth: 3,
-                borderColor: item.unlocked ? cfg.color : isClaimable ? "#22C55E" : "#D1D5DB",
+                borderColor: item.unlocked ? (cfg?.color ?? "#9CA3AF") : isClaimable ? "#22C55E" : "#D1D5DB",
                 backgroundColor: item.unlocked
-                  ? cfg.color + "15"
+                  ? `${cfg?.color ?? "#9CA3AF"}15`
                   : isClaimable
                     ? "#22C55E10"
                     : "#F3F4F6",
@@ -340,22 +333,14 @@ const DetailModal = ({
                 marginBottom: 16,
               },
               (item.unlocked || isClaimable) && {
-                shadowColor: item.unlocked ? cfg.color : "#22C55E",
+                shadowColor: item.unlocked ? (cfg?.color ?? "#9CA3AF") : "#22C55E",
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.4,
                 shadowRadius: 16,
               },
             ]}
           >
-            {item.unlocked || isClaimable ? (
-              <IconComponent
-                size={38}
-                color={item.unlocked ? cfg.color : "#22C55E"}
-                strokeWidth={1.8}
-              />
-            ) : (
-              <LockIcon size={32} color="#C4C4C4" strokeWidth={1.5} />
-            )}
+            <AchievementImageIcon config={cfg} size={MODAL_ICON_SIZE} dimmed={isLocked} />
           </View>
 
           {/* Flying gems overlay */}
@@ -381,7 +366,7 @@ const DetailModal = ({
               <Text
                 style={[
                   tw`text-xs font-bold`,
-                  { color: item.unlocked || isClaimable ? "#22C55E" : cfg.color },
+                  { color: item.unlocked || isClaimable ? "#22C55E" : (cfg?.color ?? "#9CA3AF") },
                 ]}
               >
                 {progressPct}%
@@ -393,7 +378,7 @@ const DetailModal = ({
                   tw`h-full rounded-full`,
                   {
                     width: `${progressPct}%`,
-                    backgroundColor: item.unlocked ? cfg.color : "#22C55E",
+                    backgroundColor: item.unlocked ? (cfg?.color ?? "#9CA3AF") : "#22C55E",
                   },
                 ]}
               />
@@ -459,7 +444,8 @@ export default function AchievementGrid({
       claimMutation.mutate(
         { achievement_key: key },
         {
-          onSuccess: () => {
+          onSuccess: (data) => {
+            Alert.alert("Collected", `+${data.gems_awarded} gems added to your balance.`);
             setTimeout(() => setSelected(null), 1200);
           },
           onError: () => {

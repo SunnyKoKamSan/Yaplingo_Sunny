@@ -1,3 +1,5 @@
+import functools
+import logging
 import re
 from typing import TYPE_CHECKING, Annotated
 
@@ -21,6 +23,7 @@ SEPARATOR = Separator(phone="/", word=" ")
 PUNCTUATION = Punctuation()
 
 DIFFERENCE_CUTOFF = 0.75  # for filtering out differences with high enough confidence
+logger = logging.getLogger(__name__)
 
 
 class Transcript(BaseModel):
@@ -35,6 +38,7 @@ class Transcript(BaseModel):
             strip=True,
             with_stress=False,
             preserve_punctuation=True,
+            words_mismatch="ignore",
             separator=SEPARATOR,
             language="en-us",
             backend="espeak",
@@ -49,13 +53,25 @@ class Transcript(BaseModel):
     @cached_method
     def get_word_boundaries(self) -> list[tuple[str, int, int]]:
         index = 0
-        boundaries = []
+        boundaries: list[tuple[str, int, int]] = []
         words = str(PUNCTUATION.remove(self.text)).split()
-        phonemes = str(PUNCTUATION.remove(self.sequence)).split()
-        for word, phones in zip(words, phonemes):
+        phoneme_words = str(PUNCTUATION.remove(self.sequence)).split()
+
+        for word_index, word in enumerate(words):
             start = index
-            index += len(phones.split("/"))
+            if word_index < len(phoneme_words):
+                phones = [p for p in phoneme_words[word_index].split("/") if p]
+                index += len(phones)
             boundaries.append((word, start, index))
+
+        phoneme_count = len(self.phonemes)
+        if boundaries:
+            last_word, last_start, last_end = boundaries[-1]
+            if last_end < phoneme_count:
+                boundaries[-1] = (last_word, last_start, phoneme_count)
+        elif phoneme_count > 0:
+            boundaries.append(("utterance", 0, phoneme_count))
+
         return boundaries
 
     # cannot decorate with `cached_method` here because this method is async
@@ -107,30 +123,56 @@ class Pronunciation(BaseModel):
         self._transcript = transcript
         return self
 
+    @staticmethod
+    def _word_for_phoneme_index(boundaries: list[tuple[str, int, int]], index: int) -> str:
+        if not boundaries:
+            return "utterance"
+        for word, start, end in boundaries:
+            if start <= index < end:
+                return word
+        if index < boundaries[0][1]:
+            return boundaries[0][0]
+        return boundaries[-1][0]
+
     # FIXME: need fixing for edge cases
     @computed_field
     @cached_property
     def differences(self) -> list[Difference]:
         differences = []
         boundaries = self._transcript.get_word_boundaries()
+        expected_phonemes = self._transcript.phonemes
+        expected_len = len(expected_phonemes)
+        if expected_len == 0:
+            return differences
+
         _, _, operations = levenshtein(self._transcript.phonemes, self.phonemes)
         for opcode, i, j in operations:
-            if self.alignments[i].score >= DIFFERENCE_CUTOFF:
+            score_index = min(max(i, 0), len(self.alignments) - 1)
+            if self.alignments and self.alignments[score_index].score >= DIFFERENCE_CUTOFF:
                 continue  # skip phonemes with high enough confidence (consider them as correct)
-            for word, start, end in boundaries:
-                if start <= i < end:
-                    differences.append(
-                        Pronunciation.Difference(
-                            word=word,
-                            operation=opcode,
-                            expected=self._transcript.phonemes[i] if opcode != "+" else None,
-                            predicted=self.phonemes[j] if opcode != "-" else None,
-                        )
-                    )
-                    break
-            else:
-                # FIXME: find a way to prevent this
-                raise RuntimeError("could not match word boundary for difference")
+            boundary_index = min(max(i, 0), expected_len - 1)
+            word = self._word_for_phoneme_index(boundaries, boundary_index)
+
+            expected = expected_phonemes[i] if opcode != "+" and 0 <= i < expected_len else None
+            predicted = self.phonemes[j] if opcode != "-" and 0 <= j < len(self.phonemes) else None
+
+            differences.append(
+                Pronunciation.Difference(
+                    word=word,
+                    operation=opcode,
+                    expected=expected,
+                    predicted=predicted,
+                )
+            )
+
+            if word == "utterance":
+                logger.debug(
+                    "Fallback boundary used for difference op=%s i=%s j=%s transcript='%s'",
+                    opcode,
+                    i,
+                    j,
+                    self._transcript.text,
+                )
         return differences
 
     # FIXME: need fixing for edge cases

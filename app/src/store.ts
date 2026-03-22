@@ -30,7 +30,7 @@ export const $lastCheckIn = atomWithSecureStore<CheckInResponse | null>("last_ch
   getOnInit: true,
 });
 
-const DAILY_XP_TARGET = 200;
+const DAILY_XP_TARGET = 300;
 
 export const $streak = atom((get) => get($lastCheckIn)?.new_streak ?? 0);
 

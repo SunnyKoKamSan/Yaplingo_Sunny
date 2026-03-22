@@ -11,7 +11,7 @@ import { useAchievementsQuery, useActiveEventsQuery, useAuthedUserQuery, useDail
 import type { ActiveEvent } from "~/client/models";
 import { AchievementGrid, GemShop, Heatmap, Meter, Progress, Text } from "~/components";
 import { useNavigationOptions } from "~/hooks";
-import { $dailyAccuracyProgress, $dailyLessonProgress, $dailyProgress, $gemBalance } from "~/store";
+import { $dailyAccuracyProgress, $dailyLessonProgress, $dailyProgress } from "~/store";
 
 const STREAK_MILESTONE_STEP = 5;
 const formatXP = (xp: number) => xp.toLocaleString();

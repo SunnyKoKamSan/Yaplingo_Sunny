@@ -21,7 +21,10 @@ export const useAuthedUserQuery = () =>
       return response.data;
     },
     retry: true,
-    staleTime: Infinity,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
 export const useLoginMutation = () => {

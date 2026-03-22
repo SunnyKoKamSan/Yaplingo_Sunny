@@ -19,6 +19,7 @@ const EMOJIS: Record<string, string> = {
 const SIZE = 260;
 const CENTER = SIZE / 2;
 const OUTER_R = 85;
+const DATA_MAX_SCALE = 0.92;
 
 const angleFor = (i: number) => (Math.PI * 2 * i) / 5 - Math.PI / 2;
 
@@ -30,7 +31,7 @@ const vertexAt = (i: number, r: number) => ({
 const buildPolygonPoints = (scores: number[]) =>
   scores
     .map((s, i) => {
-      const { x, y } = vertexAt(i, OUTER_R * s);
+      const { x, y } = vertexAt(i, OUTER_R * Math.min(Math.max(s, 0), 1) * DATA_MAX_SCALE);
       return `${x},${y}`;
     })
     .join(" ");
@@ -44,7 +45,10 @@ const easeOutBack = (t: number): number => {
 export default function MasteryRadar({ data, playToken }: { data: TopicMasteryResponse[]; playToken?: number }) {
   const masteryMap = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const d of data) map[d.topic] = d.mastery_score;
+    for (const d of data) {
+      if (!TOPICS.includes(d.topic as (typeof TOPICS)[number])) continue;
+      map[d.topic] = d.mastery_score;
+    }
     return map;
   }, [data]);
 
@@ -75,7 +79,9 @@ export default function MasteryRadar({ data, playToken }: { data: TopicMasteryRe
     requestAnimationFrame(tick);
   }, [playToken, scoreKey]);
 
-  const animatedScores = scores.map((s) => s * Math.max(progress, 0));
+  const hasAnyPractice = data.some((d) => d.lesson_count > 0);
+  const animationFactor = Math.min(Math.max(progress, 0), 1.02);
+  const animatedScores = scores.map((s) => s * animationFactor);
   const points = buildPolygonPoints(animatedScores);
 
   const gridRings = [0.25, 0.5, 0.75, 1.0];
@@ -119,7 +125,7 @@ export default function MasteryRadar({ data, playToken }: { data: TopicMasteryRe
         {/* Data polygon */}
         <Polygon
           points={points}
-          fill="rgba(34,197,94,0.3)"
+          fill={hasAnyPractice ? "rgba(34,197,94,0.3)" : "rgba(34,197,94,0.1)"}
           stroke="#22C55E"
           strokeWidth={2}
         />
@@ -135,6 +141,11 @@ export default function MasteryRadar({ data, playToken }: { data: TopicMasteryRe
           );
         })}
       </Svg>
+      {!hasAnyPractice && (
+        <Text style={tw`mt-1 text-xs text-zinc-500`}>
+          No practice yet — start one category to see your first spike.
+        </Text>
+      )}
     </View>
   );
 }

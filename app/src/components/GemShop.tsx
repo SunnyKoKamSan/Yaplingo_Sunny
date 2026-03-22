@@ -204,10 +204,15 @@ export default function GemShop({
             onPress: async () => {
               setPurchasing(true);
               try {
-                await spendMutation.mutateAsync({ item_key: item.key });
-                showToast(`✨ ${item.title} purchased!`);
-              } catch {
-                Alert.alert("Failed", "Could not complete purchase. Check your gem balance.");
+                const result = await spendMutation.mutateAsync({ item_key: item.key });
+                const gainText = result.xp_added > 0 ? ` +${result.xp_added} XP` : "";
+                showToast(`✨ ${item.title} purchased${gainText}`);
+              } catch (error) {
+                const message =
+                  error instanceof Error && error.message
+                    ? error.message
+                    : "Could not complete purchase. Check your gem balance.";
+                Alert.alert("Purchase Failed", message);
               } finally {
                 setPurchasing(false);
               }
@@ -223,9 +228,13 @@ export default function GemShop({
     async (item: ShopItem) => {
       try {
         const res = await useSkillMutation.mutateAsync(item.key);
-        showToast(`🛡️ ${res.message}`);
-      } catch {
-        Alert.alert("Cannot Use", "No items available or activation failed.");
+        showToast(`🛡️ ${item.title}: ${res.message}`);
+      } catch (error) {
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : "No items available or activation failed.";
+        Alert.alert("Cannot Use", message);
       }
     },
     [useSkillMutation, showToast],

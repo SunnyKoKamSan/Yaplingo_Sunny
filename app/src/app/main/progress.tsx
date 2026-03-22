@@ -156,9 +156,7 @@ export default function ProgressScreen() {
         {history && history.length > 0 && (
           <XPBarChart history={history} playToken={playToken} range={range} onRangeChange={setRange} />
         )}
-        {mastery && mastery.length > 0 && (
-          <MasteryRadar data={mastery} playToken={playToken} />
-        )}
+        <MasteryRadar data={mastery ?? []} playToken={playToken} />
       </View>
     </ScrollView>
   );

@@ -85,12 +85,12 @@ class TranscriptGenerator(BaseGenerator):
                 # presence_penalty=2.0,
             )
         except LLMUnavailableError:
-            logger.warning("Using fallback transcript content for topic '%s'.", topic)
+            logger.info("Using fallback transcript content for topic '%s'.", topic)
             return self._fallback_transcripts(topic)
 
         lines = list(filter(bool, [s.strip() for s in text.splitlines()]))
         if len(lines) < self.SENTENCE_COUNT + 1:
-            logger.warning("Invalid transcript model output. Using fallback content for topic '%s'.", topic)
+            logger.info("Invalid transcript model output. Using fallback content for topic '%s'.", topic)
             return self._fallback_transcripts(topic)
         scenario = re.split(r"^\s?[+]\s?", lines[0], maxsplit=1)[-1].strip()
         sentences = [
@@ -98,7 +98,7 @@ class TranscriptGenerator(BaseGenerator):
             for line in lines[1 : self.SENTENCE_COUNT + 1]
         ]
         if len(sentences) < self.SENTENCE_COUNT:
-            logger.warning("Transcript sentence count mismatch. Using fallback content for topic '%s'.", topic)
+            logger.info("Transcript sentence count mismatch. Using fallback content for topic '%s'.", topic)
             return self._fallback_transcripts(topic)
         items = [Transcript(text=s) for s in sentences]
         return Transcripts(topic=topic, scenario=scenario, items=items)

@@ -31,15 +31,12 @@ class FeedbackGenerator(BaseGenerator):
         Text: "{transcript.text}"
         Errors: \n{errors}
         """
-        print(prompt)
-        print("/".join(transcript.phonemes))
-        print("/".join(pronunciation.phonemes))
         try:
             text = await super().call(prompt, temperature=0)
             clean = text.strip()
             if clean:
                 return clean
-            logger.warning("Empty LLM feedback output. Using fallback feedback text.")
+            logger.debug("Empty LLM feedback output. Using fallback feedback text.")
         except LLMUnavailableError:
-            logger.warning("LLM unavailable while generating feedback. Using fallback feedback text.")
+            logger.debug("LLM unavailable while generating feedback. Using fallback feedback text.")
         return self._fallback_feedback(pronunciation)

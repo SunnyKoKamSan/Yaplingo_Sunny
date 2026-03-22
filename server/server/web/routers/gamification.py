@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import logging
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -54,8 +55,10 @@ from server.web.schemas.gamification import (
 from server.web.settings import settings as app_settings
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+server_logger = logging.getLogger("uvicorn.error")
 
-DAILY_GOAL_XP = 200
+DAILY_GOAL_XP = 300
 HIGH_ACCURACY_THRESHOLD = 80
 TOPIC_ALIASES: dict[str, str] = {
     "global": "Global",
@@ -163,6 +166,8 @@ async def check_in(
     current_user: AuthUser,
     service: Service,
 ) -> CheckInResponse:
+    xp_gained_this_checkin = 0
+    is_sentence_practice = request.source == "practice_sentence"
     repository = service._repository
     async with repository.session() as session:
         async with session.begin():
@@ -190,6 +195,7 @@ async def check_in(
                 effective_xp = request.xp_amount
                 bonus_xp = 0
                 event_name = None
+            xp_gained_this_checkin = effective_xp
 
             today_str = now_utc.strftime("%Y-%m-%d")
             today_date = now_utc.date()
@@ -207,13 +213,14 @@ async def check_in(
 
             if daily_progress:
                 daily_progress.xp_earned += effective_xp
-                daily_progress.lessons_completed += 1
+                if is_sentence_practice:
+                    daily_progress.lessons_completed += 1
             else:
                 daily_progress = DailyProgress(
                     user_id=current_user.id,
                     date_key=today_str,
                     xp_earned=effective_xp,
-                    lessons_completed=1,
+                    lessons_completed=1 if is_sentence_practice else 0,
                     goal_met=False,
                 )
                 session.add(daily_progress)
@@ -274,7 +281,7 @@ async def check_in(
             # Topic mastery
             mastery_row = None
             old_mastery_tier = None
-            if normalized_topic and normalized_topic != "Global":
+            if is_sentence_practice and normalized_topic and normalized_topic != "Global":
                 mastery_row = await session.get(TopicMastery, (current_user.id, normalized_topic))
                 acc = request.accuracy_percentage if request.accuracy_percentage is not None else 0
                 spd = request.completion_time_ms if request.completion_time_ms is not None else app_settings.MASTERY_SPEED_CEILING
@@ -344,18 +351,21 @@ async def check_in(
                 streak_bonus = 50
                 daily_progress.xp_earned += streak_bonus
                 bonus_xp += streak_bonus
+                xp_gained_this_checkin += streak_bonus
                 leaderboard_entry.total_xp += streak_bonus
             if new_streak == 7:
                 award_gems(GEM_EARN_RATES["streak_7"], "streak_7")
                 streak_bonus = 75
                 daily_progress.xp_earned += streak_bonus
                 bonus_xp += streak_bonus
+                xp_gained_this_checkin += streak_bonus
                 leaderboard_entry.total_xp += streak_bonus
             if new_streak == 30:
                 award_gems(GEM_EARN_RATES["streak_30"], "streak_30")
                 streak_bonus = 150
                 daily_progress.xp_earned += streak_bonus
                 bonus_xp += streak_bonus
+                xp_gained_this_checkin += streak_bonus
                 leaderboard_entry.total_xp += streak_bonus
 
             daily_progress.goal_met = daily_progress.xp_earned >= DAILY_GOAL_XP
@@ -404,8 +414,30 @@ async def check_in(
                 if unlocked:
                     newly_unlocked.append(ach_key)
 
+            gems_pending_collect = sum(
+                ACHIEVEMENTS[ach_key].get("gem_reward", 15)
+                for ach_key in newly_unlocked
+            )
+
             await session.flush()
             await session.refresh(daily_progress)
+
+    logger.info(
+        "gain %d XP, gained %d today. user=%s source=%s topic=%s",
+        xp_gained_this_checkin,
+        daily_progress.xp_earned,
+        current_user.id,
+        request.source,
+        normalized_topic or "Global",
+    )
+    server_logger.info(
+        "gain %d XP, gained %d today. user=%s source=%s topic=%s",
+        xp_gained_this_checkin,
+        daily_progress.xp_earned,
+        current_user.id,
+        request.source,
+        normalized_topic or "Global",
+    )
 
     return CheckInResponse(
         user_id=current_user.id,
@@ -419,10 +451,9 @@ async def check_in(
         multiplier_active=active_event is not None,
         event_name=event_name,
         gems_earned=gems_earned_this_checkin,
+        gems_pending_collect=gems_pending_collect,
         newly_unlocked=newly_unlocked,
     )
-
-
 # ── Daily Progress ──────────────────────────────────────────────────────────
 
 @router.get("/daily-progress", response_model=CheckInResponse)
@@ -455,6 +486,7 @@ async def get_daily_progress(session: SessionDep, current_user: AuthUser) -> Che
         lessons_completed=daily_progress.lessons_completed if daily_progress else 0,
         high_accuracy_hits=daily_accuracy.high_accuracy_hits if daily_accuracy else 0,
         new_streak=current_streak,
+        gems_pending_collect=0,
     )
 
 
@@ -659,6 +691,7 @@ async def spend_gems(
     xp_added = 0
     weekly_total_xp: int | None = None
     lifetime_total_xp: int | None = None
+    today_xp_after_spend: int | None = None
 
     repository = service._repository
     async with repository.session() as session:
@@ -713,6 +746,7 @@ async def spend_gems(
                         user_id=current_user.id, date_key=today_key, xp_earned=xp_bonus,
                     )
                 dp.goal_met = dp.xp_earned >= DAILY_GOAL_XP
+                today_xp_after_spend = dp.xp_earned
                 session.add(dp)
 
                 leaderboard_entry = await session.get(LeaderboardEntry, (current_user.id, period_key))
@@ -738,6 +772,23 @@ async def spend_gems(
                     )).one()
                 ))
             await session.flush()
+
+    if xp_added > 0 and today_xp_after_spend is not None:
+        logger.info(
+            "store purchase added %d XP, gained %d today. user=%s item=%s",
+            xp_added,
+            today_xp_after_spend,
+            current_user.id,
+            request.item_key,
+        )
+        server_logger.info(
+            "store purchase added %d XP, gained %d today. user=%s item=%s",
+            xp_added,
+            today_xp_after_spend,
+            current_user.id,
+            request.item_key,
+        )
+
     return SpendGemsResponse(
         new_balance=balance_row.balance,
         item_key=request.item_key,
@@ -1120,8 +1171,8 @@ async def get_stats(current_user: AuthUser, session: SessionDep) -> StatsRespons
     history = await _zero_filled_history(session, current_user.id, 30)
     last_7 = history[-7:]
     seven_day_avg = sum(e.xp_earned for e in last_7) / 7
-    goals_met = sum(1 for e in history if e.goal_met)
-    completion_rate = goals_met / 30 * 100
+    completion_days = sum(1 for e in history if e.xp_earned > 0)
+    completion_rate = completion_days / 30 * 100
 
     best_streak = current_run = 0
     for entry in history:
@@ -1142,9 +1193,3 @@ async def get_stats(current_user: AuthUser, session: SessionDep) -> StatsRespons
         completion_rate_30d=round(completion_rate, 1),
         lifetime_xp=lifetime_xp,
     )
-
-
-# Prevent circular import at module level — use string annotation
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from server.service import Service as _Service

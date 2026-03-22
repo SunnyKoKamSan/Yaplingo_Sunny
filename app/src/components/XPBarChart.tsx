@@ -7,7 +7,7 @@ import type { HistoryEntry } from "~/client/models";
 
 import Text from "./Text";
 
-const DAILY_GOAL_XP = 200;
+const DAILY_GOAL_XP = 300;
 const CHART_HEIGHT = 200;
 const TOP_PAD = 24;
 const BOTTOM_PAD = 20;

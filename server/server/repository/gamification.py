@@ -53,12 +53,6 @@ ACHIEVEMENTS: dict[str, dict] = {
     "lesson_50": {"title": "Half Century", "desc": "Complete 50 practice sessions", "threshold": 50, "threshold_type": "lifetime_lessons", "gem_reward": 15},
     "lesson_200": {"title": "Dedicated", "desc": "Complete 200 practice sessions", "threshold": 200, "threshold_type": "lifetime_lessons", "gem_reward": 30},
     "lesson_500": {"title": "Lesson Legend", "desc": "Complete 500 practice sessions", "threshold": 500, "threshold_type": "lifetime_lessons", "gem_reward": 75},
-    # Mastery tier achievements
-    "diamond_food": {"title": "Food Master", "desc": "Reach Diamond in Food", "threshold": "Diamond", "threshold_type": "mastery_tier", "topic": "Food", "gem_reward": 50},
-    "diamond_culture": {"title": "Culture Expert", "desc": "Reach Diamond in Culture", "threshold": "Diamond", "threshold_type": "mastery_tier", "topic": "Culture", "gem_reward": 50},
-    "diamond_travel": {"title": "Globe Trotter", "desc": "Reach Diamond in Travel", "threshold": "Diamond", "threshold_type": "mastery_tier", "topic": "Travel", "gem_reward": 50},
-    "diamond_business": {"title": "Business Pro", "desc": "Reach Diamond in Business", "threshold": "Diamond", "threshold_type": "mastery_tier", "topic": "Business", "gem_reward": 50},
-    "diamond_tech": {"title": "Tech Guru", "desc": "Reach Diamond in Technology", "threshold": "Diamond", "threshold_type": "mastery_tier", "topic": "Technology", "gem_reward": 50},
     # Leaderboard achievements
     "weekly_champ": {"title": "Weekly Champion", "desc": "Finish #1 on the weekly leaderboard", "threshold": 1, "threshold_type": "weekly_rank", "gem_reward": 100},
     "alltime_legend": {"title": "All-Time Legend", "desc": "Reach #1 on the all-time leaderboard", "threshold": 1, "threshold_type": "alltime_rank", "gem_reward": 1000, "ultimate": True},

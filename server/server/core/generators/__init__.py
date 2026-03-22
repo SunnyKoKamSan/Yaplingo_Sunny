@@ -10,6 +10,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 IS_RELOAD_ENABLED = "--reload" in sys.argv
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("openai").setLevel(logging.WARNING)
+logging.getLogger("openai._base_client").setLevel(logging.WARNING)
 
 if IS_RELOAD_ENABLED:
     reloadable_property = property
@@ -23,6 +27,8 @@ class Settings(BaseSettings):
     model_id: str = "ai/llama3.1"
     base_url: str = "http://model-runner.docker.internal/engines/v1"
     api_key: str = ""
+    timeout_seconds: float = 35.0
+    max_retries: int = 0
 
     model_config = SettingsConfigDict(env_prefix="llm_")
 
@@ -41,7 +47,12 @@ class BaseGenerator(ABC):
     _llm_backoff_until: datetime | None = None
 
     def __init__(self):
-        self.client = client
+        self.client = AsyncOpenAI(
+            base_url=settings.base_url,
+            api_key=settings.api_key,
+            timeout=settings.timeout_seconds,
+            max_retries=settings.max_retries,
+        )
 
     @classmethod
     def _is_llm_temporarily_disabled(cls) -> bool:
@@ -52,8 +63,11 @@ class BaseGenerator(ABC):
 
     @classmethod
     def _mark_llm_unavailable(cls, reason: str) -> None:
-        cls._llm_backoff_until = datetime.now(timezone.utc) + timedelta(seconds=30)
-        logger.warning("LLM temporarily unavailable (%s). Falling back for 30 seconds.", reason)
+        now = datetime.now(timezone.utc)
+        already_disabled = cls._llm_backoff_until is not None and now < cls._llm_backoff_until
+        cls._llm_backoff_until = now + timedelta(seconds=30)
+        if not already_disabled:
+            logger.debug("LLM temporarily unavailable (%s). Falling back for 30 seconds.", reason)
 
     @reloadable_property
     def system_prompt(self) -> str:

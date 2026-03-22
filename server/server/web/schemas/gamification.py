@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from ulid import ULID
@@ -6,6 +7,7 @@ from ulid import ULID
 
 class CheckInRequest(BaseModel):
     xp_amount: int = Field(gt=0)
+    source: Literal["practice_sentence", "combo_bonus"] = Field(default="practice_sentence")
     topic: str | None = Field(default=None)
     accuracy_percentage: int | None = Field(default=None, ge=0, le=100)
     completion_time_ms: int | None = Field(default=None, ge=0)
@@ -23,6 +25,7 @@ class CheckInResponse(BaseModel):
     multiplier_active: bool = Field(default=False)
     event_name: str | None = Field(default=None)
     gems_earned: int = Field(default=0)
+    gems_pending_collect: int = Field(default=0)
     newly_unlocked: list[str] = Field(default_factory=list)
 
     class Config:

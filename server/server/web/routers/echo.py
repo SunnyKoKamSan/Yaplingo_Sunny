@@ -3,6 +3,7 @@ import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, FastAPI, WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocketState
 from ulid import ULID
 
 from ..dependencies import Service, User
@@ -63,13 +64,33 @@ async def websocket_session(
     # Accept WebSocket FIRST so the client doesn't time out during session generation
     await sessions.accept(user, ws)
 
+    def _is_ws_connected() -> bool:
+        return (
+            ws.client_state == WebSocketState.CONNECTED
+            and ws.application_state == WebSocketState.CONNECTED
+        )
+
     async def send_response(data: Any, t: EchoResponse.Type | None = None) -> None:
+        if not _is_ws_connected():
+            raise WebSocketDisconnect(code=1000)
         data = await EchoResponse.dump(data, t)
-        await ws.send_json(data)
+        try:
+            await ws.send_json(data)
+        except RuntimeError as exc:
+            if "close message has been sent" in str(exc):
+                raise WebSocketDisconnect(code=1000) from exc
+            raise
 
     async def receive_input() -> EchoInput:
-        data = await ws.receive_json()
-        return EchoInput.model_validate(data)
+        if ws.client_state != WebSocketState.CONNECTED:
+            raise WebSocketDisconnect(code=1000)
+        try:
+            data = await ws.receive_json()
+            return EchoInput.model_validate(data)
+        except RuntimeError as exc:
+            if "close message has been sent" in str(exc):
+                raise WebSocketDisconnect(code=1000) from exc
+            raise
 
     try:
         session = await service.echo.session(user, generate=True)
