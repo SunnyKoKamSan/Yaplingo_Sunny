@@ -124,6 +124,7 @@ class Pronunciation(BaseModel):
                     )
                     break
             else:
+                # FIXME: find a way to prevent this
                 raise RuntimeError("could not match word boundary for difference")
         return differences
 

@@ -1,0 +1,64 @@
+from contextlib import asynccontextmanager
+from typing import Any
+
+from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect
+
+from ..dependencies import Service, User
+from ..schemas.chat import ChatInput, ChatResponse
+from ..websocket import SessionManager, Sessions
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.sessions = SessionManager()
+    yield
+
+
+router = APIRouter(lifespan=lifespan)
+
+
+@router.websocket("/ws")
+async def websocket_session(
+    ws: WebSocket,
+    user: User,
+    sessions: Sessions,
+    service: Service,
+):
+
+    async def send_response(data: Any) -> None:
+        data = await ChatResponse.dump(data)
+        await ws.send_json(data)
+
+    async def receive_input() -> ChatInput:
+        data = await ws.receive_json()
+        return ChatInput.model_validate(data)
+
+    await sessions.accept(user, ws)
+
+    session = await service.chat.session(user, generate=True)
+
+    try:
+        await send_response(session.state)
+        while not session.state.finished:
+            while True:
+                input = await receive_input()
+                match input.type:
+                    case ChatInput.Type.AUDIO:
+                        assert input.input is not None, "audio input cannot be none"
+                        result = await session.submit(input.input)
+                        await send_response(result)
+                        if result is not None:
+                            break
+                    case ChatInput.Type.ABORT:
+                        return await session.abort()
+            await session.refresh()
+            await send_response(session.state)
+        await session.abort()  # TODO: perform proper summary generation when completed
+        await ws.receive()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await sessions.close(user, ws)
+
+
+__all__ = ["router"]

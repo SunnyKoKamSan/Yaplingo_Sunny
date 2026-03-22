@@ -26,12 +26,14 @@ class Settings(BaseSettings):
 
 settings = Settings.model_validate({})
 
+client = AsyncOpenAI(base_url=settings.base_url, api_key=settings.api_key)
+
 
 class BaseGenerator(ABC):
     SYSTEM_PROMPT_FILE_PATH: Path
 
     def __init__(self):
-        self.client = AsyncOpenAI(base_url=settings.base_url, api_key=settings.api_key)
+        self.client = client
 
     @reloadable_property
     def system_prompt(self) -> str:

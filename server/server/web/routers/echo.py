@@ -24,7 +24,6 @@ async def websocket_session(
     sessions: Sessions,
     service: Service,
 ):
-    session = await service.echo.session(user, generate=True)
 
     async def send_response(data: Any, t: EchoResponse.Type | None = None) -> None:
         data = await EchoResponse.dump(data, t)
@@ -34,8 +33,11 @@ async def websocket_session(
         data = await ws.receive_json()
         return EchoInput.model_validate(data)
 
+    await sessions.accept(user, ws)
+
+    session = await service.echo.session(user, generate=True)
+
     try:
-        await sessions.accept(user, ws)
         while not session.completed:
             if not session.state.attempted:
                 await send_response(session.state, EchoResponse.Type.SESSION)

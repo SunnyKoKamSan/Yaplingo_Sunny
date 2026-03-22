@@ -2,6 +2,7 @@ import torch
 import torchaudio
 from transformers import Wav2Vec2ForCTC, Wav2Vec2PhonemeCTCTokenizer, Wav2Vec2Processor
 
+from ._utils import timecall
 from .models.echo import Pronunciation, Transcript
 
 
@@ -43,13 +44,14 @@ class PronunciationAligner:
             for s in spans
         ]
 
+    @timecall(name="PronunciationAligner")
     def __call__(self, waveform: torch.Tensor, transcript: Transcript) -> Pronunciation:
         logits = self.perform_inference(waveform)
         predicted_phonemes = self.predict_phonemes(logits)
         aligned_phonemes = self.align_phonemes(logits, transcript)
         assert len(aligned_phonemes) == len(transcript.phonemes), (
             "alignment output must have the same length with the transcript"
-        )
+        )  # FIXME: find a way to prevent this
         pronunciation = Pronunciation(
             phonemes=predicted_phonemes,
             alignments=aligned_phonemes,

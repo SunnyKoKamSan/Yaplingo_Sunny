@@ -6,7 +6,7 @@ from fastapi.responses import PlainTextResponse
 from starlette.exceptions import HTTPException
 
 from server.service import Service
-from server.web.routers import auth, echo
+from server.web.routers import auth, chat, echo
 
 
 @asynccontextmanager
@@ -31,3 +31,4 @@ def request_validation_error_handler(_, exc: RequestValidationError):
 
 app.include_router(auth.router, prefix="/auth")
 app.include_router(echo.router, prefix="/echo")
+app.include_router(chat.router, prefix="/chat")

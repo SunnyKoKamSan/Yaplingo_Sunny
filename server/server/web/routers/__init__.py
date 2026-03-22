@@ -1,3 +1,3 @@
-from . import auth, echo
+from . import auth, chat, echo
 
-__all__ = ["auth", "echo"]
+__all__ = ["auth", "chat", "echo"]

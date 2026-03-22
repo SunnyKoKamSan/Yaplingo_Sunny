@@ -1,4 +1,5 @@
 import functools
+import time
 
 
 def cached_method(f):
@@ -12,3 +13,19 @@ def cached_method(f):
         return result
 
     return wrapper
+
+
+def timecall(name: str):
+    def decorator(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            start = time.perf_counter()
+            result = f(*args, **kwargs)
+            end = time.perf_counter()
+            elapsed = end - start
+            print(f"> {name}: {elapsed:.4f} seconds")
+            return result
+
+        return wrapper
+
+    return decorator

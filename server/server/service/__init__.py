@@ -5,6 +5,7 @@ from server.repository import Repository
 from server.store import Store
 
 from .echo import EchoService
+from .chat import ChatService
 from .user import UserService
 
 if TYPE_CHECKING:
@@ -38,6 +39,10 @@ class Service:
     @cached_property
     def echo(self) -> EchoService:
         return EchoService(broker=self._broker, store=self._store, repository=self._repository)
+
+    @cached_property
+    def chat(self) -> ChatService:
+        return ChatService(broker=self._broker, store=self._store)
 
 
 __all__ = ["Service"]

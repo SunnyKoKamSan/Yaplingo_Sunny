@@ -2,8 +2,8 @@ import base64
 
 from taskiq import Context, TaskiqDepends
 
-from server.core.models import EchoResult
-from server.models import EchoSessionState
+from server.core.models import ChatResult, EchoResult
+from server.models import ChatSessionState, EchoSessionState
 
 from . import broker
 
@@ -18,4 +18,14 @@ async def analyze_echo(
     return await context.state.echo(audio, session.transcript)
 
 
-__all__ = ["analyze_echo"]
+@broker.task
+async def process_chat(
+    audio_b64: str,
+    session: ChatSessionState,
+    context: Context = TaskiqDepends(),
+) -> ChatResult | None:
+    audio = base64.b64decode(audio_b64)
+    return await context.state.chat(audio, session._scenario, session._conversation)
+
+
+__all__ = ["analyze_echo", "process_chat"]
