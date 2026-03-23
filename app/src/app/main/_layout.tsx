@@ -6,7 +6,6 @@ import tw from "twrnc";
 
 import { useActiveEventsQuery, usePrefetchLeaderboard } from "~/client";
 import client from "~/client/client";
-import EventBanner from "~/components/EventBanner";
 import store, { $activeEvent, $rankAlertsEnabled } from "~/store";
 
 type Tab = {
@@ -48,7 +47,7 @@ const TabBarIcon = ({ tab, focused }: { tab: Tab; focused: boolean }) => (
 
 export default function MainLayout() {
   const prefetchLeaderboard = usePrefetchLeaderboard();
-  const { data: events, refetch } = useActiveEventsQuery();
+  const { data: events } = useActiveEventsQuery();
   const setActiveEvent = useSetAtom($activeEvent);
 
   useEffect(() => {
@@ -120,7 +119,6 @@ export default function MainLayout() {
         />
       ))}
       </Tabs>
-      <EventBanner onExpire={() => void refetch()} />
     </View>
   );
 }

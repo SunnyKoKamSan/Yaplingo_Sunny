@@ -29,7 +29,6 @@ import { useClaimAchievementMutation } from "~/client";
 import type { AchievementResponse } from "~/client/models";
 
 import Text from "./Text";
-import Button from "./Button";
 
 
 type BadgeConfig = {
@@ -401,28 +400,56 @@ const DetailModal = ({
             <Text style={tw`text-xs font-bold text-green-600`}>{item.gem_reward} gems</Text>
           </View>
 
-          {/* Action buttons */}
+          {/* Action buttons - Light realistic style */}
           {isClaimable ? (
-            <Button
+            <Pressable
               onPress={handleClaim}
               disabled={isClaiming}
-              style={tw`mt-4 px-8 bg-green-500 border-transparent`}
-              shadowColor={tw.color("green-400")}
+              style={({ pressed }) => [
+                tw`mt-4 px-8 py-3 rounded-full flex-row items-center justify-center gap-2`,
+                {
+                  backgroundColor: "#FFFFFF",
+                  borderWidth: 1,
+                  borderColor: "rgba(0,0,0,0.06)",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 6,
+                  elevation: 4,
+                  borderTopColor: "rgba(255,255,255,0.9)",
+                  borderTopWidth: 1.5,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                  opacity: isClaiming ? 0.6 : 1,
+                },
+              ]}
             >
-              <View style={tw`flex-row items-center gap-1.5`}>
-                <DiamondIcon size={16} color="white" fill="white" />
-                <Text style={tw`text-sm font-bold text-white`}>
-                  {isClaiming ? "Claiming..." : `Collect ${item.gem_reward} 💎`}
-                </Text>
-              </View>
-            </Button>
+              <DiamondIcon size={16} color="#22C55E" fill="#22C55E" />
+              <Text style={tw`text-sm font-bold text-green-600`}>
+                {isClaiming ? "Claiming..." : `Collect ${item.gem_reward}`}
+              </Text>
+            </Pressable>
           ) : (
-            <Button
+            <Pressable
               onPress={onClose}
-              style={tw`mt-4 px-8 bg-zinc-100 dark:bg-zinc-800 border-transparent`}
+              style={({ pressed }) => [
+                tw`mt-4 px-8 py-3 rounded-full items-center justify-center`,
+                {
+                  backgroundColor: "#FFFFFF",
+                  borderWidth: 1,
+                  borderColor: "rgba(0,0,0,0.06)",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 4,
+                  elevation: 2,
+                  borderTopColor: "rgba(255,255,255,0.9)",
+                  borderTopWidth: 1.5,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                },
+              ]}
             >
-              <Text style={tw`text-sm font-bold text-zinc-600 dark:text-zinc-300`}>Close</Text>
-            </Button>
+              <Text style={tw`text-sm font-semibold text-zinc-600`}>Close</Text>
+            </Pressable>
           )}
         </Pressable>
       </Pressable>
