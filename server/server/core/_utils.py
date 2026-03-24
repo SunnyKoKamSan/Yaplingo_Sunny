@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import time
 
@@ -15,17 +16,30 @@ def cached_method(f):
     return wrapper
 
 
-def timecall(name: str):
-    def decorator(f):
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs):
-            start = time.perf_counter()
-            result = f(*args, **kwargs)
-            end = time.perf_counter()
-            elapsed = end - start
-            print(f"> {name}: {elapsed:.4f} seconds")
-            return result
+def log_execution_time(f):
+    qualname = f.__qualname__
+    if "." in qualname:
+        [classname, fname] = qualname.split(".")
+    else:
+        [classname, fname] = ["", qualname]
+    name = classname if fname == "__call__" else fname
 
-        return wrapper
+    @functools.wraps(f)
+    async def async_wrapper(*args, **kwargs):
+        start = time.time()
+        result = await f(*args, **kwargs)
+        end = time.time()
+        elapsed = end - start
+        print(f"{name}: {elapsed:.4f} seconds")
+        return result
 
-    return decorator
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = f(*args, **kwargs)
+        end = time.time()
+        elapsed = end - start
+        print(f"{name}: {elapsed:.4f} seconds")
+        return result
+
+    return async_wrapper if asyncio.iscoroutinefunction(f) else wrapper

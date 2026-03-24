@@ -2,7 +2,7 @@ import torch
 import torchaudio
 from transformers import Wav2Vec2ForCTC, Wav2Vec2PhonemeCTCTokenizer, Wav2Vec2Processor
 
-from ._utils import timecall
+from ._utils import log_execution_time
 from .models.echo import Pronunciation, Transcript
 
 
@@ -44,7 +44,7 @@ class PronunciationAligner:
             for s in spans
         ]
 
-    @timecall(name="PronunciationAligner")
+    @log_execution_time
     def __call__(self, waveform: torch.Tensor, transcript: Transcript) -> Pronunciation:
         logits = self.perform_inference(waveform)
         predicted_phonemes = self.predict_phonemes(logits)

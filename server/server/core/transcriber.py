@@ -1,7 +1,7 @@
 import torch
 from faster_whisper import WhisperModel
 
-from ._utils import timecall
+from ._utils import log_execution_time
 
 
 class SpeechTranscriber:
@@ -11,7 +11,7 @@ class SpeechTranscriber:
     def __init__(self):
         self.model = WhisperModel(SpeechTranscriber.MODEL_ID, compute_type="int8")
 
-    @timecall("SpeechTranscriber")
+    @log_execution_time
     def __call__(self, waveform: torch.Tensor) -> str:
         segments, _ = self.model.transcribe(
             waveform.numpy(),

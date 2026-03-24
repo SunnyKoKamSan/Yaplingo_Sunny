@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from .._utils import timecall
+from .._utils import log_execution_time
 from ..models.chat import Conversation, Evaluation, Scenario
 from . import BaseGenerator, settings
 
@@ -28,7 +28,7 @@ class ScenarioGenerator(BaseGenerator):
 class ReplyGenerator(BaseGenerator):
     SYSTEM_PROMPT_FILE_PATH = Path(__file__).parent / "prompts" / "chat" / "reply.md"
 
-    @timecall(name="ReplyGenerator")
+    @log_execution_time
     async def __call__(self, scenario: Scenario, conversation: Conversation) -> str:
         tasks = "\n".join(f"- {t}" for t in scenario.tasks)
         prompt = f"""
@@ -57,7 +57,7 @@ class ReplyGenerator(BaseGenerator):
 class EvaluationGenerator(BaseGenerator):
     SYSTEM_PROMPT_FILE_PATH = Path(__file__).parent / "prompts" / "chat" / "evaluation.md"
 
-    @timecall(name="EvaluationGenerator")
+    @log_execution_time
     async def __call__(self, scenario: Scenario, conversation: Conversation) -> Evaluation:
         tasks = "\n".join(f"- {t}" for t in scenario.tasks)
         messages = []
