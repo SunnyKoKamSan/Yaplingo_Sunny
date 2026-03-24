@@ -20,9 +20,11 @@ export type PronunciationDifference = {
 };
 
 export type Pronunciation = {
+  score: number;
   phonemes: string[];
   alignments: PronunciationAlignment[];
   differences: PronunciationDifference[];
+  words: [string, Pronunciation][];
 };
 
 export type Transcript = {

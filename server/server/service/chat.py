@@ -26,7 +26,7 @@ class ChatService:
         session = await self.store.chat.get_session(user.id)
         if session is None and generate:
             scenario = await self.pipeline()
-            session = ChatSessionState.new(user.id, scenario)
+            session = ChatSessionState(scenario=scenario).with_uid(user.id)
             session = await self.store.chat.stash_session(session)
         if session is None:
             return None
@@ -53,7 +53,14 @@ class ChatService:
             )
             result = cast(Result | None, result)
             if result is not None:
-                await self._service.store.chat.record_session_result(self.state, result)
+                await self._service.store.chat.record_session_turn(
+                    self.state,
+                    ChatSessionState.Turn(
+                        **result.model_dump(),
+                        index=len(self.state.conversation.messages),
+                        audio_b64=audio_b64,
+                    ),
+                )
             return result
 
         async def abort(self) -> None:

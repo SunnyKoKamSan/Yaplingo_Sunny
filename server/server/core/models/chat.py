@@ -6,17 +6,12 @@ from .common import Pronunciation, Transcript
 
 
 class Scenario(BaseModel):
-    characters: tuple[str, str]
     scenario: str
     opening: str
     tasks: list[str]
 
 
 class Conversation(BaseModel):
-    class Turn(BaseModel):
-        context: "Conversation.UserMessage"
-        reply: "Conversation.AssistantMessage"
-
     class AssistantMessage(BaseModel):
         role: Literal["assistant"] = "assistant"
         content: str
@@ -24,11 +19,6 @@ class Conversation(BaseModel):
     class UserMessage(BaseModel):
         role: Literal["user"] = "user"
         transcript: Transcript
-        pronunciation: Pronunciation
-
-        def model_post_init(self, context: Any) -> None:
-            super().model_post_init(context)
-            self.pronunciation.with_transcript(self.transcript)
 
     messages: list[AssistantMessage | UserMessage]
 
@@ -38,10 +28,25 @@ class Evaluation(BaseModel):
         task: str
         completed: bool
 
+    class Criteria(BaseModel):
+        accuracy: float  # grammar
+        appropriacy: float  # context
+        vocabulary: float  # vocabulary
+
     tasks: list[Task]
+    criteria: Criteria
+    explanation: str
 
 
-class Result(Conversation.Turn, Evaluation): ...
+class Result(BaseModel):
+    context: Conversation.UserMessage
+    reply: Conversation.AssistantMessage
+    pronunciation: Pronunciation
+    evaluation: Evaluation
+
+    def model_post_init(self, context: Any) -> None:
+        super().model_post_init(context)
+        self.pronunciation.with_transcript(self.context.transcript)
 
 
 __all__ = ["Scenario", "Conversation", "Evaluation", "Result"]

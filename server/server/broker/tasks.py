@@ -25,7 +25,7 @@ async def process_chat(
     context: Context = TaskiqDepends(),
 ) -> ChatResult | None:
     audio = base64.b64decode(audio_b64)
-    return await context.state.chat(audio, session._scenario, session._conversation)
+    return await context.state.chat(audio, session.scenario, session.conversation)
 
 
 __all__ = ["analyze_echo", "process_chat"]

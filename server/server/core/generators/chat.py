@@ -35,9 +35,6 @@ class ReplyGenerator(BaseGenerator):
         Scenario: {scenario.scenario}
         Tasks: \n{tasks}
 
-        Your Character: {scenario.characters[0]}
-        Learner's Character: {scenario.characters[1]}
-
         Continue the conversation with a new reply from your character.
         """
         completion = await self.client.chat.completions.create(

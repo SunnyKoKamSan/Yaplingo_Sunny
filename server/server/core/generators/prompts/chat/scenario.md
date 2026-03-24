@@ -27,7 +27,6 @@ RULES:
 
 OUTPUT:
 Respond with a JSON object matching the provided schema. Do not include anything outside the JSON.
-- "characters": A pair of lowercase role titles [assistant_role, learner_role] such as ["barista", "customer"] or ["mechanic", "car owner"]. Use descriptive role titles, NOT character names like "Yappie" or "Learner".
 - "scenario": A single short sentence in second person describing where the learner is and why, e.g. "You are at a pharmacy and you have some questions for the pharmacist." Do NOT use a category label like "Pharmacy Consultation".
 - "opening": An opening line in your character to start the conversation.
 - "tasks": Exactly 3 tasks. Each task is a sentence that ends with a period.

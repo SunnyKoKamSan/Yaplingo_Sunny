@@ -1,5 +1,5 @@
-import { useRef, type Ref } from "react";
-import { Alert, FlatList, Pressable, View } from "react-native";
+import { useRef, useState, type Ref } from "react";
+import { Alert, FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { useTheme } from "@react-navigation/native";
@@ -13,11 +13,27 @@ import {
 } from "expo-audio";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { AudioLinesIcon, CircleCheckBigIcon, CircleIcon, ListTodoIcon, MicIcon, XIcon } from "lucide-react-native";
+import Color from "color";
+import {
+  AudioLinesIcon,
+  ChevronDown,
+  ChevronUp,
+  CircleCheckBigIcon,
+  CircleIcon,
+  ListTodoIcon,
+  MicIcon,
+  XIcon,
+} from "lucide-react-native";
 import tw from "twrnc";
 
-import { ChatSessionStatus, useChatSession, type ChatSession } from "~/client/chat";
-import type { ConversationMessage, Evaluation } from "~/client/chat/models";
+import {
+  ChatSessionStatus,
+  useChatSession,
+  type ChatSession,
+  type ConversationMessage,
+  type Evaluation,
+  type Turn,
+} from "~/client/chat";
 import { Spinner, Text } from "~/components";
 import { useNavigationOptions } from "~/hooks";
 import { getLocalFileBase64 } from "~/utils";
@@ -85,18 +101,155 @@ const Header = ({ session, onClose }: { session: ChatSession; onClose: () => voi
   );
 };
 
-const MessageListItem = ({ message }: { message: ConversationMessage }) => {
+const getScoreColor = (x: number) => {
+  if (x >= 0.75) return tw.color("green-500");
+  if (x >= 0.5) return tw.color("yellow-500");
+  return tw.color("red-500");
+};
+
+const MessageListItem = ({
+  message,
+  turn,
+  selected,
+  onPress,
+}: {
+  message: ConversationMessage;
+  turn?: Turn;
+  selected: boolean;
+  onPress: () => void;
+}) => {
+  const score = turn
+    ? turn.pronunciation.score * 0.4 +
+      turn.evaluation.criteria.accuracy * 0.2 +
+      turn.evaluation.criteria.appropriacy * 0.3 +
+      turn.evaluation.criteria.vocabulary * 0.1
+    : undefined;
   return (
-    <View style={tw.style("flex-row", message.role === "assistant" ? "justify-start" : "justify-end")}>
-      <View
+    <View style={tw.style("flex-row items-center gap-2.5", message.role === "user" ? "justify-end" : "justify-start")}>
+      {score !== undefined && (
+        <View style={tw`items-center`}>
+          <Text style={[tw`text-sm font-medium`, { color: getScoreColor(score) }]}>{Math.round(score * 100)}%</Text>
+          <Text style={tw`text-xs leading-none text-neutral-500`}>overall</Text>
+        </View>
+      )}
+      <Pressable
+        onPress={onPress}
         style={tw.style(
-          "rounded-xl px-4 py-2.5",
+          "flex-shrink rounded-xl border-2 p-2.5",
+          selected ? "border-zinc-500" : "border-transparent",
           message.role === "user" && "bg-green-500/50",
           message.role === "assistant" && "bg-neutral-300/50 dark:bg-neutral-700/50",
         )}>
         <Text style={tw`text-base`}>{message.role === "assistant" ? message.content : message.transcript.text}</Text>
-      </View>
+      </Pressable>
     </View>
+  );
+};
+
+const TurnSheet = ({
+  ref,
+  turn,
+  onWillDismiss,
+}: {
+  ref?: React.Ref<TrueSheet>;
+  turn: Turn;
+  onWillDismiss: () => void;
+}) => {
+  const theme = useTheme();
+
+  const [selection, setSelection] = useState<number | null>(null);
+
+  return (
+    <TrueSheet
+      ref={ref}
+      detents={["auto"]}
+      maxHeight={500}
+      initialDetentIndex={0}
+      initialDetentAnimated={true}
+      onWillDismiss={onWillDismiss}>
+      <ScrollView contentContainerStyle={tw`gap-8 p-4`}>
+        <View style={tw`mt-8`}>
+          <Text
+            style={[
+              tw`text-center text-5xl font-bold tracking-tighter`,
+              { color: getScoreColor(turn.pronunciation.score) },
+            ]}>
+            {Math.round(turn.pronunciation.score * 100)}%
+          </Text>
+          <Text style={tw`text-center text-xl font-medium`}>Pronunciation</Text>
+        </View>
+        <View style={tw`mb-4 flex-row justify-around`}>
+          {[
+            { label: "Accuracy", value: turn.evaluation.criteria.accuracy },
+            { label: "Appropriacy", value: turn.evaluation.criteria.appropriacy },
+            { label: "Vocabulary", value: turn.evaluation.criteria.vocabulary },
+          ].map(({ label, value }) => (
+            <View key={label} style={tw`flex-shrink`}>
+              <Text style={[tw`text-center text-3xl font-bold tracking-tighter`, { color: getScoreColor(value) }]}>
+                {Math.round(value * 100)}%
+              </Text>
+              <Text style={tw`text-center text-base font-medium`}>{label}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={[tw`rounded-lg p-4`, { backgroundColor: theme.colors.background }]}>
+          <Text style={tw`text-base`}>{turn.evaluation.explanation}</Text>
+        </View>
+        <View style={tw`gap-2.5`}>
+          {turn.pronunciation.words.map(([word, { score, phonemes, alignments, differences }], index) => {
+            return (
+              <Pressable
+                key={index}
+                onPress={() => setSelection(selection === index ? null : index)}
+                style={tw.style(
+                  "gap-2 rounded-lg border px-4 py-2",
+                  selection === index ? "border-zinc-500" : "border-zinc-500/50",
+                  { backgroundColor: theme.colors.background },
+                )}>
+                <View style={tw`flex-row items-center justify-between`}>
+                  <View style={tw`flex-row items-center gap-4`}>
+                    <Text style={tw`text-lg font-bold`}>{word}</Text>
+                    <Text style={[tw`text-lg`, { color: getScoreColor(score) }]}>{Math.round(score * 100)}%</Text>
+                  </View>
+                  {selection === index ? (
+                    <ChevronUp size={18} color={tw.color("zinc-500")} />
+                  ) : (
+                    <ChevronDown size={18} color={tw.color("zinc-500/50")} />
+                  )}
+                </View>
+                {selection === index && (
+                  <View style={tw`gap-1`}>
+                    <View style={tw`flex-row items-center gap-4`}>
+                      <Text style={tw`text-base`}>Expected:</Text>
+                      <View style={tw`flex-row items-center gap-0.5`}>
+                        {alignments.map(({ token, score }, key) => {
+                          const color = Color(getScoreColor(score * 100)).alpha(0.5);
+                          return (
+                            <View key={key} style={[tw`rounded px-1 py-0.5`, { backgroundColor: color.toString() }]}>
+                              <Text style={[tw`text-base`, { fontFamily: "" }]}>{token}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                    <View style={tw`flex-row items-center gap-4`}>
+                      <Text style={tw`text-base`}>Predicted:</Text>
+                      <View style={tw`flex-row items-center gap-0.5`}>
+                        {phonemes.map((token, key) => (
+                          <View key={key} style={tw`rounded bg-zinc-500/50 px-1 py-0.5`}>
+                            <Text style={[tw`text-base`, { fontFamily: "" }]}>{token}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </TrueSheet>
   );
 };
 
@@ -104,14 +257,15 @@ const TasksSheet = ({ ref, tasks }: { ref: Ref<TrueSheet>; tasks: Evaluation["ta
   const theme = useTheme();
 
   return (
-    <TrueSheet ref={ref} detents={["auto"]} cornerRadius={16} style={tw`gap-4 px-4 py-6`}>
-      <Text style={tw`text-center text-xl font-medium`}>Your Tasks</Text>
+    <TrueSheet ref={ref} detents={["auto"]} style={tw`gap-4 px-4 py-6`}>
+      <Text
+        style={tw`text-center text-xl font-medium`}>{`Tasks Completed — ${tasks.filter((task) => task.completed).length}/${tasks.length}`}</Text>
       <View style={tw`gap-2.5`}>
         {tasks.map((task, index) => (
           <View
             key={index}
             style={[
-              tw`flex-row items-center gap-2.5 rounded-xl border border-zinc-500/50 px-4 py-2`,
+              tw`flex-row items-center gap-2.5 rounded-2xl border border-zinc-500/50 px-4 py-2`,
               { backgroundColor: theme.colors.background },
             ]}>
             {task.completed ? (
@@ -119,7 +273,7 @@ const TasksSheet = ({ ref, tasks }: { ref: Ref<TrueSheet>; tasks: Evaluation["ta
             ) : (
               <CircleIcon size={18} color={tw.color("neutral-500")} />
             )}
-            <Text style={tw`shrink text-base font-medium`}>{task.task}</Text>
+            <Text style={tw`shrink text-lg`}>{task.task}</Text>
           </View>
         ))}
       </View>
@@ -136,7 +290,10 @@ export default function MainLearnChatScreen() {
   const recorderState = useAudioRecorderState(recorder);
 
   const ref = useRef<FlatList<ConversationMessage>>(null);
-  const sheet = useRef<TrueSheet>(null);
+  const sheetTasks = useRef<TrueSheet>(null);
+  const sheetTurn = useRef<TrueSheet>(null);
+
+  const [selection, setSelection] = useState<Turn | null>(null);
 
   const { session, submit, abort, end } = useChatSession({
     onClose: () => {
@@ -204,21 +361,33 @@ export default function MainLearnChatScreen() {
       ) : (
         <>
           <View style={tw`mx-4 mb-2 rounded-xl border-2 border-zinc-500/50 p-2.5`}>
-            <Text style={tw`text-lg font-medium leading-tight`}>{session.data.scenario}</Text>
+            <Text style={tw`text-lg font-medium leading-tight`}>{session.data.scenario.scenario}</Text>
           </View>
           <FlatList
             ref={ref}
             inverted={true}
             alwaysBounceVertical={false}
-            data={[...session.data.messages].reverse()}
+            data={[...session.data.conversation.messages].reverse()}
             keyExtractor={(_, index) => index.toString()}
-            renderItem={({ item }) => <MessageListItem message={item} />}
-            contentContainerStyle={tw`flex-grow gap-2 p-4`}
+            renderItem={({ item, index: i }) => {
+              const index = session.data.conversation.messages.length - 1 - i;
+              const turn = session.data.turns.find((t) => t.index === index);
+              return (
+                <MessageListItem
+                  message={item}
+                  turn={turn}
+                  selected={turn ? turn.index === selection?.index : false}
+                  onPress={() => (turn ? setSelection(turn) : undefined)}
+                />
+              );
+            }}
+            style={tw`w-full flex-1`}
+            contentContainerStyle={tw`flex-grow justify-end gap-2 p-4`}
           />
           <View style={tw`h-1/7 w-full items-center justify-center px-8`}>
             <View style={tw`w-full flex-row items-center justify-between`}>
               <Pressable
-                onPress={() => sheet.current?.present()}
+                onPress={() => sheetTasks.current?.present()}
                 style={({ pressed }) =>
                   tw.style(
                     "flex-row items-center gap-1.5 rounded-full bg-zinc-300/50 px-4 py-2 dark:bg-zinc-700/50",
@@ -266,7 +435,10 @@ export default function MainLearnChatScreen() {
                   : ""}
             </Text>
           </View>
-          <TasksSheet ref={sheet} tasks={session.data.tasks} />
+          <TasksSheet ref={sheetTasks} tasks={session.data.tasks} />
+          {selection !== null && (
+            <TurnSheet ref={sheetTurn} turn={selection} onWillDismiss={() => setSelection(null)} />
+          )}
         </>
       )}
     </View>

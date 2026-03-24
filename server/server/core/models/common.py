@@ -95,6 +95,11 @@ class Pronunciation(BaseModel):
         alignments: list["Pronunciation.Alignment"]
         differences: list["Pronunciation.Difference"]
 
+        @computed_field
+        @cached_property
+        def score(self) -> float:
+            return sum(a.score for a in self.alignments) / len(self.alignments)
+
     phonemes: list[str]
     alignments: list[Alignment]
 
@@ -145,3 +150,8 @@ class Pronunciation(BaseModel):
             )
             for word, start, end in boundaries
         ]
+
+    @computed_field
+    @cached_property
+    def score(self) -> float:
+        return sum(a.score for a in self.alignments) / len(self.alignments)

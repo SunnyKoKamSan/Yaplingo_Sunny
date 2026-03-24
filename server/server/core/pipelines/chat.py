@@ -45,16 +45,15 @@ class ChatPipeline(Pipeline):
                 return None
             text = self.speech_transcriber(waveform)
             transcript = Transcript(text=text)
-            pronunciation = self.pronunciation_aligner(waveform, transcript)
             context = Conversation.UserMessage(
                 role="user",
                 transcript=transcript,
-                pronunciation=pronunciation,
             )
             conversation.messages.append(context)
-            [reply, evaluation] = await asyncio.gather(
+            [reply, evaluation, pronunciation] = await asyncio.gather(
                 self.reply_generator(scenario, conversation),
                 self.evaluation_generator(scenario, conversation),
+                asyncio.to_thread(self.pronunciation_aligner, waveform, transcript),
             )
             return Result(
                 context=context,
@@ -62,7 +61,8 @@ class ChatPipeline(Pipeline):
                     role="assistant",
                     content=reply,
                 ),
-                tasks=evaluation.tasks,
+                evaluation=evaluation,
+                pronunciation=pronunciation,
             )
 
         raise ValueError("no overload matched for given arguments")
