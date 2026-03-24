@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { View } from "react-native";
+import { Image } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -17,6 +17,7 @@ import { $gemBalance } from "~/store";
 import Text from "./Text";
 
 const AnimatedText = Animated.createAnimatedComponent(Text);
+const GEM_ICON_SOURCE = require("../../assets/gem.png");
 
 export default function GemCounter({ style }: { style?: object }) {
   const balance = useAtomValue($gemBalance);
@@ -54,7 +55,7 @@ export default function GemCounter({ style }: { style?: object }) {
         style,
       ]}
     >
-      <Text style={tw`text-base`}>💎</Text>
+      <Image source={GEM_ICON_SOURCE} resizeMode="contain" style={{ width: 16, height: 16 }} />
       <Text style={tw`text-base font-bold text-green-700 dark:text-green-300`}>
         {balance.toLocaleString()}
       </Text>

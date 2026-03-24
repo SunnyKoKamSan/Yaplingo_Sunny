@@ -21,7 +21,6 @@ import Animated, {
 } from "react-native-reanimated";
 import {
   AwardIcon,
-  DiamondIcon,
 } from "lucide-react-native";
 import tw from "twrnc";
 
@@ -59,6 +58,7 @@ const BADGE_CONFIG: Record<string, BadgeConfig> = {
 const BADGE_SIZE = 72;
 const BADGE_ICON_SIZE = 32;
 const MODAL_ICON_SIZE = 46;
+const GEM_ICON_SOURCE = require("../../assets/gem.png");
 
 const AchievementImageIcon = ({
   config,
@@ -135,7 +135,11 @@ const FlyingGem = ({
 
   return (
     <Animated.View style={[{ position: "absolute" }, style]}>
-      <DiamondIcon size={20} color="#22C55E" fill="#22C55E" />
+      <Image
+        source={GEM_ICON_SOURCE}
+        resizeMode="contain"
+        style={{ width: 20, height: 20 }}
+      />
     </Animated.View>
   );
 };
@@ -396,7 +400,7 @@ const DetailModal = ({
           {/* Reward */}
           <View style={tw`flex-row items-center gap-1 mt-2`}>
             <Text style={tw`text-xs text-zinc-400`}>Reward:</Text>
-            <DiamondIcon size={12} color="#22C55E" fill="#22C55E" />
+            <Image source={GEM_ICON_SOURCE} resizeMode="contain" style={{ width: 12, height: 12 }} />
             <Text style={tw`text-xs font-bold text-green-600`}>{item.gem_reward} gems</Text>
           </View>
 
@@ -423,7 +427,7 @@ const DetailModal = ({
                 },
               ]}
             >
-              <DiamondIcon size={16} color="#22C55E" fill="#22C55E" />
+              <Image source={GEM_ICON_SOURCE} resizeMode="contain" style={{ width: 16, height: 16 }} />
               <Text style={tw`text-sm font-bold text-green-600`}>
                 {isClaiming ? "Claiming..." : `Collect ${item.gem_reward}`}
               </Text>

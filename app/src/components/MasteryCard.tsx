@@ -1,12 +1,12 @@
 import { useEffect } from "react";
-import { View } from "react-native";
+import { Image, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
   withTiming,
 } from "react-native-reanimated";
-import { DiamondIcon, GemIcon, ShieldIcon, ShieldCheckIcon, StarIcon } from "lucide-react-native";
+import { ShieldIcon, ShieldCheckIcon, StarIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 import type { MasteryTier, TopicMasteryResponse } from "~/client/models";
@@ -14,6 +14,7 @@ import type { MasteryTier, TopicMasteryResponse } from "~/client/models";
 import Text from "./Text";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const GEM_ICON_SOURCE = require("../../assets/gem.png");
 
 const TIER_COLORS: Record<MasteryTier, string> = {
   Bronze: "#CD7F32",
@@ -27,8 +28,8 @@ const TIER_ICON: Record<MasteryTier, React.ReactNode> = {
   Bronze: <ShieldIcon size={12} color="#CD7F32" />,
   Silver: <ShieldCheckIcon size={12} color="#6B7280" />,
   Gold: <StarIcon size={12} color="#B8860B" fill="#FFD700" />,
-  Platinum: <GemIcon size={12} color="#71717A" />,
-  Diamond: <DiamondIcon size={12} color="#0EA5E9" />,
+  Platinum: <Image source={GEM_ICON_SOURCE} resizeMode="contain" style={{ width: 12, height: 12, opacity: 0.72 }} />,
+  Diamond: <Image source={GEM_ICON_SOURCE} resizeMode="contain" style={{ width: 12, height: 12 }} />,
 };
 
 const TOPIC_EMOJIS: Record<string, string> = {

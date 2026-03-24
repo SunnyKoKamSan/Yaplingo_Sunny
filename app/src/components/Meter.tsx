@@ -9,12 +9,14 @@ export default function Meter({
   size = 200,
   thickness = 15,
   color = tw.color("orange-500"),
+  fadedProgress = false,
   children,
 }: {
   percentage: number;
   size?: number;
   thickness?: number;
   color?: ColorValue;
+  fadedProgress?: boolean;
   children?: React.ReactNode;
 }) {
   const theme = useTheme();
@@ -25,6 +27,9 @@ export default function Meter({
 
   const progress = Math.min(Math.max(percentage, 0), 100);
   const length = ((circumference / 2) * progress) / 100;
+
+  // Apply faded opacity to progress stroke when fadedProgress is true
+  const progressOpacity = fadedProgress ? 0.35 : 1;
 
   return (
     <View style={tw`items-center`}>
@@ -43,6 +48,7 @@ export default function Meter({
           strokeWidth={thickness}
           strokeLinecap="round"
           strokeDasharray={`${length}, ${circumference}`}
+          opacity={progressOpacity}
           d={`M ${thickness / 2}, ${center}
               A ${radius}, ${radius} 0 ${progress > 50 ? 1 : 0} 1 ${size - thickness / 2}, ${center}`}
         />

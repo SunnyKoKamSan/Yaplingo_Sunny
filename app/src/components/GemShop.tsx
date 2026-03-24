@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, View } from "react-native";
+import { Alert, Image, Modal, Pressable, ScrollView, View, type ViewStyle } from "react-native";
 import Animated, {
   FadeIn,
   FadeOut,
@@ -16,7 +16,6 @@ import {
   RocketIcon,
   ArrowUpCircleIcon,
   PlayCircleIcon,
-  DiamondIcon,
   type LucideIcon,
 } from "lucide-react-native";
 import { useAtomValue } from "jotai";
@@ -42,14 +41,14 @@ type ShopItem = {
 const SHOP_ITEMS: ShopItem[] = [
   {
     key: "streak_freeze",
-    title: "Streak Freeze",
-    description: "Protect your streak for 1 missed day",
+    title: "Streak Restore",
+    description: "Restore your streak after missing a day",
     fallbackCost: 50,
     icon: ShieldIcon,
     color: "#3B82F6",
     gradientColors: ["#3B82F6", "#1D4ED8"],
     inventoryKey: "streak_freezes",
-    inventoryLabel: (c) => `${c} freeze${c !== 1 ? "s" : ""} stored`,
+    inventoryLabel: (c) => `${c} restore${c !== 1 ? "s" : ""} stored`,
   },
   {
     key: "xp_boost_1h",
@@ -102,6 +101,30 @@ const formatCountdown = (secondsLeft: number): string => {
   return `${mins}m ${secs.toString().padStart(2, "0")}s`;
 };
 
+const GEM_ICON_SOURCE = require("../../assets/gem.png");
+
+const FLOATING_CARD_STYLE: ViewStyle = {
+  backgroundColor: "#FFFFFF",
+  borderRadius: 20,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.15,
+  shadowRadius: 20,
+  elevation: 6,
+};
+
+const GemAssetIcon = ({ size, dimmed = false }: { size: number; dimmed?: boolean }) => (
+  <Image
+    source={GEM_ICON_SOURCE}
+    resizeMode="contain"
+    style={{
+      width: size,
+      height: size,
+      opacity: dimmed ? 0.45 : 1,
+    }}
+  />
+);
+
 const ShopItemCard = ({
   item,
   cost,
@@ -121,9 +144,11 @@ const ShopItemCard = ({
     <Pressable
       onPress={canAfford ? onBuy : undefined}
       style={({ pressed }) => [
-        tw`flex-row items-center py-3.5 px-1 gap-3`,
+        tw`flex-row items-center px-4 py-3.5 gap-3 mb-3`,
+        FLOATING_CARD_STYLE,
         {
-          opacity: pressed && canAfford ? 0.7 : 1,
+          opacity: canAfford ? (pressed ? 0.9 : 1) : 0.92,
+          transform: [{ scale: pressed && canAfford ? 0.99 : 1 }],
         },
       ]}
     >
@@ -146,7 +171,7 @@ const ShopItemCard = ({
           </Text>
         )}
       </View>
-      {/* Light realistic pill button */}
+      {/* Light realistic pill button with enhanced shadow */}
       <Pressable
         onPress={canAfford ? onBuy : undefined}
         disabled={!canAfford}
@@ -155,20 +180,20 @@ const ShopItemCard = ({
           {
             backgroundColor: canAfford ? "#FFFFFF" : "#F5F5F5",
             borderWidth: 1,
-            borderColor: canAfford ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.04)",
+            borderColor: canAfford ? "rgba(0,0,0,0.08)" : "rgba(0,0,0,0.04)",
             shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: canAfford ? 0.08 : 0.03,
-            shadowRadius: 4,
-            elevation: canAfford ? 3 : 1,
-            borderTopColor: canAfford ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.5)",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: canAfford ? 0.18 : 0.05,
+            shadowRadius: 8,
+            elevation: canAfford ? 5 : 2,
+            borderTopColor: canAfford ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.5)",
             borderTopWidth: 1.5,
             transform: [{ scale: pressed && canAfford ? 0.96 : 1 }],
             opacity: canAfford ? 1 : 0.5,
           },
         ]}
       >
-        <DiamondIcon size={13} color={canAfford ? item.color : "#9CA3AF"} fill={canAfford ? item.color : "#9CA3AF"} strokeWidth={0} />
+        <GemAssetIcon size={14} dimmed={!canAfford} />
         <Text style={[tw`text-[13px] font-semibold`, { color: canAfford ? item.color : "#9CA3AF" }]}>{cost}</Text>
       </Pressable>
     </Pressable>
@@ -179,7 +204,7 @@ const ActiveBoostCard = ({ event, secondsLeft }: { event: { id: number; multipli
   const boostColor = event.multiplier >= 10 ? "#8B5CF6" : "#F97316";
 
   return (
-    <View style={tw`flex-row items-center py-3.5 px-1 gap-3`}>
+    <View style={tw`flex-row items-center gap-3`}>
       <View
         style={[
           tw`w-11 h-11 rounded-full items-center justify-center`,
@@ -292,19 +317,32 @@ export default function GemShop({
   );
 
   const handleUseSkill = useCallback(
-    async (item: ShopItem) => {
-      try {
-        const res = await useSkillMutation.mutateAsync(item.key);
-        showToast(`🛡️ ${item.title}: ${res.message}`);
-      } catch (error) {
-        const message =
-          error instanceof Error && error.message
-            ? error.message
-            : "No items available or activation failed.";
-        Alert.alert("Cannot Use", message);
-      }
+    (item: ShopItem) => {
+      const count = item.inventoryKey === "streak_freezes" ? (inventory?.streak_freezes ?? 0) : 0;
+      Alert.alert(
+        "Confirm Use",
+        `Use 1 ${item.title}? You have ${count} available.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Use",
+            onPress: async () => {
+              try {
+                const res = await useSkillMutation.mutateAsync(item.key);
+                showToast(`🛡️ ${res.message}`);
+              } catch (error) {
+                const message =
+                  error instanceof Error && error.message
+                    ? error.message
+                    : "No items available or activation failed.";
+                Alert.alert("Cannot Use", message);
+              }
+            },
+          },
+        ],
+      );
     },
-    [useSkillMutation, showToast],
+    [useSkillMutation, showToast, inventory],
   );
 
   if (!visible) return null;
@@ -344,7 +382,7 @@ export default function GemShop({
             <Text style={tw`text-xl font-bold text-zinc-900 dark:text-zinc-100`}>Gem Shop</Text>
             <View style={tw`flex-row items-center gap-3`}>
               <View style={tw`flex-row items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full`}>
-                <DiamondIcon size={14} color="#22C55E" fill="#22C55E" strokeWidth={0} />
+                <GemAssetIcon size={16} />
                 <Text style={tw`text-sm font-bold text-zinc-700 dark:text-zinc-300`}>
                   {balance.toLocaleString()}
                 </Text>
@@ -373,24 +411,20 @@ export default function GemShop({
             </Animated.View>
           )}
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`px-5 pb-4`}>
-            {/* Shop Items - clean list */}
-            <View style={tw`bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl overflow-hidden`}>
-              {SHOP_ITEMS.map((item, index) => {
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`px-5 pb-4 pt-2`}>
+            {/* Shop Items - floating cards */}
+            <View style={tw`mt-2`}>
+              {SHOP_ITEMS.map((item) => {
                 const cost = getCost(item);
                 return (
-                  <View key={item.key}>
-                    <ShopItemCard
-                      item={item}
-                      cost={cost}
-                      canAfford={balance >= cost && !purchasing}
-                      inventoryCount={getInventoryCount(item)}
-                      onBuy={() => handleBuy(item)}
-                    />
-                    {index < SHOP_ITEMS.length - 1 && (
-                      <View style={tw`h-px bg-zinc-200 dark:bg-zinc-700 ml-16`} />
-                    )}
-                  </View>
+                  <ShopItemCard
+                    key={item.key}
+                    item={item}
+                    cost={cost}
+                    canAfford={balance >= cost && !purchasing}
+                    inventoryCount={getInventoryCount(item)}
+                    onBuy={() => handleBuy(item)}
+                  />
                 );
               })}
             </View>
@@ -400,19 +434,16 @@ export default function GemShop({
               My Skills
             </Text>
 
-            <View style={tw`bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl overflow-hidden`}>
+            <View>
               {/* Active XP boosts */}
               {liveBoosts.length > 0 ? (
-                liveBoosts.map(({ event, secondsLeft }, index) => (
-                  <View key={event.id}>
+                liveBoosts.map(({ event, secondsLeft }) => (
+                  <View key={event.id} style={[tw`px-4 py-3.5 mb-3`, FLOATING_CARD_STYLE]}>
                     <ActiveBoostCard event={event} secondsLeft={secondsLeft} />
-                    {(index < liveBoosts.length - 1 || inventoryItems.length > 0) && (
-                      <View style={tw`h-px bg-zinc-200 dark:bg-zinc-700 ml-16`} />
-                    )}
                   </View>
                 ))
               ) : (
-                <View style={tw`flex-row items-center py-3.5 px-1 gap-3`}>
+                <View style={[tw`flex-row items-center px-4 py-3.5 gap-3 mb-3`, FLOATING_CARD_STYLE]}>
                   <View style={tw`w-11 h-11 rounded-full bg-zinc-200 dark:bg-zinc-700 items-center justify-center`}>
                     <ZapIcon size={22} color="#9CA3AF" strokeWidth={2} />
                   </View>
@@ -425,73 +456,69 @@ export default function GemShop({
                 </View>
               )}
 
-              {liveBoosts.length === 0 && inventoryItems.length > 0 && (
-                <View style={tw`h-px bg-zinc-200 dark:bg-zinc-700 ml-16`} />
-              )}
-
               {/* Streak Freeze and other inventory items */}
-              {inventoryItems.map((item, index) => {
+              {inventoryItems.map((item) => {
                 const count =
                   item.inventoryKey === "streak_freezes" ? streakFreezeCount : 0;
                 const isEmpty = count === 0;
                 const IconComponent = item.icon;
 
                 return (
-                  <View key={`use-${item.key}`}>
+                  <Pressable
+                    key={`use-${item.key}`}
+                    onPress={() => !isEmpty && handleUseSkill(item)}
+                    disabled={isEmpty}
+                    style={({ pressed }) => [
+                      tw`flex-row items-center px-4 py-3.5 gap-3 mb-3`,
+                      FLOATING_CARD_STYLE,
+                      {
+                        opacity: isEmpty ? 0.92 : (pressed ? 0.9 : 1),
+                        transform: [{ scale: pressed && !isEmpty ? 0.99 : 1 }],
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        tw`w-11 h-11 rounded-full items-center justify-center`,
+                        { backgroundColor: isEmpty ? "#E5E7EB" : `${item.color}15` },
+                      ]}
+                    >
+                      <IconComponent size={22} color={isEmpty ? "#9CA3AF" : item.color} strokeWidth={2} />
+                    </View>
+                    <View style={tw`flex-1`}>
+                      <Text style={tw`text-[15px] font-semibold text-zinc-900 dark:text-zinc-100`}>
+                        {item.title}
+                      </Text>
+                      <Text style={[tw`text-[13px] mt-0.5`, { color: isEmpty ? "#9CA3AF" : item.color }]}>
+                        {isEmpty ? "None owned" : `${count} available`}
+                      </Text>
+                    </View>
+                    {/* Light realistic Use button with enhanced shadow */}
                     <Pressable
                       onPress={() => !isEmpty && handleUseSkill(item)}
                       disabled={isEmpty}
                       style={({ pressed }) => [
-                        tw`flex-row items-center py-3.5 px-1 gap-3`,
-                        { opacity: pressed && !isEmpty ? 0.7 : 1 },
+                        tw`flex-row items-center gap-1.5 px-4 py-2.5 rounded-full`,
+                        {
+                          backgroundColor: isEmpty ? "#F5F5F5" : "#FFFFFF",
+                          borderWidth: 1,
+                          borderColor: isEmpty ? "rgba(0,0,0,0.04)" : "rgba(0,0,0,0.08)",
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: isEmpty ? 0.05 : 0.18,
+                          shadowRadius: 8,
+                          elevation: isEmpty ? 2 : 5,
+                          borderTopColor: isEmpty ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.95)",
+                          borderTopWidth: 1.5,
+                          transform: [{ scale: pressed && !isEmpty ? 0.96 : 1 }],
+                          opacity: isEmpty ? 0.5 : 1,
+                        },
                       ]}
                     >
-                      <View
-                        style={[
-                          tw`w-11 h-11 rounded-full items-center justify-center`,
-                          { backgroundColor: isEmpty ? "#E5E7EB" : `${item.color}15` },
-                        ]}
-                      >
-                        <IconComponent size={22} color={isEmpty ? "#9CA3AF" : item.color} strokeWidth={2} />
-                      </View>
-                      <View style={tw`flex-1`}>
-                        <Text style={tw`text-[15px] font-semibold text-zinc-900 dark:text-zinc-100`}>
-                          {item.title}
-                        </Text>
-                        <Text style={[tw`text-[13px] mt-0.5`, { color: isEmpty ? "#9CA3AF" : item.color }]}>
-                          {isEmpty ? "None owned" : `${count} available`}
-                        </Text>
-                      </View>
-                      {/* Light realistic Use button */}
-                      <Pressable
-                        onPress={() => !isEmpty && handleUseSkill(item)}
-                        disabled={isEmpty}
-                        style={({ pressed }) => [
-                          tw`flex-row items-center gap-1.5 px-4 py-2.5 rounded-full`,
-                          {
-                            backgroundColor: isEmpty ? "#F5F5F5" : "#FFFFFF",
-                            borderWidth: 1,
-                            borderColor: isEmpty ? "rgba(0,0,0,0.04)" : "rgba(0,0,0,0.06)",
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: isEmpty ? 0.03 : 0.08,
-                            shadowRadius: 4,
-                            elevation: isEmpty ? 1 : 3,
-                            borderTopColor: isEmpty ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.9)",
-                            borderTopWidth: 1.5,
-                            transform: [{ scale: pressed && !isEmpty ? 0.96 : 1 }],
-                            opacity: isEmpty ? 0.5 : 1,
-                          },
-                        ]}
-                      >
-                        <PlayCircleIcon size={13} color={isEmpty ? "#9CA3AF" : item.color} strokeWidth={2.5} />
-                        <Text style={[tw`text-[13px] font-semibold`, { color: isEmpty ? "#9CA3AF" : item.color }]}>Use</Text>
-                      </Pressable>
+                      <PlayCircleIcon size={13} color={isEmpty ? "#9CA3AF" : item.color} strokeWidth={2.5} />
+                      <Text style={[tw`text-[13px] font-semibold`, { color: isEmpty ? "#9CA3AF" : item.color }]}>Use</Text>
                     </Pressable>
-                    {index < inventoryItems.length - 1 && (
-                      <View style={tw`h-px bg-zinc-200 dark:bg-zinc-700 ml-16`} />
-                    )}
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>

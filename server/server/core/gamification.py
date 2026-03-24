@@ -79,6 +79,8 @@ async def update_streak_utc(session: AsyncSession, user_id: ULID) -> int:
                 user_gamification.last_activity_date = today_utc.strftime("%Y-%m-%d")
                 freeze_used = True
         if not freeze_used:
+            # Save previous streak before resetting (for manual restore feature)
+            user_gamification.previous_streak = user_gamification.current_streak
             user_gamification.current_streak = 1
             user_gamification.last_activity_date = today_utc.strftime("%Y-%m-%d")
 

@@ -964,11 +964,43 @@ async def use_skill(item_key: str, session: SessionDep, current_user: AuthUser) 
         (await session.exec(select(UserInventory).where(UserInventory.user_id == current_user.id))).one_or_none()
     )
     if not inv or inv.streak_freezes < 1:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No streak freezes available")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No streak restores available")
+
+    # Fetch user gamification to check if streak was lost
+    gam = _unwrap(
+        (await session.exec(select(UserGamification).where(UserGamification.user_id == current_user.id))).one_or_none()
+    )
+
+    if gam is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No activity record found")
+
+    # Check if there's a previous streak to restore
+    previous_streak = getattr(gam, "previous_streak", 0) or 0
+    if previous_streak == 0:
+        return UseSkillResponse(
+            skill_key=item_key,
+            message="No streak available to restore.",
+            remaining=inv.streak_freezes,
+        )
+
+    # Consume one streak restore
+    inv.streak_freezes -= 1
+    session.add(inv)
+
+    # Restore the streak: set current_streak back to previous_streak and clear previous_streak
+    gam.current_streak = previous_streak
+    gam.previous_streak = 0
+    # Update last_activity_date to yesterday so streak is visible today
+    today_utc = datetime.now(timezone.utc).date()
+    yesterday_utc = today_utc - timedelta(days=1)
+    gam.last_activity_date = yesterday_utc.strftime("%Y-%m-%d")
+    session.add(gam)
+
+    await session.commit()
 
     return UseSkillResponse(
         skill_key=item_key,
-        message="Streak Freeze is passive and auto-activates when you miss a day.",
+        message=f"Streak restored! Your {previous_streak}-day streak is back.",
         remaining=inv.streak_freezes,
     )
 

@@ -96,6 +96,7 @@ class UserGamification(SQLModel, table=True):
 
     user_id: ULID = Field(foreign_key="user.id", primary_key=True, sa_type=ULIDType)
     current_streak: int = Field(default=0, ge=0)
+    previous_streak: int = Field(default=0, ge=0)  # Stores streak before reset, for manual restore
     last_activity_date: Optional[str] = Field(default=None, max_length=10)
 
 
