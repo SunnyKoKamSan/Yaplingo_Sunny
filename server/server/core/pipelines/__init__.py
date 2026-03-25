@@ -3,13 +3,13 @@ from typing import Any
 
 
 class Pipeline(ABC):
-    __instance = None
+    _instance = None
 
     def __new__(cls):
-        if cls.__instance is None:
-            cls.__instance = super().__new__(cls)
-            cls.__instance.__initialize__()
-        return cls.__instance
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.__initialize__()
+        return cls._instance
 
     @abstractmethod
     def __initialize__(self):

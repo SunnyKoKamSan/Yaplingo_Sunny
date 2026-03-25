@@ -26,8 +26,6 @@ class ChatSessionState(BaseModel):
 
     class Summary(BaseModel):
         points: int
-        quota: bool
-        tasks: bool
 
     _uid: ULID = PrivateAttr()
 
@@ -74,13 +72,10 @@ class ChatSessionState(BaseModel):
     @cached_property
     def summary(self) -> Summary:
         assert self.finished, "session not finished yet"
+        assert len(self.turns) > 0, "no turns taken in the session"  # should never happen
         points = sum(1 for t in self.tasks if t.completed) * 33
         points += sum(round(t.pronunciation.score * 100) for t in self.turns) // len(self.turns)
-        return ChatSessionState.Summary(
-            points=points,
-            quota=self.quota <= 0,
-            tasks=all(t.completed for t in self.tasks),
-        )
+        return ChatSessionState.Summary(points=points)
 
 
 class ChatStore:

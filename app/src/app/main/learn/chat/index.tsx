@@ -222,7 +222,7 @@ const TurnSheet = ({
                       <Text style={tw`text-base`}>Expected:</Text>
                       <View style={tw`flex-row items-center gap-0.5`}>
                         {alignments.map(({ token, score }, key) => {
-                          const color = Color(getScoreColor(score * 100)).alpha(0.5);
+                          const color = Color(getScoreColor(score)).alpha(0.5);
                           return (
                             <View key={key} style={[tw`rounded px-1 py-0.5`, { backgroundColor: color.toString() }]}>
                               <Text style={[tw`text-base`, { fontFamily: "" }]}>{token}</Text>
@@ -399,7 +399,7 @@ export default function MainLearnChatScreen() {
               <>
                 <Text style={tw`text-4xl font-bold text-sky-500`}>{`+${session.data.summary.points} XP`}</Text>
                 <Text style={tw`text-xl font-medium`}>
-                  {session.data.summary.tasks ? "all tasks completed" : "no turns left"}
+                  {session.data.tasks.every((t) => t.completed) ? "all tasks completed" : "no turns left"}
                 </Text>
               </>
             ) : (

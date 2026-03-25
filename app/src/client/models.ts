@@ -13,7 +13,7 @@ export type PronunciationAlignment = {
 };
 
 export type PronunciationDifference = {
-  operation: "replace" | "insert" | "delete";
+  operation: "~" | "+" | "-";
   word: string;
   expected?: string;
   predicted?: string;

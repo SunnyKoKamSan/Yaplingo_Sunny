@@ -60,8 +60,6 @@ export type EvaluationCriteria = {
 
 export type Summary = {
   points: number;
-  tasks: boolean;
-  quota: number;
 };
 
 export type Response =
