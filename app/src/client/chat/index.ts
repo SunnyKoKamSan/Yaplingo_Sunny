@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import { createWebSocket } from "../client";
-import type { Response, Session, Turn } from "./models";
+import type { Response, Session, Summary, Turn } from "./models";
 
 export enum ChatSessionStatus {
   LOADING,
@@ -23,7 +23,7 @@ export type ChatSession =
     }
   | {
       status: ChatSessionStatus.FINISHED;
-      data: Session;
+      data: Session & { summary: Summary };
     };
 
 type State = ChatSession & {
@@ -46,9 +46,9 @@ const reduceState = (state: State, [type, payload]: Action): State => {
       switch (type) {
         case "session": {
           return {
-            status: response.finished ? ChatSessionStatus.FINISHED : ChatSessionStatus.READY_TURN,
+            status: ChatSessionStatus.READY_TURN,
             data: response,
-            next: response.finished ? undefined : "turn",
+            next: response.finished ? "summary" : "turn",
           };
         }
         case "turn": {
@@ -56,6 +56,13 @@ const reduceState = (state: State, [type, payload]: Action): State => {
             status: ChatSessionStatus.READY_TURN,
             data: state.data as Session,
             next: response === null ? "turn" : "session",
+          };
+        }
+        case "summary": {
+          return {
+            status: ChatSessionStatus.FINISHED,
+            data: { ...(state.data as Session), summary: response },
+            next: undefined,
           };
         }
       }
@@ -83,7 +90,7 @@ export const useChatSession = ({ onClose }: { onClose?: (status: ChatSessionStat
         resolveSubmit.current?.(response.response);
         resolveSubmit.current = undefined;
       }
-    } catch {} // TODO: handle parsing error
+    } catch {}
   });
 
   const handleClose = useRef(() => {

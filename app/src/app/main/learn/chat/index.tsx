@@ -60,7 +60,6 @@ const RECORDING_OPTIONS: RecordingOptions = {
 const Header = ({ session, onClose }: { session: ChatSession; onClose: () => void }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-
   return (
     <>
       <View
@@ -135,7 +134,7 @@ const MessageListItem = ({
       <Pressable
         onPress={onPress}
         style={tw.style(
-          "flex-shrink rounded-xl border-2 p-2.5",
+          "flex-shrink rounded-xl border-2 px-2.5 py-1.5",
           selected ? "border-zinc-500" : "border-transparent",
           message.role === "user" && "bg-green-500/50",
           message.role === "assistant" && "bg-neutral-300/50 dark:bg-neutral-700/50",
@@ -347,8 +346,6 @@ export default function MainLearnChatScreen() {
     }
   };
 
-  if (session.status === ChatSessionStatus.FINISHED) return <></>;
-
   return (
     <View style={[tw`flex-1 items-center justify-between py-4`, { paddingBottom: insets.bottom }]}>
       {session.status === ChatSessionStatus.LOADING ? (
@@ -382,58 +379,69 @@ export default function MainLearnChatScreen() {
               );
             }}
             style={tw`w-full flex-1`}
-            contentContainerStyle={tw`flex-grow justify-end gap-2 p-4`}
+            contentContainerStyle={tw`flex-grow justify-end gap-2 p-4 pt-16`}
           />
           <View style={tw`h-1/7 w-full items-center justify-center px-8`}>
-            <View style={tw`w-full flex-row items-center justify-between`}>
-              <Pressable
-                onPress={() => sheetTasks.current?.present()}
-                style={({ pressed }) =>
-                  tw.style(
-                    "flex-row items-center gap-1.5 rounded-full bg-zinc-300/50 px-4 py-2 dark:bg-zinc-700/50",
-                    pressed && "opacity-80",
-                  )
-                }>
-                <ListTodoIcon color={theme.colors.text} size={22} />
-                <Text style={tw`text-lg font-medium`}>Tasks</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) =>
-                  tw.style(
-                    "absolute left-1/2 -translate-x-1/2 rounded-full p-4",
-                    pressed && "opacity-80",
-                    session.status === ChatSessionStatus.READY_TURN
-                      ? recorderState.isRecording
-                        ? "bg-red-500"
-                        : "bg-green-500"
-                      : "bg-transparent",
-                  )
-                }
-                onLongPress={handleStartRecording}
-                onPressOut={handleStopRecording}
-                disabled={session.status !== ChatSessionStatus.READY_TURN}>
-                {session.status === ChatSessionStatus.READY_TURN ? (
-                  recorderState.isRecording ? (
-                    <AudioLinesIcon color="white" size={32} />
+            <Pressable
+              onPress={() => sheetTasks.current?.present()}
+              style={({ pressed }) =>
+                tw.style(
+                  "absolute -top-12 flex-row items-center gap-1.5 rounded-full border-2 border-transparent bg-zinc-300 px-2.5 py-1.5 dark:bg-zinc-700",
+                  pressed && "border-zinc-500/50",
+                )
+              }>
+              <ListTodoIcon color={theme.colors.text} size={20} />
+              <Text style={tw`text-base font-medium`}>
+                {`Tasks — ${session.data.tasks.filter((task) => task.completed).length}/${session.data.tasks.length}`}
+              </Text>
+            </Pressable>
+            {session.status === ChatSessionStatus.FINISHED ? (
+              <>
+                <Text style={tw`text-4xl font-bold text-sky-500`}>{`+${session.data.summary.points} XP`}</Text>
+                <Text style={tw`text-xl font-medium`}>
+                  {session.data.summary.tasks ? "all tasks completed" : "no turns left"}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Pressable
+                  style={({ pressed }) =>
+                    tw.style(
+                      "rounded-full p-4",
+                      pressed && "opacity-80",
+                      session.status === ChatSessionStatus.READY_TURN
+                        ? recorderState.isRecording
+                          ? "bg-red-500"
+                          : "bg-green-500"
+                        : "bg-transparent",
+                    )
+                  }
+                  onLongPress={handleStartRecording}
+                  onPressOut={handleStopRecording}
+                  disabled={session.status !== ChatSessionStatus.READY_TURN}>
+                  {session.status === ChatSessionStatus.READY_TURN ? (
+                    recorderState.isRecording ? (
+                      <AudioLinesIcon color="white" size={32} />
+                    ) : (
+                      <MicIcon color="white" size={32} />
+                    )
                   ) : (
-                    <MicIcon color="white" size={32} />
-                  )
-                ) : (
-                  <Spinner size={36} />
-                )}
-              </Pressable>
-            </View>
-            <Text
-              style={tw.style(
-                "absolute bottom-0 text-sm font-medium",
-                session.status === ChatSessionStatus.PENDING_TURN && "text-neutral-500",
-              )}>
-              {session.status === ChatSessionStatus.PENDING_TURN
-                ? "Processing your speech..."
-                : !recorderState.isRecording
-                  ? "Hold to Speak"
-                  : ""}
-            </Text>
+                    <Spinner size={36} />
+                  )}
+                </Pressable>
+                <Text
+                  style={tw.style(
+                    "absolute bottom-0 text-sm font-medium",
+                    session.status === ChatSessionStatus.PENDING_TURN && "text-neutral-500",
+                  )}>
+                  {session.status === ChatSessionStatus.PENDING_TURN
+                    ? "Processing your speech..."
+                    : !recorderState.isRecording
+                      ? "Hold to Speak"
+                      : ""}
+                </Text>
+              </>
+            )}
           </View>
           <TasksSheet ref={sheetTasks} tasks={session.data.tasks} />
           {selection !== null && (

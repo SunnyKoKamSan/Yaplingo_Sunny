@@ -62,6 +62,10 @@ class ChatService:
                 await self._service.store.chat.record_session_turn(self.state, turn)
                 return turn
 
+        async def finish(self) -> ChatSessionState.Summary:
+            await self.abort()
+            return self.state.summary  # TODO: add points to user in repository
+
         async def abort(self) -> None:
             await self._service.store.chat.discard_session(self.state)
 

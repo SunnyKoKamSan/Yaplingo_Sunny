@@ -1,10 +1,9 @@
 from contextlib import asynccontextmanager
-from typing import Any
 
 from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect
 
 from ..dependencies import Service, User
-from ..schemas.chat import ChatInput, ChatResponse
+from ..schemas.chat import ChatInput, ChatOutputType, ChatResponse
 from ..websocket import SessionManager, Sessions
 
 
@@ -25,9 +24,8 @@ async def websocket_session(
     service: Service,
 ):
 
-    async def send_response(data: Any) -> None:
-        data = await ChatResponse.dump(data)
-        await ws.send_json(data)
+    async def send_response(data: ChatOutputType) -> None:
+        await ws.send_json(await ChatResponse.dump(data))
 
     async def receive_input() -> ChatInput:
         data = await ws.receive_json()
@@ -53,7 +51,8 @@ async def websocket_session(
                         return await session.abort()
             await session.refresh()
             await send_response(session.state)
-        await session.abort()  # TODO: perform proper summary generation when completed
+        summary = await session.finish()
+        await send_response(summary)
         await ws.receive()
     except WebSocketDisconnect:
         pass

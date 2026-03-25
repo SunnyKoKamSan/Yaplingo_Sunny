@@ -58,4 +58,13 @@ export type EvaluationCriteria = {
   vocabulary: number;
 };
 
-export type Response = { type: "session"; response: Session } | { type: "turn"; response: Turn | null };
+export type Summary = {
+  points: number;
+  tasks: boolean;
+  quota: number;
+};
+
+export type Response =
+  | { type: "session"; response: Session }
+  | { type: "turn"; response: Turn | null }
+  | { type: "summary"; response: Summary };
