@@ -6,6 +6,35 @@ export type User = {
   activity: Record<string, number>;
 };
 
+// ── Pronunciation Types ─────────────────────────────────────────────────────
+
+export type PronunciationAlignment = {
+  token: string;
+  score: number;
+  interval: [number, number];
+};
+
+export type PronunciationDifference = {
+  operation: "~" | "+" | "-";
+  word: string;
+  expected?: string;
+  predicted?: string;
+};
+
+export type Pronunciation = {
+  score: number;
+  phonemes: string[];
+  alignments: PronunciationAlignment[];
+  differences: PronunciationDifference[];
+  words: [string, Pronunciation][];
+};
+
+export type Transcript = {
+  text: string;
+  audio: string;
+  sequence: string;
+};
+
 // ── Gamification Types ─────────────────────────────────────────────────────
 
 export type Topic = "Global" | "Food" | "Culture" | "Travel" | "Business" | "Technology";

@@ -273,7 +273,7 @@ const SummaryView = ({ summary }: { summary: Summary }) => {
 
   const overallScore = useMemo(() => {
     const totalScore = summary.attempts.reduce((total, [attempt]) => {
-      const a = attempt?.result.pronunciation.alignments ?? [];
+      const a = attempt?.pronunciation.alignments ?? [];
       return total + calculateScorePercentage(a);
     }, 0);
     const percentage = summary.attempts.length > 0 ? Math.round(totalScore / summary.attempts.length) : 0;
@@ -319,7 +319,7 @@ const SummaryView = ({ summary }: { summary: Summary }) => {
             {summary.transcripts.map((transcript, index) => {
               const attempts = summary.attempts[index];
               const attempt = attempts[0];
-              const percentage = attempt ? calculateScorePercentage(attempt.result.pronunciation.alignments) : null;
+              const percentage = attempt ? calculateScorePercentage(attempt.pronunciation.alignments) : null;
               const color = percentage !== null ? getScoreColor(percentage) : undefined;
               return (
                 <Pressable
@@ -344,7 +344,7 @@ const SummaryView = ({ summary }: { summary: Summary }) => {
           </ScrollView>
         </View>
       </View>
-      {selectionAttempt && <ResultSheet result={selectionAttempt.result} onWillDismiss={() => setSelection(null)} />}
+      {selectionAttempt && <ResultSheet result={selectionAttempt} onWillDismiss={() => setSelection(null)} />}
     </>
   );
 };
