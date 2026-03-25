@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Image, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@react-navigation/native";
 import { useAtomValue } from "jotai";
-import { CalendarIcon, FlameIcon, ZapIcon } from "lucide-react-native";
+import { CalendarIcon, DiamondIcon, FlameIcon, ZapIcon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import tw from "twrnc";
 
@@ -15,7 +15,6 @@ import { $dailyAccuracyProgress, $dailyLessonProgress, $dailyProgress, $gemBalan
 
 const STREAK_MILESTONE_STEP = 5;
 const formatXP = (xp: number) => xp.toLocaleString();
-const GEM_ICON_SOURCE = require("../../../assets/gem.png");
 
 const Header = ({ totalXP, isLoading }: { totalXP: number; isLoading: boolean }) => {
   const theme = useTheme();
@@ -183,29 +182,20 @@ const GemShopCard = ({ onPress, activeBoost }: { onPress: () => void; activeBoos
         <View style={tw`flex-row items-center justify-between`}>
           <View style={tw`flex-row items-center gap-3`}>
             <LinearGradient
-              colors={["#f5f5f5", "#f5f5f5"]}
+              colors={["#10B981", "#059669"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={tw`w-11 h-11 rounded-xl items-center justify-center`}
             >
-              <Image source={GEM_ICON_SOURCE} resizeMode="contain" style={{ width: 24, height: 24 }} />
+              <DiamondIcon size={24} color="white" fill="white" strokeWidth={0} />
             </LinearGradient>
             <View>
               <Text style={tw`text-lg font-bold text-zinc-800 dark:text-zinc-100`}>Gem Shop</Text>
-              <Text style={tw`text-xs text-zinc-500`}>Gems = Boosts + Rewards</Text>
+              <Text style={tw`text-xs text-zinc-500`}>Boosts, rewards & more</Text>
             </View>
           </View>
-          <View style={[
-            tw`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-100`,
-            {
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.15,
-              shadowRadius: 8,
-              elevation: 4,
-            },
-          ]}>
-            <Image source={GEM_ICON_SOURCE} resizeMode="contain" style={{ width: 14, height: 14 }} />
+          <View style={tw`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10`}>
+            <DiamondIcon size={14} color="#22C55E" fill="#22C55E" strokeWidth={0} />
             <Text style={tw`text-sm font-bold text-green-600`}>{gemBalance.toLocaleString()}</Text>
           </View>
         </View>
