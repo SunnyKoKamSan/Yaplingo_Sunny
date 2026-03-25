@@ -4,6 +4,7 @@ from pydantic import RedisDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from redis.asyncio import Redis as AsyncRedis
 
+from .chat import ChatStore
 from .echo import EchoStore
 from .user import UserStore
 
@@ -36,6 +37,10 @@ class Store:
     @cached_property
     def echo(self) -> EchoStore:
         return EchoStore(self.client)
+
+    @cached_property
+    def chat(self) -> ChatStore:
+        return ChatStore(self.client)
 
     @cached_property
     def user(self) -> UserStore:

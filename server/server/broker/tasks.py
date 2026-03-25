@@ -2,29 +2,30 @@ import base64
 
 from taskiq import Context, TaskiqDepends
 
-from server.core import Result, Transcript
-from server.core.textspeech import data_urlencode
+from server.core.models import ChatResult, EchoResult
+from server.models import ChatSessionState, EchoSessionState
 
 from . import broker
 
 
 @broker.task
-async def synthesize_tts(
-    text: str,
+async def analyze_echo(
+    audio_b64: str,
+    session: EchoSessionState,
     context: Context = TaskiqDepends(),
-) -> str:
-    audio = await context.state.ktts(text)
-    return data_urlencode(audio, context.state.ktts.MIME)
+) -> EchoResult | None:
+    audio = base64.b64decode(audio_b64)
+    return await context.state.echo(audio, session.transcript)
 
 
 @broker.task
-async def analyze_echo(
+async def process_chat(
     audio_b64: str,
-    transcript: Transcript,
+    session: ChatSessionState,
     context: Context = TaskiqDepends(),
-) -> Result | None:
+) -> ChatResult | None:
     audio = base64.b64decode(audio_b64)
-    return await context.state.pipeline(audio, transcript)
+    return await context.state.chat(audio, session.scenario, session.conversation)
 
 
-__all__ = ["synthesize_tts", "analyze_echo"]
+__all__ = ["analyze_echo", "process_chat"]

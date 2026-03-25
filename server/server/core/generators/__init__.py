@@ -1,5 +1,6 @@
 import sys
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -25,15 +26,18 @@ class Settings(BaseSettings):
 
 settings = Settings.model_validate({})
 
+client = AsyncOpenAI(base_url=settings.base_url, api_key=settings.api_key)
+
 
 class BaseGenerator(ABC):
+    SYSTEM_PROMPT_FILE_PATH: Path
+
     def __init__(self):
-        self.client = AsyncOpenAI(base_url=settings.base_url, api_key=settings.api_key)
+        self.client = client
 
     @reloadable_property
-    @abstractmethod
     def system_prompt(self) -> str:
-        raise NotImplementedError
+        return self.SYSTEM_PROMPT_FILE_PATH.read_text(encoding="utf-8").strip()
 
     async def call(self, prompt: str, **kwargs) -> str:
         completion = await self.client.chat.completions.create(
@@ -47,5 +51,4 @@ class BaseGenerator(ABC):
         return completion.choices[0].message.content or ""
 
     @abstractmethod
-    async def __call__(self, *args, **kwargs) -> Any:
-        raise NotImplementedError
+    async def __call__(self, *args, **kwargs) -> Any: ...

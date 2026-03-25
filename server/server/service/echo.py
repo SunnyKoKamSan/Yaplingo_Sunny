@@ -4,7 +4,8 @@ from typing import Literal, Optional, cast, overload
 
 from server.broker import Broker
 from server.broker.tasks import analyze_echo
-from server.core import Result, TranscriptGenerator
+from server.core import EchoPipeline
+from server.core.models.echo import Result
 from server.repository import Repository
 from server.repository.models import EchoSession, User
 from server.store import Store
@@ -16,7 +17,7 @@ class EchoService:
         self.broker = broker
         self.store = store
         self.repository = repository
-        self.transcript_generator = TranscriptGenerator()
+        self.pipeline = EchoPipeline()
 
     @overload
     async def session(self, user: User, generate: Literal[True]) -> "SessionDelegate": ...
@@ -26,8 +27,8 @@ class EchoService:
     async def session(self, user: User, generate: bool = False) -> Optional["SessionDelegate"]:
         session = await self.store.echo.get_session(user.id)
         if session is None and generate:
-            transcripts = await self.transcript_generator()
-            session = EchoSessionState.init(user.id, transcripts)
+            scenario = await self.pipeline()
+            session = EchoSessionState.new(user.id, scenario)
             session = await self.store.echo.stash_session(session)
         session = cast(EchoSessionState, session)
         return EchoService.SessionDelegate(state=session, _service=self)
@@ -43,7 +44,7 @@ class EchoService:
             return self._completed
 
         async def refresh(self) -> None:
-            session = await self._service.store.echo.get_session(self.state.uid)
+            session = await self._service.store.echo.get_session(self.state._uid)
             assert session is not None, "session deleted unexpectedly"
             self.state = session
 
@@ -54,22 +55,22 @@ class EchoService:
                 analyze_echo,
                 task_id=f"{repr(self.state)}:pipeline::{audio_md5}",
                 audio_b64=audio_b64.decode(),
-                transcript=self.state.transcript,
+                session=self.state,
             )
             result = cast(Result | None, result)
             if result is not None:
                 result.pronunciation.with_transcript(self.state.transcript)
-                await self._service.store.echo.stash_session_attempt(
+                await self._service.store.echo.record_session_attempt(
                     self.state,
                     EchoSessionState.Attempt(
+                        **result.model_dump(),
                         audio_b64=audio_b64,
-                        result=result,
                     ),
                 )
             return result
 
         async def proceed(self) -> bool:
-            if self.state.progress < len(self.state.items) - 1:
+            if self.state.progress < len(self.state.transcripts) - 1:
                 await self._service.store.echo.increment_session_progress(self.state)
                 return True  # indicates has more
             # handle session completion

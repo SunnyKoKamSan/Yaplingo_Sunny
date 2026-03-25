@@ -29,6 +29,7 @@ dependencies = [
     "gtts",
     "phonemizer",
     "pycountry>=24.6.1",
+    "faster-whisper>=1.2.1",
 ]
 
 [tool.ruff]

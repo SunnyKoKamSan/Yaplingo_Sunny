@@ -12,7 +12,7 @@ export type Session = {
 export type Result = {
   feedback: string;
   pronunciation: Pronunciation & {
-    words: [string, Pronunciation][];
+    words: [string, Omit<Pronunciation, "words">][];
   };
 };
 

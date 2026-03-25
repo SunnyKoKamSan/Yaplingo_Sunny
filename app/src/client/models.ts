@@ -13,16 +13,18 @@ export type PronunciationAlignment = {
 };
 
 export type PronunciationDifference = {
-  operation: "replace" | "insert" | "delete";
+  operation: "~" | "+" | "-";
   word: string;
   expected?: string;
   predicted?: string;
 };
 
 export type Pronunciation = {
+  score: number;
   phonemes: string[];
   alignments: PronunciationAlignment[];
   differences: PronunciationDifference[];
+  words: [string, Pronunciation][];
 };
 
 export type Transcript = {
