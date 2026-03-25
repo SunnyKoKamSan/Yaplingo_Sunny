@@ -19,6 +19,8 @@ export type Session = {
 export type Turn = {
   index: number;
   audio: string;
+  context: ConversationUserMessage;
+  reply: ConversationAssistantMessage;
   pronunciation: Pronunciation;
   evaluation: Evaluation;
 };
@@ -56,11 +58,4 @@ export type EvaluationCriteria = {
   vocabulary: number;
 };
 
-export type Result = {
-  context: ConversationUserMessage;
-  reply: ConversationAssistantMessage;
-  pronunciation: Pronunciation;
-  evaluation: Evaluation;
-};
-
-export type Response = { type: "session"; response: Session } | { type: "result"; response: Result | null };
+export type Response = { type: "session"; response: Session } | { type: "turn"; response: Turn | null };

@@ -48,7 +48,6 @@ const StreakMeter = () => {
         <Text style={tw`text-5xl font-bold leading-[0] tracking-tighter text-orange-500`}>12</Text>
       </View>
       <Text style={tw`text-center text-xl font-medium text-orange-500`}>Day Streak</Text>
-      <Text style={tw`text-base font-medium text-orange-500/80`}>3 days until next milestone</Text>
     </View>
   );
 };

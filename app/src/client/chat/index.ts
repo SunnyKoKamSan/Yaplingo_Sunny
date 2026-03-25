@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import { createWebSocket } from "../client";
-import type { Response, Result, Session } from "./models";
+import type { Response, Session, Turn } from "./models";
 
 export enum ChatSessionStatus {
   LOADING,
-  READY_ATTEMPT,
-  PENDING_RESULT,
+  READY_TURN,
+  PENDING_TURN,
   FINISHED,
 }
 
@@ -18,7 +18,7 @@ export type ChatSession =
       data: undefined;
     }
   | {
-      status: ChatSessionStatus.READY_ATTEMPT | ChatSessionStatus.PENDING_RESULT;
+      status: ChatSessionStatus.READY_TURN | ChatSessionStatus.PENDING_TURN;
       data: Session;
     }
   | {
@@ -36,9 +36,9 @@ const reduceState = (state: State, [type, payload]: Action): State => {
   switch (type) {
     case "SUBMIT": {
       return {
-        status: ChatSessionStatus.PENDING_RESULT,
+        status: ChatSessionStatus.PENDING_TURN,
         data: state.data as Session,
-        next: "result",
+        next: "turn",
       };
     }
     case "RECEIVE": {
@@ -46,16 +46,16 @@ const reduceState = (state: State, [type, payload]: Action): State => {
       switch (type) {
         case "session": {
           return {
-            status: response.finished ? ChatSessionStatus.FINISHED : ChatSessionStatus.READY_ATTEMPT,
+            status: response.finished ? ChatSessionStatus.FINISHED : ChatSessionStatus.READY_TURN,
             data: response,
-            next: response.finished ? undefined : "result",
+            next: response.finished ? undefined : "turn",
           };
         }
-        case "result": {
+        case "turn": {
           return {
-            status: ChatSessionStatus.READY_ATTEMPT,
+            status: ChatSessionStatus.READY_TURN,
             data: state.data as Session,
-            next: response === null ? "result" : "session",
+            next: response === null ? "turn" : "session",
           };
         }
       }
@@ -71,7 +71,7 @@ const initialState: State = {
 
 export const useChatSession = ({ onClose }: { onClose?: (status: ChatSessionStatus) => void }) => {
   const ws = useRef<WebSocket>(undefined);
-  const resolveSubmit = useRef<(result: Result | null) => void>(undefined);
+  const resolveSubmit = useRef<(turn: Turn | null) => void>(undefined);
 
   const [state, dispatch] = useReducer(reduceState, initialState);
 
@@ -79,7 +79,7 @@ export const useChatSession = ({ onClose }: { onClose?: (status: ChatSessionStat
     try {
       const response = JSON.parse(data) as Response;
       dispatch(["RECEIVE", response]);
-      if (response.type === "result") {
+      if (response.type === "turn") {
         resolveSubmit.current?.(response.response);
         resolveSubmit.current = undefined;
       }
@@ -105,12 +105,12 @@ export const useChatSession = ({ onClose }: { onClose?: (status: ChatSessionStat
     }
   }, []);
 
-  const submit = useCallback(
-    (audio: string): Promise<Result | null> => {
+  const turn = useCallback(
+    (audio: string): Promise<Turn | null> => {
       return new Promise((resolve) => {
         if (!ws.current) throw new Error("WebSocket undefined");
-        if (state.status !== ChatSessionStatus.READY_ATTEMPT) {
-          throw new Error("session not ready for attempt");
+        if (state.status !== ChatSessionStatus.READY_TURN) {
+          throw new Error("session not ready for turn");
         }
         resolveSubmit.current = resolve;
         ws.current.send(JSON.stringify({ type: "audio", input: audio }));
@@ -146,7 +146,7 @@ export const useChatSession = ({ onClose }: { onClose?: (status: ChatSessionStat
       status: state.status,
       data: state.data,
     } as ChatSession,
-    submit,
+    turn,
     abort,
     end,
   } as const;

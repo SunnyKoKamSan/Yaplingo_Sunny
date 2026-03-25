@@ -167,7 +167,7 @@ const TurnSheet = ({
       initialDetentIndex={0}
       initialDetentAnimated={true}
       onWillDismiss={onWillDismiss}>
-      <ScrollView contentContainerStyle={tw`gap-8 p-4`}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`gap-8 p-4`}>
         <View style={tw`mt-8`}>
           <Text
             style={[
@@ -295,7 +295,7 @@ export default function MainLearnChatScreen() {
 
   const [selection, setSelection] = useState<Turn | null>(null);
 
-  const { session, submit, abort, end } = useChatSession({
+  const { session, turn, abort, end } = useChatSession({
     onClose: () => {
       if (router.canDismiss()) router.dismissAll();
     },
@@ -342,7 +342,7 @@ export default function MainLearnChatScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (recorder.uri && duration >= RECORDING_DURATION_THRESHOLD) {
       const audio = await getLocalFileBase64(recorder.uri);
-      const result = await submit(audio);
+      const result = await turn(audio);
       if (result === null) Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
     }
   };
@@ -402,7 +402,7 @@ export default function MainLearnChatScreen() {
                   tw.style(
                     "absolute left-1/2 -translate-x-1/2 rounded-full p-4",
                     pressed && "opacity-80",
-                    session.status === ChatSessionStatus.READY_ATTEMPT
+                    session.status === ChatSessionStatus.READY_TURN
                       ? recorderState.isRecording
                         ? "bg-red-500"
                         : "bg-green-500"
@@ -411,8 +411,8 @@ export default function MainLearnChatScreen() {
                 }
                 onLongPress={handleStartRecording}
                 onPressOut={handleStopRecording}
-                disabled={session.status !== ChatSessionStatus.READY_ATTEMPT}>
-                {session.status === ChatSessionStatus.READY_ATTEMPT ? (
+                disabled={session.status !== ChatSessionStatus.READY_TURN}>
+                {session.status === ChatSessionStatus.READY_TURN ? (
                   recorderState.isRecording ? (
                     <AudioLinesIcon color="white" size={32} />
                   ) : (
@@ -426,9 +426,9 @@ export default function MainLearnChatScreen() {
             <Text
               style={tw.style(
                 "absolute bottom-0 text-sm font-medium",
-                session.status === ChatSessionStatus.PENDING_RESULT && "text-neutral-500",
+                session.status === ChatSessionStatus.PENDING_TURN && "text-neutral-500",
               )}>
-              {session.status === ChatSessionStatus.PENDING_RESULT
+              {session.status === ChatSessionStatus.PENDING_TURN
                 ? "Processing your speech..."
                 : !recorderState.isRecording
                   ? "Hold to Speak"

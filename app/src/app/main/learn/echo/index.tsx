@@ -447,6 +447,7 @@ export default function MainLearnEchoScreen() {
   };
 
   const handlePlayback = () => {
+    // FIXME: playback audio from attempt instead
     setPlaybacking(true);
     player.replace(recorder.uri!);
     player.seekTo(0);

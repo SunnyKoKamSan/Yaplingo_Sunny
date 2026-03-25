@@ -3,7 +3,6 @@ from typing import Any
 
 from pydantic import Base64Bytes, BaseModel
 
-from server.core.models.chat import Result
 from server.models import ChatSessionState
 
 
@@ -19,24 +18,24 @@ class ChatInput(BaseModel):
 class ChatResponse(BaseModel):
     class Type(str, Enum):
         SESSION = "session"
-        RESULT = "result"
+        TURN = "turn"
 
     class SessionResponse(ChatSessionState): ...
 
-    class ResultResponse(Result): ...
+    class TurnResponse(ChatSessionState.Turn): ...
 
     type: Type
-    response: SessionResponse | ResultResponse | None
+    response: SessionResponse | TurnResponse | None
 
     @classmethod
-    async def dump(cls, data: ChatSessionState | Result | None) -> dict[str, Any]:
+    async def dump(cls, data: ChatSessionState | ChatSessionState.Turn | None) -> dict[str, Any]:
         match data:
             case ChatSessionState():
                 t = ChatResponse.Type.SESSION
                 response = ChatResponse.SessionResponse(**data.model_dump())
-            case Result() | None:
-                t = ChatResponse.Type.RESULT
-                response = ChatResponse.ResultResponse(**data.model_dump()) if data else None
+            case ChatSessionState.Turn() | None:
+                t = ChatResponse.Type.TURN
+                response = ChatResponse.TurnResponse(**data.model_dump()) if data else None
         return cls(type=t, response=response).model_dump(mode="json")
 
 

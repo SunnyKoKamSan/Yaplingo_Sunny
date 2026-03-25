@@ -42,7 +42,8 @@ class ChatService:
             assert session is not None, "session deleted unexpectedly"
             self.state = session
 
-        async def submit(self, audio: bytes) -> Result | None:
+        async def turn(self, audio: bytes) -> ChatSessionState.Turn | None:
+            assert not self.state.finished, "session already finished"
             audio_b64 = base64.b64encode(audio)
             audio_md5 = hashlib.md5(audio).hexdigest()
             result = await self._service.broker.execute(
@@ -53,15 +54,13 @@ class ChatService:
             )
             result = cast(Result | None, result)
             if result is not None:
-                await self._service.store.chat.record_session_turn(
-                    self.state,
-                    ChatSessionState.Turn(
-                        **result.model_dump(),
-                        index=len(self.state.conversation.messages),
-                        audio_b64=audio_b64,
-                    ),
+                turn = ChatSessionState.Turn(
+                    **result.model_dump(),
+                    index=len(self.state.conversation.messages),
+                    audio_b64=audio_b64,
                 )
-            return result
+                await self._service.store.chat.record_session_turn(self.state, turn)
+                return turn
 
         async def abort(self) -> None:
             await self._service.store.chat.discard_session(self.state)

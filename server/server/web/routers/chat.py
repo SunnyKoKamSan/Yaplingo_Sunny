@@ -45,9 +45,9 @@ async def websocket_session(
                 match input.type:
                     case ChatInput.Type.AUDIO:
                         assert input.input is not None, "audio input cannot be none"
-                        result = await session.submit(input.input)
-                        await send_response(result)
-                        if result is not None:
+                        turn = await session.turn(input.input)
+                        await send_response(turn)
+                        if turn is not None:
                             break
                     case ChatInput.Type.ABORT:
                         return await session.abort()
