@@ -39,9 +39,7 @@ class EchoResponse(BaseModel):
         match data:
             case EchoSessionState():
                 t = EchoResponse.Type.SESSION
-                # FIXME: get transcript audio
                 response = EchoResponse.SessionResponse(**data.model_dump())
-                # response.scenario.transcripts = []  # hide future transcripts from client
             case EchoSessionState.Attempt() | None:
                 t = EchoResponse.Type.ATTEMPT
                 if data is None:

@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { ScrollView, useColorScheme, View, type ScrollViewProps } from "react-native";
 import tw from "twrnc";
 
-import Text from "./Text";
-import Tooltip from "./Tooltip";
+import { Text, Tooltip } from "./primitives";
 
 type Entry = { date: Date; count: number };
 

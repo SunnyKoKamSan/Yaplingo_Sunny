@@ -5,7 +5,7 @@ import { LockIcon, UserIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 import { useLoginMutation } from "~/client";
-import { Spinner, Text, TextInput } from "~/components/";
+import { Spinner, Text, TextInput } from "~/components/primitives";
 import { useFormReducer, useNavigationOptions } from "~/hooks";
 
 const Header = () => (

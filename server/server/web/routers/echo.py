@@ -36,6 +36,7 @@ async def websocket_session(
     session = await service.echo.session(user, generate=True)
 
     try:
+        await session.prepare()
         await send_response(session.state)
         while not session.state.completed:
             while True:
@@ -52,6 +53,7 @@ async def websocket_session(
                         await send_response(result)
             await session.proceed()
             await session.refresh()
+            await session.prepare()
             await send_response(session.state)
         summary = await session.complete()
         await send_response(summary)

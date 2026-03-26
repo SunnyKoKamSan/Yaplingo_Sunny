@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import tw from "twrnc";
 
 import { useRegisterMutation } from "~/client";
-import { Spinner, Text, TextInput } from "~/components/";
+import { Spinner, Text, TextInput } from "~/components/primitives";
 import { useFormReducer, useNavigationOptions } from "~/hooks";
 
 const Header = () => (

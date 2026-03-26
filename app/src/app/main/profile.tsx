@@ -4,7 +4,7 @@ import { useSetAtom } from "jotai";
 import tw from "twrnc";
 
 import { useAuthedUserQuery } from "~/client";
-import { Button, Text } from "~/components";
+import { Button, Text } from "~/components/primitives";
 import { $token } from "~/store";
 
 export default function MainProfileScreen() {

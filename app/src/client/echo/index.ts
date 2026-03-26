@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback } from "react";
 
-import { createWebSocket } from "../client";
+import useSession from "../useSession";
 import type { Attempt, Response, Session, Summary } from "./models";
 
 export enum EchoSessionStatus {
@@ -11,8 +11,6 @@ export enum EchoSessionStatus {
   READY_NEXT,
   COMPLETED,
 }
-
-export type EchoSessionData = EchoSession["data"];
 
 export type EchoSession =
   | {
@@ -32,9 +30,7 @@ export type EchoSession =
       data: Session & { summary: Summary };
     };
 
-type State = EchoSession & {
-  next?: Response["type"];
-};
+type State = EchoSession & { next?: Response["type"] };
 
 type Action = ["SUBMIT"] | ["PROCEED"] | ["RECEIVE", Response];
 
@@ -100,92 +96,38 @@ const initialState: State = {
 };
 
 export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStatus) => void }) => {
-  const ws = useRef<WebSocket>(undefined);
-  const resolveSubmit = useRef<(attempt: Attempt | null) => void>(undefined);
-
-  const [state, dispatch] = useReducer(reduceState, initialState);
-
-  const handleMessage = useRef(async ({ data }: { data: any }) => {
-    try {
-      const response = JSON.parse(data) as Response;
-      dispatch(["RECEIVE", response]);
-      if (response.type === "attempt") {
-        resolveSubmit.current?.(response.response);
-        resolveSubmit.current = undefined;
-      }
-    } catch {}
-  });
-
-  const handleClose = useRef(() => {
-    ws.current = undefined;
-    onClose?.(state.status);
-  });
-
-  const open = useCallback(() => {
-    if (ws.current) ws.current.close();
-    ws.current = createWebSocket("echo/ws");
-    ws.current.onmessage = handleMessage.current;
-    ws.current.onclose = handleClose.current;
-  }, []);
-
-  const close = useCallback(() => {
-    if (ws.current) {
-      ws.current.close();
-      ws.current = undefined;
-    }
-  }, []);
-
-  const attempt = useCallback(
-    (audio: string): Promise<Attempt | null> => {
-      return new Promise((resolve) => {
-        if (!ws.current) throw new Error("WebSocket undefined");
-        if (state.status !== EchoSessionStatus.READY_ATTEMPT) {
-          throw new Error("session not ready for attempt");
-        }
-        resolveSubmit.current = resolve;
-        ws.current.send(JSON.stringify({ type: "audio", input: audio }));
-        dispatch(["SUBMIT"]);
-      });
+  const { state, _dispatch, send, submit, abort, end } = useSession<
+    EchoSessionStatus,
+    State,
+    Action,
+    Response,
+    Attempt | null
+  >(
+    {
+      endpoint: "echo/ws",
+      initialState,
+      reduceState,
+      readyStatus: EchoSessionStatus.READY_ATTEMPT,
+      completedStatus: EchoSessionStatus.COMPLETED,
+      submitResponseType: "attempt",
     },
-    [state.status],
+    { onClose },
   );
 
   const proceed = useCallback(() => {
-    if (!ws.current) throw new Error("WebSocket undefined");
     if (![EchoSessionStatus.READY_NEXT, EchoSessionStatus.READY_ATTEMPT].includes(state.status)) {
       throw new Error("session not ready to proceed");
     }
-    ws.current.send(JSON.stringify({ type: "next" }));
-    dispatch(["PROCEED"]);
-  }, [state.status]);
-
-  const abort = useCallback(() => {
-    // FIXME: handle abort during loading new session
-    if (!ws.current) throw new Error("WebSocket undefined");
-    ws.current.send(JSON.stringify({ type: "abort" }));
-    close();
-  }, [close]);
-
-  const end = useCallback(() => {
-    if (!ws.current) throw new Error("WebSocket undefined");
-    if (state.status !== EchoSessionStatus.COMPLETED) {
-      throw new Error("session not completed");
-    }
-    ws.current.send(""); // acknowledge completion
-    close();
-  }, [state.status, close]);
-
-  useEffect(() => {
-    open();
-    return () => close();
-  }, [open, close]);
+    send({ type: "next" });
+    _dispatch(["PROCEED"]);
+  }, [state.status, send, _dispatch]);
 
   return {
     session: {
       status: state.status,
       data: state.data,
     } as EchoSession,
-    attempt,
+    submit,
     proceed,
     abort,
     end,

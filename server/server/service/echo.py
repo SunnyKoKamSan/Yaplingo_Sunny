@@ -38,6 +38,10 @@ class EchoService:
             self.state = state
             self._service = _service
 
+        async def prepare(self) -> None:
+            if not self.state.completed:
+                await self.state.transcript.get_audio()
+
         async def refresh(self) -> None:
             session = await self._service.store.echo.get_session(self.state._uid)
             assert session is not None, "session deleted unexpectedly"

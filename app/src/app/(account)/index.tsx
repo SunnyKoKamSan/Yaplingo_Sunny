@@ -3,7 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import tw from "twrnc";
 
-import { Text } from "~/components";
+import { Text } from "~/components/primitives";
 
 export default function AccountIndexScreen() {
   const router = useRouter();

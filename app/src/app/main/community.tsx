@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import tw from "twrnc";
 
-import { Text } from "~/components";
+import { Text } from "~/components/primitives";
 
 export default function MainCommunityScreen() {
   return (

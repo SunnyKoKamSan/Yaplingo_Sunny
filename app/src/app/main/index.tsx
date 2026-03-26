@@ -5,7 +5,8 @@ import { CalendarIcon, FlameIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 import { useAuthedUserQuery } from "~/client";
-import { Heatmap, Text } from "~/components";
+import { Heatmap } from "~/components";
+import { Text } from "~/components/primitives";
 import { useNavigationOptions } from "~/hooks";
 
 const Header = () => {

@@ -17,8 +17,8 @@ services:
         condition: service_healthy
       store:
         condition: service_healthy
-    models:
-      - llm
+    # models:
+    #   - llm
     tty: true
 
   worker:
@@ -35,8 +35,8 @@ services:
         condition: service_healthy
       store:
         condition: service_healthy
-    models:
-      - llm
+    # models:
+    #   - llm
     tty: true
 
   database:
@@ -75,8 +75,8 @@ volumes:
   redis:
   cache: # persist model cache between restarts
 
-models:
-  llm:
-    model: ai/llama3.1
-    runtime_flags:
-      - "--no-prefill-assistant"
+# models:
+#   llm:
+#     model: ai/llama3.1
+#     runtime_flags:
+#       - "--no-prefill-assistant"

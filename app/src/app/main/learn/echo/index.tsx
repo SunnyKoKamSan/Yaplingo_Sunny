@@ -15,74 +15,34 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { useTheme } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  AudioQuality,
-  setAudioModeAsync,
-  useAudioPlayer,
-  useAudioPlayerStatus,
-  useAudioRecorder,
-  useAudioRecorderState,
-  type RecordingOptions,
-} from "expo-audio";
-import * as Haptics from "expo-haptics";
+import type { RecorderState } from "expo-audio";
 import { useRouter } from "expo-router";
-import Color from "color";
-import {
-  ArrowRightIcon,
-  AudioLinesIcon,
-  ChevronDown,
-  ChevronUp,
-  EarIcon,
-  FlipHorizontalIcon,
-  MicIcon,
-  PlayIcon,
-  RedoIcon,
-  StarsIcon,
-  XIcon,
-} from "lucide-react-native";
+import { ArrowRightIcon, EarIcon, FlipHorizontalIcon, PlayIcon, RedoIcon, StarsIcon, XIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 import { EchoSessionStatus, useEchoSession, type Attempt, type EchoSession } from "~/client/echo";
-import { Spinner, Text } from "~/components";
-import { useNavigationOptions } from "~/hooks";
-import { getLocalFileBase64 } from "~/utils";
-
-const RECORDING_DURATION_THRESHOLD = 1500; // ms
-
-const RECORDING_OPTIONS: RecordingOptions = {
-  extension: ".wav",
-  bitRate: 128_000,
-  sampleRate: 48_000,
-  numberOfChannels: 1,
-  ios: {
-    extension: ".wav",
-    outputFormat: "lpcm",
-    audioQuality: AudioQuality.HIGH,
-  },
-  android: {
-    outputFormat: "aac_adts",
-    audioEncoder: "aac",
-  },
-  web: {},
-};
+import { LoadingView, PronunciationBreakdown, RecordButton } from "~/components";
+import { Spinner, Text } from "~/components/primitives";
+import { useAudio, useNavigationOptions } from "~/hooks";
+import { getScoreColor } from "~/utils";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const Header = ({
   session,
-  isRecording,
+  recorderState,
   onProceed,
   onClose,
 }: {
   session: EchoSession;
-  isRecording: boolean;
+  recorderState: RecorderState;
   onProceed: () => void;
   onClose: () => void;
 }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
-  const disableProceed = isRecording || session.status === EchoSessionStatus.PENDING_ATTEMPT;
+  const disableProceed = recorderState.isRecording || session.status === EchoSessionStatus.PENDING_ATTEMPT;
 
   return (
     <>
@@ -142,18 +102,6 @@ const Header = ({
   );
 };
 
-const calculateScorePercentage = (scores: { score: number }[]) => {
-  if (scores.length === 0) return 0;
-  const total = scores.reduce((a, b) => a + b.score, 0);
-  return Math.round((total / scores.length) * 100);
-};
-
-const getScoreColor = (x: number) => {
-  if (x >= 75) return tw.color("green-500");
-  if (x >= 50) return tw.color("yellow-500");
-  return tw.color("red-500");
-};
-
 const AttemptSheet = ({
   ref,
   attempt,
@@ -165,11 +113,9 @@ const AttemptSheet = ({
 }) => {
   const theme = useTheme();
 
-  const [selection, setSelection] = useState<number | null>(null);
-
   const score = useMemo(() => {
-    const percentage = calculateScorePercentage(attempt.pronunciation.alignments);
-    const color = getScoreColor(percentage);
+    const color = getScoreColor(attempt.pronunciation.score);
+    const percentage = Math.round(attempt.pronunciation.score * 100);
     let message = "bruh";
     if (percentage >= 90) message = "tuff";
     else if (percentage >= 75) message = "bro slayed";
@@ -195,61 +141,7 @@ const AttemptSheet = ({
         <View style={[tw`rounded-2xl p-4`, { backgroundColor: theme.colors.background }]}>
           <Text style={tw`text-base`}>{attempt.feedback}</Text>
         </View>
-        <View style={tw`gap-2.5`}>
-          {attempt.pronunciation.words.map(([word, { phonemes, alignments, differences }], index) => {
-            const percentage = calculateScorePercentage(alignments);
-            const color = getScoreColor(percentage);
-            return (
-              <Pressable
-                key={index}
-                onPress={() => setSelection(selection === index ? null : index)}
-                style={tw.style(
-                  "gap-2 rounded-2xl border px-4 py-2",
-                  selection === index ? "border-zinc-500" : "border-zinc-500/50",
-                  { backgroundColor: theme.colors.background },
-                )}>
-                <View style={tw`flex-row items-center justify-between`}>
-                  <View style={tw`flex-row items-center gap-4`}>
-                    <Text style={tw`text-lg font-bold`}>{word}</Text>
-                    <Text style={[tw`text-lg`, { color }]}>{percentage}%</Text>
-                  </View>
-                  {selection === index ? (
-                    <ChevronUp size={18} color={tw.color("zinc-500")} />
-                  ) : (
-                    <ChevronDown size={18} color={tw.color("zinc-500/50")} />
-                  )}
-                </View>
-                {selection === index && (
-                  <View style={tw`gap-1`}>
-                    <View style={tw`flex-row items-center gap-4`}>
-                      <Text style={tw`text-base`}>Expected:</Text>
-                      <View style={tw`flex-row items-center gap-0.5`}>
-                        {alignments.map(({ token, score }, key) => {
-                          const color = Color(getScoreColor(score * 100)).alpha(0.5);
-                          return (
-                            <View key={key} style={[tw`rounded px-1 py-0.5`, { backgroundColor: color.toString() }]}>
-                              <Text style={[tw`text-base`, { fontFamily: "" }]}>{token}</Text>
-                            </View>
-                          );
-                        })}
-                      </View>
-                    </View>
-                    <View style={tw`flex-row items-center gap-4`}>
-                      <Text style={tw`text-base`}>Predicted:</Text>
-                      <View style={tw`flex-row items-center gap-0.5`}>
-                        {phonemes.map((token, key) => (
-                          <View key={key} style={tw`rounded bg-zinc-500/50 px-1 py-0.5`}>
-                            <Text style={[tw`text-base`, { fontFamily: "" }]}>{token}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
+        <PronunciationBreakdown pronunciation={attempt.pronunciation} />
       </ScrollView>
     </TrueSheet>
   );
@@ -297,8 +189,7 @@ const SummaryView = ({ session }: { session: Extract<EchoSession, { status: Echo
             {session.data.scenario.transcripts.map((transcript, index) => {
               const attempts = session.data.attempts[index];
               const attempt = attempts[0];
-              const percentage = attempt ? calculateScorePercentage(attempt.pronunciation.alignments) : null;
-              const color = percentage !== null ? getScoreColor(percentage) : undefined;
+              const color = attempt ? getScoreColor(attempt.pronunciation.score) : undefined;
               return (
                 <Pressable
                   key={index}
@@ -312,7 +203,9 @@ const SummaryView = ({ session }: { session: Extract<EchoSession, { status: Echo
                     {transcript.text}
                   </Text>
                   {attempts.length > 0 ? (
-                    <Text style={[tw`text-xl font-medium`, { color }]}>{`${percentage}%`}</Text>
+                    <Text style={[tw`text-xl font-medium`, { color }]}>
+                      {`${Math.round(attempt.pronunciation.score * 100)}%`}
+                    </Text>
                   ) : (
                     <XIcon color={tw.color("red-500")} size={20} strokeWidth={2.5} />
                   )}
@@ -332,20 +225,12 @@ export default function MainLearnEchoScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const client = useQueryClient();
-  const player = useAudioPlayer();
-  const playerStatus = useAudioPlayerStatus(player);
-  const recorder = useAudioRecorder(RECORDING_OPTIONS);
-  const recorderState = useAudioRecorderState(recorder);
 
   const sheet = useRef<TrueSheet>(null);
 
-  const {
-    session,
-    attempt: submit,
-    proceed,
-    abort,
-    end,
-  } = useEchoSession({
+  const audio = useAudio();
+
+  const { session, submit, proceed, abort, end } = useEchoSession({
     onClose: () => {
       if (router.canDismiss()) router.dismissAll();
       // refresh user activity after session complete
@@ -378,7 +263,7 @@ export default function MainLearnEchoScreen() {
   const handleProceed = () => {
     const callback = () => {
       proceed();
-      player.replace("");
+      audio.player.replace("");
       _flipped.value = false;
     };
     if (attempt) {
@@ -409,58 +294,28 @@ export default function MainLearnEchoScreen() {
 
   useNavigationOptions({
     header: () => (
-      <Header
-        session={session}
-        isRecording={recorderState.isRecording}
-        onProceed={handleProceed}
-        onClose={handleClose}
-      />
+      <Header session={session} recorderState={audio.recorderState} onProceed={handleProceed} onClose={handleClose} />
     ),
   });
 
   const handlePronounce = () => {
     setPlaybacking(false);
-    player.replace(transcript!.audio);
-    player.seekTo(0);
-    player.play();
-  };
-
-  const handleStartRecording = async () => {
-    player.replace("");
-    {
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
-      await recorder.prepareToRecordAsync();
-      recorder.record();
-    }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
-  };
-
-  const handleStopRecording = async () => {
-    const duration = recorderState.durationMillis;
-    {
-      await recorder.stop();
-      await setAudioModeAsync({
-        allowsRecording: false,
-        playsInSilentMode: true,
-      });
-    }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (recorder.uri && duration >= RECORDING_DURATION_THRESHOLD) {
-      const audio = await getLocalFileBase64(recorder.uri);
-      const result = await submit(audio);
-      if (result === null) Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
-    }
+    audio.player.replace(transcript!.audio);
+    audio.player.seekTo(0);
+    audio.player.play();
   };
 
   const handlePlayback = () => {
     // FIXME: playback audio from attempt instead
     setPlaybacking(true);
-    player.replace(recorder.uri!);
-    player.seekTo(0);
-    player.play();
+    audio.player.replace(audio.recorder.uri!);
+    audio.player.seekTo(0);
+    audio.player.play();
+  };
+
+  const handleSubmit = async (data: string) => {
+    const result = await submit(data);
+    if (result === null) Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
   };
 
   const frontCardAnimatedStyle = useAnimatedStyle(() => {
@@ -486,7 +341,7 @@ export default function MainLearnEchoScreen() {
         ? [
             attempt.pronunciation.words.map(([word, { alignments }], key) => {
               const score = alignments.reduce((a, b) => a + b.score, 0) / alignments.length;
-              const color = getScoreColor(score * 100);
+              const color = getScoreColor(score);
               return (
                 <Text key={key} style={{ color, fontFamily: "" }}>
                   {`${word} `}
@@ -495,7 +350,7 @@ export default function MainLearnEchoScreen() {
             }),
             attempt.pronunciation.words.map(([, { alignments }]) =>
               alignments.map(({ score, token }, key) => (
-                <Text key={key} style={{ color: getScoreColor(score * 100), fontFamily: "" }}>
+                <Text key={key} style={{ color: getScoreColor(score), fontFamily: "" }}>
                   {token}
                   {key + 1 === alignments.length ? " " : null}
                 </Text>
@@ -516,12 +371,7 @@ export default function MainLearnEchoScreen() {
   return (
     <View style={[tw`flex-1 items-center justify-between gap-4 p-4`, { paddingBottom: insets.bottom }]}>
       {session.status === EchoSessionStatus.LOADING_NEW ? (
-        <View style={tw`w-4/6 flex-grow items-center justify-center gap-8`}>
-          <Spinner size={48} />
-          <Text style={tw`text-center text-base font-medium leading-tight text-neutral-500`}>
-            Please ensure you are in a quiet environment for the best experience.
-          </Text>
-        </View>
+        <LoadingView />
       ) : (
         <>
           <View style={tw`rounded-xl border-2 border-zinc-500/50 p-3`}>
@@ -602,56 +452,24 @@ export default function MainLearnEchoScreen() {
                         tw.style(
                           "mx-auto rounded-full bg-sky-500 p-4",
                           pressed && "opacity-80",
-                          playerStatus.playing && playbacking && "opacity-50",
+                          audio.playerStatus.playing && playbacking && "opacity-50",
                         )
                       }
-                      disabled={playerStatus.playing && playbacking}
+                      disabled={audio.playerStatus.playing && playbacking}
                       onPress={handlePlayback}>
                       <PlayIcon color="white" fill="white" size={32} />
                     </Pressable>
-                    {!(playerStatus.playing && playbacking) && (
+                    {!(audio.playerStatus.playing && playbacking) && (
                       <Text style={tw`absolute bottom-0 text-sm font-medium`}>Playback Your Speech</Text>
                     )}
                   </>
                 ) : (
-                  <>
-                    <Pressable
-                      style={({ pressed }) =>
-                        tw.style(
-                          "mx-auto rounded-full p-4",
-                          pressed && "opacity-80",
-                          session.status === EchoSessionStatus.READY_ATTEMPT
-                            ? recorderState.isRecording
-                              ? "bg-red-500"
-                              : "bg-green-500"
-                            : "bg-transparent",
-                        )
-                      }
-                      onLongPress={handleStartRecording}
-                      onPressOut={handleStopRecording}
-                      disabled={session.status !== EchoSessionStatus.READY_ATTEMPT}>
-                      {session.status === EchoSessionStatus.READY_ATTEMPT ? (
-                        recorderState.isRecording ? (
-                          <AudioLinesIcon color="white" size={32} />
-                        ) : (
-                          <MicIcon color="white" size={32} />
-                        )
-                      ) : (
-                        <Spinner size={36} />
-                      )}
-                    </Pressable>
-                    <Text
-                      style={tw.style(
-                        "absolute bottom-0 text-sm font-medium",
-                        session.status === EchoSessionStatus.PENDING_ATTEMPT && "text-neutral-500",
-                      )}>
-                      {session.status === EchoSessionStatus.PENDING_ATTEMPT
-                        ? "Analyzing your pronunciation..."
-                        : !recorderState.isRecording
-                          ? "Hold to Speak"
-                          : ""}
-                    </Text>
-                  </>
+                  <RecordButton
+                    audio={audio}
+                    isPending={session.status === EchoSessionStatus.PENDING_ATTEMPT}
+                    pendingText="Analyzing your pronunciation..."
+                    onSubmit={handleSubmit}
+                  />
                 )}
               </View>
             </>

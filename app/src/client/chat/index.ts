@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef } from "react";
-
-import { createWebSocket } from "../client";
+import useSession from "../useSession";
 import type { Response, Session, Summary, Turn } from "./models";
 
 export enum ChatSessionStatus {
@@ -9,8 +7,6 @@ export enum ChatSessionStatus {
   PENDING_TURN,
   FINISHED,
 }
-
-export type ChatSessionData = ChatSession["data"];
 
 export type ChatSession =
   | {
@@ -26,9 +22,7 @@ export type ChatSession =
       data: Session & { summary: Summary };
     };
 
-type State = ChatSession & {
-  next?: Response["type"];
-};
+type State = ChatSession & { next?: Response["type"] };
 
 type Action = ["SUBMIT"] | ["RECEIVE", Response];
 
@@ -82,83 +76,24 @@ const initialState: State = {
 };
 
 export const useChatSession = ({ onClose }: { onClose?: (status: ChatSessionStatus) => void }) => {
-  const ws = useRef<WebSocket>(undefined);
-  const resolveSubmit = useRef<(turn: Turn | null) => void>(undefined);
-
-  const [state, dispatch] = useReducer(reduceState, initialState);
-
-  const handleMessage = useRef(async ({ data }: { data: any }) => {
-    try {
-      const response = JSON.parse(data) as Response;
-      dispatch(["RECEIVE", response]);
-      if (response.type === "turn") {
-        resolveSubmit.current?.(response.response);
-        resolveSubmit.current = undefined;
-      }
-    } catch {}
-  });
-
-  const handleClose = useRef(() => {
-    ws.current = undefined;
-    onClose?.(state.status);
-  });
-
-  const open = useCallback(() => {
-    if (ws.current) ws.current.close();
-    ws.current = createWebSocket("chat/ws");
-    ws.current.onmessage = handleMessage.current;
-    ws.current.onclose = handleClose.current;
-  }, []);
-
-  const close = useCallback(() => {
-    if (ws.current) {
-      ws.current.close();
-      ws.current = undefined;
-    }
-  }, []);
-
-  const turn = useCallback(
-    (audio: string): Promise<Turn | null> => {
-      return new Promise((resolve) => {
-        if (!ws.current) throw new Error("WebSocket undefined");
-        if (state.status !== ChatSessionStatus.READY_TURN) {
-          throw new Error("session not ready for turn");
-        }
-        resolveSubmit.current = resolve;
-        ws.current.send(JSON.stringify({ type: "audio", input: audio }));
-        dispatch(["SUBMIT"]);
-      });
+  const { state, submit, abort, end } = useSession<ChatSessionStatus, State, Action, Response, Turn | null>(
+    {
+      endpoint: "chat/ws",
+      initialState,
+      reduceState,
+      readyStatus: ChatSessionStatus.READY_TURN,
+      completedStatus: ChatSessionStatus.FINISHED,
+      submitResponseType: "turn",
     },
-    [state.status],
+    { onClose },
   );
-
-  const abort = useCallback(() => {
-    // FIXME: handle abort during loading
-    if (!ws.current) throw new Error("WebSocket undefined");
-    ws.current.send(JSON.stringify({ type: "abort" }));
-    close();
-  }, [close]);
-
-  const end = useCallback(() => {
-    if (!ws.current) throw new Error("WebSocket undefined");
-    if (state.status !== ChatSessionStatus.FINISHED) {
-      throw new Error("session not completed");
-    }
-    ws.current.send(""); // acknowledge completion
-    close();
-  }, [state.status, close]);
-
-  useEffect(() => {
-    open();
-    return () => close();
-  }, [open, close]);
 
   return {
     session: {
       status: state.status,
       data: state.data,
     } as ChatSession,
-    turn,
+    submit,
     abort,
     end,
   } as const;

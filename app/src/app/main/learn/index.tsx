@@ -4,7 +4,7 @@ import { useTheme } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import tw from "twrnc";
 
-import { Button, Text } from "~/components";
+import { Button, Text } from "~/components/primitives";
 import { useNavigationOptions } from "~/hooks";
 
 type Mode = {

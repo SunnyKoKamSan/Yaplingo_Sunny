@@ -1,8 +1,4 @@
-export { default as Text } from "./Text";
-export { default as Button } from "./Button";
-export { default as Spinner } from "./Spinner";
-export { default as Progress } from "./Progress";
-export { default as TextInput } from "./TextInput";
-export { default as Meter } from "./Meter";
 export { default as Heatmap } from "./Heatmap";
-export { default as Tooltip } from "./Tooltip";
+export { default as LoadingView } from "./LoadingView";
+export { default as RecordButton } from "./RecordButton";
+export { default as PronunciationBreakdown } from "./PronunciationBreakdown";
