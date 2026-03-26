@@ -1,15 +1,21 @@
 import type { Pronunciation, Transcript } from "../models";
 
-export type Session = {
-  total: number;
-  progress: number;
-  attempts: number[];
+export type Scenario = {
   topic: string;
   scenario: string;
-  transcript: Transcript;
+  transcripts: Transcript[];
 };
 
-export type Result = {
+export type Session = {
+  scenario: Scenario;
+  total: number;
+  progress: number;
+  attempts: Attempt[][];
+  completed: boolean;
+};
+
+export type Attempt = {
+  audio: string;
   feedback: string;
   pronunciation: Pronunciation & {
     words: [string, Omit<Pronunciation, "words">][];
@@ -17,14 +23,10 @@ export type Result = {
 };
 
 export type Summary = {
-  total: number;
-  topic: string;
-  scenario: string;
-  attempts: (Result & { audio: string })[][];
-  transcripts: Transcript[];
+  points: number;
 };
 
 export type Response =
   | { type: "session"; response: Session }
-  | { type: "result"; response: Result | null }
+  | { type: "attempt"; response: Attempt | null }
   | { type: "summary"; response: Summary };

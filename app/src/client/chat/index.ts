@@ -43,6 +43,9 @@ const reduceState = (state: State, [type, payload]: Action): State => {
     }
     case "RECEIVE": {
       const { type, response } = payload;
+      if (type !== state.next) {
+        throw new Error(`unexpected response type: ${type}, expected: ${state.next}`);
+      }
       switch (type) {
         case "session": {
           return {
@@ -52,9 +55,11 @@ const reduceState = (state: State, [type, payload]: Action): State => {
           };
         }
         case "turn": {
+          const session = state.data as Session;
+          const turns = response ? [...session.turns, response] : session.turns; // local optimistic update
           return {
             status: ChatSessionStatus.READY_TURN,
-            data: state.data as Session,
+            data: { ...session, turns },
             next: response === null ? "turn" : "session",
           };
         }

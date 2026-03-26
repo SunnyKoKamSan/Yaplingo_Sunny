@@ -294,7 +294,12 @@ export default function MainLearnChatScreen() {
 
   const [selection, setSelection] = useState<Turn | null>(null);
 
-  const { session, turn, abort, end } = useChatSession({
+  const {
+    session,
+    turn: submit,
+    abort,
+    end,
+  } = useChatSession({
     onClose: () => {
       if (router.canDismiss()) router.dismissAll();
     },
@@ -341,7 +346,7 @@ export default function MainLearnChatScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (recorder.uri && duration >= RECORDING_DURATION_THRESHOLD) {
       const audio = await getLocalFileBase64(recorder.uri);
-      const result = await turn(audio);
+      const result = await submit(audio);
       if (result === null) Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
     }
   };
@@ -386,7 +391,7 @@ export default function MainLearnChatScreen() {
               onPress={() => sheetTasks.current?.present()}
               style={({ pressed }) =>
                 tw.style(
-                  "absolute -top-12 flex-row items-center gap-1.5 rounded-full border-2 border-transparent bg-zinc-300 px-2.5 py-1.5 dark:bg-zinc-700",
+                  "absolute -top-12 flex-row items-center gap-1.5 rounded-full border-2 border-transparent bg-zinc-200 px-2.5 py-1.5 dark:bg-zinc-800",
                   pressed && "border-zinc-500/50",
                 )
               }>
@@ -397,7 +402,8 @@ export default function MainLearnChatScreen() {
             </Pressable>
             {session.status === ChatSessionStatus.FINISHED ? (
               <>
-                <Text style={tw`text-4xl font-bold text-sky-500`}>{`+${session.data.summary.points} XP`}</Text>
+                <Text
+                  style={tw`text-4xl font-bold tracking-tighter text-sky-500`}>{`+ ${session.data.summary.points} XP`}</Text>
                 <Text style={tw`text-xl font-medium`}>
                   {session.data.tasks.every((t) => t.completed) ? "all tasks completed" : "no turns left"}
                 </Text>

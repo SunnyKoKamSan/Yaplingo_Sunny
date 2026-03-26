@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import TYPE_CHECKING, Annotated, Any, Awaitable, cast
+from typing import TYPE_CHECKING, Any, Awaitable, cast
 
 from pydantic import Base64Bytes, BaseModel, ConfigDict, Field, PrivateAttr, computed_field
 from redis.asyncio import Redis
@@ -18,24 +18,20 @@ SESSION_TTL = timedelta(hours=1)
 
 class EchoSessionState(BaseModel):
     class Attempt(Result):
-        audio_b64: Annotated[
-            Base64Bytes,
-            Field(
-                serialization_alias="audio",
-                repr=False,
-            ),
-        ]
+        audio_b64: Base64Bytes = Field(serialization_alias="audio", repr=False)
 
         model_config = ConfigDict(frozen=True)
 
-    topic: str
-    scenario: str
-    transcripts: list[Transcript]
+    class Summary(BaseModel):
+        points: int
 
-    _uid: Annotated[ULID, PrivateAttr()]
+    _uid: ULID = PrivateAttr()
 
+    scenario: Scenario
     progress: int = 0
-    attempts: list[list[Attempt]]
+    attempts: list[list[Attempt]] = Field(
+        default_factory=lambda data: [[] for _ in range(len(data["scenario"].transcripts))]
+    )
 
     model_config = ConfigDict(frozen=True)
 
@@ -45,17 +41,10 @@ class EchoSessionState(BaseModel):
     def model_post_init(self, context: Any) -> None:
         super().model_post_init(context)
         # recover the `_transcript` private field in `Pronunciation` for each attempt result
-        #   because it was excluded from serialization to the store
+        #   because it was excluded from serialization to the store (Pydantic's private attribute)
         for index, attempts in enumerate(self.attempts):
             for attempt in attempts:
-                attempt.pronunciation.with_transcript(self.transcripts[index])
-
-    @classmethod
-    def new(cls, uid: ULID, scenario: Scenario) -> Self:
-        return cls(
-            **scenario.model_dump(),
-            attempts=[[] for _ in range(len(scenario.transcripts))],
-        ).with_uid(uid)
+                attempt.pronunciation.with_transcript(self.scenario.transcripts[index])
 
     def with_uid(self, uid: ULID) -> Self:
         self._uid = uid
@@ -64,19 +53,25 @@ class EchoSessionState(BaseModel):
     @computed_field
     @cached_property
     def total(self) -> int:
-        return len(self.transcripts)
+        return len(self.scenario.transcripts)
 
     @computed_field
+    @cached_property
+    def completed(self) -> bool:
+        # when `progress` (zero-based) exceeds `total`,
+        # needs final proceed to increment progress to equal `total` to mark completion
+        return self.progress >= self.total
+
     @cached_property
     def transcript(self) -> Transcript:
-        return self.transcripts[self.progress]
+        assert not self.completed, "session already completed"
+        return self.scenario.transcripts[self.progress]
 
-    @computed_field
     @cached_property
-    def attempted(self) -> int:
-        if self.progress >= len(self.attempts):
-            return 0
-        return len(self.attempts[self.progress])
+    def summary(self) -> Summary:
+        assert self.completed, "session not completed yet"
+        scores = [max(a.pronunciation.score for a in attempts) if attempts else 0 for attempts in self.attempts]
+        return EchoSessionState.Summary(points=int(sum(scores) * 100))
 
 
 class EchoStore:

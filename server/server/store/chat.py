@@ -1,7 +1,7 @@
 import itertools
 from datetime import timedelta
 from functools import cached_property
-from typing import Any, Awaitable, cast
+from typing import Awaitable, cast
 
 from pydantic import Base64Bytes, BaseModel, ConfigDict, Field, PrivateAttr, computed_field
 from redis.asyncio import Redis
@@ -19,10 +19,6 @@ class ChatSessionState(BaseModel):
         audio_b64: Base64Bytes = Field(serialization_alias="audio", repr=False)
 
         model_config = ConfigDict(frozen=True)
-
-        def model_post_init(self, context: Any) -> None:
-            super().model_post_init(context)
-            self.pronunciation.with_transcript(self.context.transcript)
 
     class Summary(BaseModel):
         points: int
@@ -106,7 +102,10 @@ class ChatStore:
         op = self._client.json().arrappend(
             repr(session),
             "$.turns",
-            turn.model_dump(mode="json", exclude_computed_fields=True),
+            turn.model_dump(
+                mode="json",
+                exclude_computed_fields=True,
+            ),
         )
         await cast(Awaitable[list[int | None]], op)
 

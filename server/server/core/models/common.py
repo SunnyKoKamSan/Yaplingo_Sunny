@@ -1,5 +1,5 @@
 import re
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
 from phonemizer import phonemize
 from phonemizer.punctuation import Punctuation
@@ -25,7 +25,7 @@ DIFFERENCE_CUTOFF = 0.75  # for filtering out differences with high enough confi
 
 class Transcript(BaseModel):
     text: str
-    audio: Annotated[str | None, Field(repr=False)] = None
+    audio: str | None = Field(default=None, repr=False)
 
     @computed_field
     @cached_property

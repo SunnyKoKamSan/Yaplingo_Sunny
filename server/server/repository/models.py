@@ -81,8 +81,8 @@ class EchoSession(SQLModel, table=True):
     def from_state(cls, state: EchoSessionState) -> Self:
         return cls(
             user_id=state._uid,
-            topic=state.topic,
-            scenario=state.scenario,
+            topic=state.scenario.topic,
+            scenario=state.scenario.scenario,
             transcripts=[
                 EchoTranscript(
                     index=index,
@@ -95,7 +95,7 @@ class EchoSession(SQLModel, table=True):
                         for attempt in state.attempts[index]
                     ],
                 )
-                for index, item in enumerate(state.transcripts)
+                for index, item in enumerate(state.scenario.transcripts)
             ],
         )
 

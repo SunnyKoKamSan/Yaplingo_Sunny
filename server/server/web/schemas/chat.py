@@ -34,7 +34,7 @@ class ChatResponse(BaseModel):
     response: SessionResponse | TurnResponse | SummaryResponse | None
 
     @classmethod
-    async def dump(cls, data: ChatOutputType) -> dict[str, Any]:
+    def dump(cls, data: ChatOutputType) -> dict[str, Any]:
         match data:
             case ChatSessionState():
                 t = ChatResponse.Type.SESSION

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import { createWebSocket } from "../client";
-import type { Response, Result, Session, Summary } from "./models";
+import type { Attempt, Response, Session, Summary } from "./models";
 
 export enum EchoSessionStatus {
   LOADING_NEW,
   LOADING_NEXT,
   READY_ATTEMPT,
-  PENDING_RESULT,
+  PENDING_ATTEMPT,
   READY_NEXT,
   COMPLETED,
 }
@@ -20,16 +20,16 @@ export type EchoSession =
       data: undefined;
     }
   | {
-      status: EchoSessionStatus.LOADING_NEXT | EchoSessionStatus.PENDING_RESULT;
+      status: EchoSessionStatus.LOADING_NEXT | EchoSessionStatus.PENDING_ATTEMPT;
       data: Session;
     }
   | {
       status: EchoSessionStatus.READY_ATTEMPT | EchoSessionStatus.READY_NEXT;
-      data: Session & { result?: Result | null };
+      data: Session;
     }
   | {
       status: EchoSessionStatus.COMPLETED;
-      data: Summary;
+      data: Session & { summary: Summary };
     };
 
 type State = EchoSession & {
@@ -43,9 +43,9 @@ const reduceState = (state: State, [type, payload]: Action): State => {
     case "SUBMIT": {
       const session = state.data as Session;
       return {
-        status: EchoSessionStatus.PENDING_RESULT,
+        status: EchoSessionStatus.PENDING_ATTEMPT,
         data: session,
-        next: "result",
+        next: "attempt",
       };
     }
     case "PROCEED": {
@@ -53,7 +53,7 @@ const reduceState = (state: State, [type, payload]: Action): State => {
       return {
         status: EchoSessionStatus.LOADING_NEXT,
         data: session,
-        next: session.progress < session.total - 1 ? "session" : "summary",
+        next: "session",
       };
     }
     case "RECEIVE": {
@@ -65,21 +65,26 @@ const reduceState = (state: State, [type, payload]: Action): State => {
         case "session": {
           return {
             status: EchoSessionStatus.READY_ATTEMPT,
-            data: response, // result not included
-            next: "result",
+            data: response,
+            next: response.completed ? "summary" : "attempt",
           };
         }
-        case "result": {
+        case "attempt": {
+          const session = state.data as Session;
+          const attempts = session.attempts.slice(); // copy
+          attempts[session.progress] = response
+            ? [...attempts[session.progress], response]
+            : attempts[session.progress]; // local optimistic update
           return {
             status: response !== null ? EchoSessionStatus.READY_NEXT : EchoSessionStatus.READY_ATTEMPT,
-            data: { ...(state.data as Session), result: response },
+            data: { ...session, attempts },
             next: "session",
           };
         }
         case "summary": {
           return {
             status: EchoSessionStatus.COMPLETED,
-            data: response,
+            data: { ...(state.data as Session), summary: response },
             next: undefined,
           };
         }
@@ -96,7 +101,7 @@ const initialState: State = {
 
 export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStatus) => void }) => {
   const ws = useRef<WebSocket>(undefined);
-  const resolveSubmit = useRef<(result: Result | null) => void>(undefined);
+  const resolveSubmit = useRef<(attempt: Attempt | null) => void>(undefined);
 
   const [state, dispatch] = useReducer(reduceState, initialState);
 
@@ -104,11 +109,11 @@ export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStat
     try {
       const response = JSON.parse(data) as Response;
       dispatch(["RECEIVE", response]);
-      if (response.type === "result") {
+      if (response.type === "attempt") {
         resolveSubmit.current?.(response.response);
         resolveSubmit.current = undefined;
       }
-    } catch {} // TODO: handle parsing error
+    } catch {}
   });
 
   const handleClose = useRef(() => {
@@ -130,8 +135,8 @@ export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStat
     }
   }, []);
 
-  const submit = useCallback(
-    (audio: string): Promise<Result | null> => {
+  const attempt = useCallback(
+    (audio: string): Promise<Attempt | null> => {
       return new Promise((resolve) => {
         if (!ws.current) throw new Error("WebSocket undefined");
         if (state.status !== EchoSessionStatus.READY_ATTEMPT) {
@@ -167,7 +172,7 @@ export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStat
       throw new Error("session not completed");
     }
     ws.current.send(""); // acknowledge completion
-    close(); // probably redundant since server should close the connection at this point
+    close();
   }, [state.status, close]);
 
   useEffect(() => {
@@ -180,7 +185,7 @@ export const useEchoSession = ({ onClose }: { onClose?: (status: EchoSessionStat
       status: state.status,
       data: state.data,
     } as EchoSession,
-    submit,
+    attempt,
     proceed,
     abort,
     end,

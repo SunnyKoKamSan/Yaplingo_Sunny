@@ -28,7 +28,7 @@ class EchoService:
         session = await self.store.echo.get_session(user.id)
         if session is None and generate:
             scenario = await self.pipeline()
-            session = EchoSessionState.new(user.id, scenario)
+            session = EchoSessionState(scenario=scenario).with_uid(user.id)
             session = await self.store.echo.stash_session(session)
         session = cast(EchoSessionState, session)
         return EchoService.SessionDelegate(state=session, _service=self)
@@ -37,18 +37,14 @@ class EchoService:
         def __init__(self, state: EchoSessionState, _service: "EchoService"):
             self.state = state
             self._service = _service
-            self._completed = False
-
-        @property
-        def completed(self) -> bool:
-            return self._completed
 
         async def refresh(self) -> None:
             session = await self._service.store.echo.get_session(self.state._uid)
             assert session is not None, "session deleted unexpectedly"
             self.state = session
 
-        async def attempt(self, audio: bytes) -> Result | None:
+        async def attempt(self, audio: bytes) -> EchoSessionState.Attempt | None:
+            assert not self.state.completed, "session already completed"
             audio_b64 = base64.b64encode(audio)
             audio_md5 = hashlib.md5(audio).hexdigest()
             result = await self._service.broker.execute(
@@ -59,25 +55,22 @@ class EchoService:
             )
             result = cast(Result | None, result)
             if result is not None:
-                result.pronunciation.with_transcript(self.state.transcript)
-                await self._service.store.echo.record_session_attempt(
-                    self.state,
-                    EchoSessionState.Attempt(
-                        **result.model_dump(),
-                        audio_b64=audio_b64,
-                    ),
+                attempt = EchoSessionState.Attempt(
+                    **result.model_dump(exclude={"pronunciation"}),
+                    audio_b64=audio_b64,
+                    pronunciation=result.pronunciation.with_transcript(self.state.transcript),
                 )
-            return result
+                await self._service.store.echo.record_session_attempt(self.state, attempt)
+                return attempt
 
-        async def proceed(self) -> bool:
-            if self.state.progress < len(self.state.transcripts) - 1:
-                await self._service.store.echo.increment_session_progress(self.state)
-                return True  # indicates has more
-            # handle session completion
-            self._completed = True
+        async def proceed(self) -> None:
+            assert not self.state.completed, "session already completed"
+            await self._service.store.echo.increment_session_progress(self.state)
+
+        async def complete(self) -> EchoSessionState.Summary:
             await self._service.repository.echo.save(EchoSession.from_state(self.state))
             await self._service.store.echo.discard_session(self.state)
-            return False  # indicates no more
+            return self.state.summary  # TODO: add points to user in repository
 
         async def abort(self) -> None:
             await self._service.store.echo.discard_session(self.state)

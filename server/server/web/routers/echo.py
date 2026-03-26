@@ -1,10 +1,9 @@
 from contextlib import asynccontextmanager
-from typing import Any
 
 from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect
 
 from ..dependencies import Service, User
-from ..schemas.echo import EchoInput, EchoResponse
+from ..schemas.echo import EchoInput, EchoOutputType, EchoResponse
 from ..websocket import SessionManager, Sessions
 
 
@@ -25,9 +24,8 @@ async def websocket_session(
     service: Service,
 ):
 
-    async def send_response(data: Any, t: EchoResponse.Type | None = None) -> None:
-        data = await EchoResponse.dump(data, t)
-        await ws.send_json(data)
+    async def send_response(data: EchoOutputType) -> None:
+        await ws.send_json(EchoResponse.dump(data))
 
     async def receive_input() -> EchoInput:
         data = await ws.receive_json()
@@ -38,27 +36,28 @@ async def websocket_session(
     session = await service.echo.session(user, generate=True)
 
     try:
-        while not session.completed:
-            if not session.state.attempted:
-                await send_response(session.state, EchoResponse.Type.SESSION)
-                while True:
-                    input = await receive_input()
-                    match input.type:
-                        case EchoInput.Type.NEXT:
-                            break
-                        case EchoInput.Type.ABORT:
-                            return await session.abort()
-                        case EchoInput.Type.AUDIO:
-                            assert input.input is not None, "audio input cannot be none"
-                            result = await session.attempt(input.input)
-                            await send_response(result)
-            if await session.proceed():
-                await session.refresh()
-            else:
-                await send_response(session.state, EchoResponse.Type.SUMMARY)
-                await ws.receive()  # wait for client to acknowledge completion before closing
+        await send_response(session.state)
+        while not session.state.completed:
+            while True:
+                input = await receive_input()
+                match input.type:
+                    case EchoInput.Type.NEXT:
+                        break
+                    case EchoInput.Type.ABORT:
+                        return await session.abort()
+                    case EchoInput.Type.AUDIO:
+                        if input.input is None:
+                            continue
+                        result = await session.attempt(input.input)
+                        await send_response(result)
+            await session.proceed()
+            await session.refresh()
+            await send_response(session.state)
+        summary = await session.complete()
+        await send_response(summary)
+        await ws.receive()
     except WebSocketDisconnect:
-        pass  # do not reraise on disconnect
+        ...
     finally:
         await sessions.close(user, ws)
 

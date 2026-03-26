@@ -25,7 +25,7 @@ async def websocket_session(
 ):
 
     async def send_response(data: ChatOutputType) -> None:
-        await ws.send_json(await ChatResponse.dump(data))
+        await ws.send_json(ChatResponse.dump(data))
 
     async def receive_input() -> ChatInput:
         data = await ws.receive_json()
@@ -42,7 +42,8 @@ async def websocket_session(
                 input = await receive_input()
                 match input.type:
                     case ChatInput.Type.AUDIO:
-                        assert input.input is not None, "audio input cannot be none"
+                        if input.input is None:
+                            continue
                         turn = await session.turn(input.input)
                         await send_response(turn)
                         if turn is not None:
@@ -55,7 +56,7 @@ async def websocket_session(
         await send_response(summary)
         await ws.receive()
     except WebSocketDisconnect:
-        pass
+        ...
     finally:
         await sessions.close(user, ws)
 
