@@ -61,7 +61,6 @@ class EchoService:
             if result is not None:
                 attempt = EchoSessionState.Attempt(
                     **result.model_dump(exclude={"pronunciation"}),
-                    audio_b64=audio_b64,
                     pronunciation=result.pronunciation.with_transcript(self.state.transcript),
                 )
                 await self._service.store.echo.record_session_attempt(self.state, attempt)

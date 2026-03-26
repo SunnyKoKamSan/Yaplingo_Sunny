@@ -50,7 +50,7 @@ class EchoResponse(BaseModel):
             case EchoSessionState.Summary():
                 t = EchoResponse.Type.SUMMARY
                 response = EchoResponse.SummaryResponse(**data.model_dump())
-        return cls(type=t, response=response).model_dump(mode="json")
+        return cls(type=t, response=response).model_dump(mode="json", context={"web"})
 
 
 __all__ = ["EchoInput", "EchoResponse"]

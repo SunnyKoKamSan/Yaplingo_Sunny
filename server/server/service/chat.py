@@ -57,7 +57,6 @@ class ChatService:
                 turn = ChatSessionState.Turn(
                     **result.model_dump(),
                     index=len(self.state.conversation.messages),
-                    audio_b64=audio_b64,
                 )
                 await self._service.store.chat.record_session_turn(self.state, turn)
                 return turn

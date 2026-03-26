@@ -1,6 +1,7 @@
 import asyncio
 from typing import overload
 
+from .._utils import waveform_to_audio_b64
 from ..aligner import PronunciationAligner
 from ..generators.chat import EvaluationGenerator, ReplyGenerator, ScenarioGenerator
 from ..models.chat import Conversation, Result, Scenario, Transcript
@@ -43,6 +44,7 @@ class ChatPipeline(Pipeline):
         elif scenario is not None and conversation is not None and audio is not None:
             if (waveform := self.audio_processor(audio)) is None:
                 return None
+            audio_b64 = waveform_to_audio_b64(waveform, self.audio_processor.sr)
             text = self.speech_transcriber(waveform)
             transcript = Transcript(text=text)
             context = Conversation.UserMessage(
@@ -56,6 +58,7 @@ class ChatPipeline(Pipeline):
                 asyncio.to_thread(self.pronunciation_aligner, waveform, transcript),
             )
             return Result(
+                audio_b64=audio_b64,
                 context=context,
                 reply=Conversation.AssistantMessage(
                     role="assistant",

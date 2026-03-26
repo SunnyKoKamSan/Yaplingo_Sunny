@@ -45,7 +45,7 @@ class ChatResponse(BaseModel):
             case ChatSessionState.Summary():
                 t = ChatResponse.Type.SUMMARY
                 response = ChatResponse.SummaryResponse(**data.model_dump())
-        return cls(type=t, response=response).model_dump(mode="json")
+        return cls(type=t, response=response).model_dump(mode="json", context={"web"})
 
 
 __all__ = ["ChatInput", "ChatResponse"]

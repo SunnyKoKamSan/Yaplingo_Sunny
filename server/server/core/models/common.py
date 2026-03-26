@@ -7,9 +7,9 @@ from phonemizer.separator import Separator
 from pydantic import BaseModel, Field, PrivateAttr, computed_field
 from typing_extensions import Self
 
-from .._utils import cached_method
+from .._utils import cached_method, data_urlencode
 from ..levenshtein import OperationCode, levenshtein
-from ..textspeech import data_urlencode, gtts
+from ..textspeech import gtts
 
 if TYPE_CHECKING:
     cached_property = property

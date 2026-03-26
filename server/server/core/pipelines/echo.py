@@ -1,5 +1,6 @@
 from typing import overload
 
+from .._utils import waveform_to_audio_b64
 from ..models.echo import Result, Scenario, Transcript
 from . import Pipeline
 
@@ -33,8 +34,9 @@ class EchoPipeline(Pipeline):
         if audio is not None and transcript is not None:
             if (waveform := self.audio_processor(audio)) is None:
                 return None
+            audio_b64 = waveform_to_audio_b64(waveform, self.audio_processor.sr)
             pronunciation = self.pronunciation_aligner(waveform, transcript)
             feedback = await self.feedback_generator(transcript, pronunciation)
-            return Result(feedback=feedback, pronunciation=pronunciation)
+            return Result(audio_b64=audio_b64, feedback=feedback, pronunciation=pronunciation)
 
         raise ValueError("no overload matched for given arguments")

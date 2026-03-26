@@ -306,9 +306,9 @@ export default function MainLearnEchoScreen() {
   };
 
   const handlePlayback = () => {
-    // FIXME: playback audio from attempt instead
+    if (!attempt) return;
     setPlaybacking(true);
-    audio.player.replace(audio.recorder.uri!);
+    audio.player.replace(attempt.audio);
     audio.player.seekTo(0);
     audio.player.play();
   };

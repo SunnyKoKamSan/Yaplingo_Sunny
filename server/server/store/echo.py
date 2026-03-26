@@ -1,7 +1,13 @@
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Awaitable, cast
 
-from pydantic import Base64Bytes, BaseModel, ConfigDict, Field, PrivateAttr, computed_field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    computed_field,
+)
 from redis.asyncio import Redis
 from typing_extensions import Self
 from ulid import ULID
@@ -17,10 +23,7 @@ SESSION_TTL = timedelta(hours=1)
 
 
 class EchoSessionState(BaseModel):
-    class Attempt(Result):
-        audio_b64: Base64Bytes = Field(serialization_alias="audio", repr=False)
-
-        model_config = ConfigDict(frozen=True)
+    class Attempt(Result): ...
 
     class Summary(BaseModel):
         points: int

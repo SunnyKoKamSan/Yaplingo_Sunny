@@ -3,7 +3,12 @@ from datetime import timedelta
 from functools import cached_property
 from typing import Awaitable, cast
 
-from pydantic import Base64Bytes, BaseModel, ConfigDict, Field, PrivateAttr, computed_field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    PrivateAttr,
+    computed_field,
+)
 from redis.asyncio import Redis
 from typing_extensions import Self
 from ulid import ULID
@@ -16,9 +21,6 @@ SESSION_TTL = timedelta(hours=1)
 class ChatSessionState(BaseModel):
     class Turn(Result):
         index: int  # index of the turn in the conversation
-        audio_b64: Base64Bytes = Field(serialization_alias="audio", repr=False)
-
-        model_config = ConfigDict(frozen=True)
 
     class Summary(BaseModel):
         points: int

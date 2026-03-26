@@ -1,15 +1,9 @@
 import asyncio
-import base64
 import io
 from abc import ABC, abstractmethod
 from functools import partial
 
 import soundfile
-
-
-def data_urlencode(data: bytes, mime: str) -> str:
-    encoded = base64.b64encode(data).decode()
-    return f"data:{mime};base64,{encoded}"
 
 
 class BaseTextSpeech(ABC):

@@ -89,7 +89,7 @@ class EchoSession(SQLModel, table=True):
                     text=item.text,
                     attempts=[
                         EchoAttempt(
-                            audio=attempt.audio_b64,
+                            audio=attempt.audio,
                             result=attempt.model_dump(mode="json", exclude={"audio_b64"}),
                         )
                         for attempt in state.attempts[index]

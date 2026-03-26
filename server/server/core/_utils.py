@@ -1,6 +1,21 @@
 import asyncio
+import base64
 import functools
+import io
 import time
+
+import torchaudio
+
+
+def data_urlencode(data: bytes, mime: str) -> str:
+    encoded = base64.b64encode(data).decode()
+    return f"data:{mime};base64,{encoded}"
+
+
+def waveform_to_audio_b64(waveform, sr) -> bytes:
+    buffer = io.BytesIO()
+    torchaudio.save(buffer, waveform.unsqueeze(0), sr, format="wav")
+    return base64.b64encode(buffer.getvalue())
 
 
 def cached_method(f):
