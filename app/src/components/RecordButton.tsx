@@ -20,8 +20,8 @@ export default function RecordButton({
   onSubmit: (data: string) => void;
 }) {
   const handleLongPress = useCallback(async () => {
-    await audio.startRecording();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+    await audio.startRecording();
   }, [audio]);
 
   const handlePressOut = useCallback(async () => {

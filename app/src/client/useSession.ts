@@ -87,9 +87,10 @@ const useSession = <
   );
 
   const abort = useCallback(() => {
-    // FIXME: handle abort during loading new session
     if (!ws.current) throw new Error("WebSocket undefined");
-    ws.current.send(JSON.stringify({ type: "abort" }));
+    if (ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: "abort" }));
+    }
     close();
   }, [close]);
 

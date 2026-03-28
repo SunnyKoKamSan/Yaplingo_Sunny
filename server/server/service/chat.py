@@ -6,15 +6,17 @@ from server.broker import Broker
 from server.broker.tasks import process_chat
 from server.core import ChatPipeline
 from server.core.models.chat import Result
-from server.repository.models import User
+from server.repository import Repository
+from server.repository.models import ChatSession, User
 from server.store import Store
 from server.store.chat import ChatSessionState
 
 
 class ChatService:
-    def __init__(self, broker: Broker, store: Store):
+    def __init__(self, broker: Broker, store: Store, repository: Repository):
         self.broker = broker
         self.store = store
+        self.repository = repository
         self.pipeline = ChatPipeline()
 
     @overload
@@ -62,8 +64,10 @@ class ChatService:
                 return turn
 
         async def finish(self) -> ChatSessionState.Summary:
+            assert self.state.finished, "session not finished yet"
+            await self._service.repository.chat.save(ChatSession.from_state(self.state))
             await self._service.store.chat.discard_session(self.state)
-            return self.state.summary  # TODO: add points to user in repository
+            return self.state.summary
 
         async def abort(self) -> None:
             await self._service.store.chat.discard_session(self.state)

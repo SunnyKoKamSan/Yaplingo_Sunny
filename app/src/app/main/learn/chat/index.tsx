@@ -5,6 +5,7 @@ import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { useTheme } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { CircleCheckBigIcon, CircleIcon, ListTodoIcon, XIcon } from "lucide-react-native";
+import { useQueryClient } from "node_modules/@tanstack/react-query/build/modern/QueryClientProvider";
 import tw from "twrnc";
 
 import {
@@ -187,6 +188,7 @@ export default function MainLearnChatScreen() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const client = useQueryClient();
 
   const ref = useRef<FlatList<ConversationMessage>>(null);
   const sheetTasks = useRef<TrueSheet>(null);
@@ -199,6 +201,7 @@ export default function MainLearnChatScreen() {
   const { session, submit, abort, end } = useChatSession({
     onClose: () => {
       if (router.canDismiss()) router.dismissAll();
+      client.invalidateQueries({ queryKey: ["auth", "me"] });
     },
   });
 

@@ -17,3 +17,9 @@ export const getScoreColor = (score: number): string => {
   if (score >= 0.5) return tw.color("yellow-500")!;
   return tw.color("red-500")!;
 };
+
+export const formatCompactNumber = (x: number): string => {
+  if (x >= 10000 && x < 1000000) return (x / 1000).toFixed(1) + "K";
+  if (x >= 1000000 && x < 1000000000) return (x / 1000000).toFixed(1) + "M";
+  return x.toString();
+};

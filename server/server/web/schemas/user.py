@@ -19,6 +19,7 @@ class UserResponse(BaseModel):
     name: str
     language: LanguageAlpha2
     timezone: TimeZoneName
+    points: int
 
     activity: dict[date, int]
 

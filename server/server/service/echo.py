@@ -71,9 +71,10 @@ class EchoService:
             await self._service.store.echo.increment_session_progress(self.state)
 
         async def complete(self) -> EchoSessionState.Summary:
+            assert self.state.completed, "session not completed yet"
             await self._service.repository.echo.save(EchoSession.from_state(self.state))
             await self._service.store.echo.discard_session(self.state)
-            return self.state.summary  # TODO: add points to user in repository
+            return self.state.summary
 
         async def abort(self) -> None:
             await self._service.store.echo.discard_session(self.state)

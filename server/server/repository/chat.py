@@ -1,14 +1,14 @@
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from .models import EchoSession, User
+from .models import ChatSession, User
 
 
-class EchoRepository:
+class ChatRepository:
     def __init__(self, session: async_sessionmaker[AsyncSession]):
         self._session = session
 
-    async def save(self, s: EchoSession) -> EchoSession:
+    async def save(self, s: ChatSession) -> ChatSession:
         # FIXME: this should be optimized with back population
         async with self._session() as session:
             user = await session.get(User, s.user_id)
@@ -19,4 +19,4 @@ class EchoRepository:
         return s
 
 
-__all__ = ["EchoRepository"]
+__all__ = ["ChatRepository"]

@@ -233,7 +233,6 @@ export default function MainLearnEchoScreen() {
   const { session, submit, proceed, abort, end } = useEchoSession({
     onClose: () => {
       if (router.canDismiss()) router.dismissAll();
-      // refresh user activity after session complete
       client.invalidateQueries({ queryKey: ["auth", "me"] });
     },
   });

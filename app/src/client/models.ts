@@ -3,6 +3,7 @@ export type User = {
   name: string;
   language: string;
   timezone: string;
+  points: number;
   activity: Record<string, number>;
 };
 

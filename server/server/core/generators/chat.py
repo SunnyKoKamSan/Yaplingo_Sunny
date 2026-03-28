@@ -41,7 +41,10 @@ class ReplyGenerator(BaseGenerator):
             model=settings.model_id,
             messages=[
                 {"role": "system", "content": self.system_prompt},
-                {"role": "system", "content": prompt},
+                {
+                    "role": "user",
+                    "content": prompt,
+                },  # conversation role needs to alternate between user and assistant; next is assistant's opening
                 *[
                     {
                         "role": m.role,

@@ -8,7 +8,7 @@ import client from "./client";
 import type { User } from "./models";
 
 export const useAuthedUserQuery = () =>
-  useQuery<User | null, AxiosError>({
+  useQuery<User, AxiosError>({
     queryKey: ["auth", "me"],
     queryFn: async () => {
       const response = await client.get("/auth/me", {
@@ -39,6 +39,8 @@ export const useLoginMutation = () => {
       return response.data;
     },
     onSuccess: ({ token }) => setToken(token),
+    onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+      context.client.invalidateQueries({ queryKey: ["auth", "me"] }),
   });
 };
 
@@ -61,6 +63,8 @@ export const useRegisterMutation = () => {
       return response.data;
     },
     onSuccess: ({ token }) => setToken(token),
+    onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+      context.client.invalidateQueries({ queryKey: ["auth", "me"] }),
   });
 };
 

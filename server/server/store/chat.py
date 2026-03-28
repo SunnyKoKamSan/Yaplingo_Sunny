@@ -54,7 +54,7 @@ class ChatSessionState(BaseModel):
             messages=[
                 Conversation.AssistantMessage(content=self.scenario.opening),
                 *itertools.chain.from_iterable([t.context, t.reply] for t in self.turns),
-            ]
+            ],
         )
 
     @computed_field
@@ -71,7 +71,7 @@ class ChatSessionState(BaseModel):
     def summary(self) -> Summary:
         assert self.finished, "session not finished yet"
         assert len(self.turns) > 0, "no turns taken in the session"  # should never happen
-        points = sum(1 for t in self.tasks if t.completed) * 33
+        points = sum(1 for t in self.tasks if t.completed) * 133
         points += sum(round(t.pronunciation.score * 100) for t in self.turns) // len(self.turns)
         return ChatSessionState.Summary(points=points)
 
