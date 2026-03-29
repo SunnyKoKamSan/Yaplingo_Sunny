@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Image, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@react-navigation/native";
 import { useAtomValue } from "jotai";
-import { CalendarIcon, DiamondIcon, FlameIcon, ZapIcon } from "lucide-react-native";
+import { CalendarIcon, FlameIcon, ZapIcon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import tw from "twrnc";
+
+const GEM_ICON_SOURCE = require("../../../assets/gem.png");
 
 import { useAchievementsQuery, useActiveEventsQuery, useAuthedUserQuery, useDailyProgressQuery, useGemBalanceQuery, useMyRankQuery } from "~/client";
 import type { ActiveEvent } from "~/client/models";
@@ -182,24 +184,19 @@ const GemShopCard = ({ onPress, activeBoost }: { onPress: () => void; activeBoos
         <View style={tw`flex-row items-center justify-between`}>
           <View style={tw`flex-row items-center gap-3`}>
             <LinearGradient
-              colors={["#10B981", "#059669"]}
+              colors={["#D1DDD7", "#DDFFEF"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={tw`w-11 h-11 rounded-xl items-center justify-center`}
+              style={tw`w-14 h-14 rounded-xl items-center justify-center`}
             >
-              <DiamondIcon size={24} color="white" fill="white" strokeWidth={0} />
+              <Image source={GEM_ICON_SOURCE} resizeMode="contain" style={{ width: 36, height: 36 }} />
             </LinearGradient>
             <View>
               <Text style={tw`text-lg font-bold text-zinc-800 dark:text-zinc-100`}>Gem Shop</Text>
-              <Text style={tw`text-xs text-zinc-500`}>Boosts, rewards & more</Text>
+              <Text style={tw`text-xs text-zinc-500`}>Boost and rewards</Text>
             </View>
           </View>
-          <View style={tw`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10`}>
-            <DiamondIcon size={14} color="#22C55E" fill="#22C55E" strokeWidth={0} />
-            <Text style={tw`text-sm font-bold text-green-600`}>{gemBalance.toLocaleString()}</Text>
-          </View>
         </View>
-
         {/* Active XP Boost Banner */}
         {activeBoost && (
           <LinearGradient

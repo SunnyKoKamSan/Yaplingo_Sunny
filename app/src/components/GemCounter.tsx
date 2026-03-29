@@ -50,13 +50,23 @@ export default function GemCounter({ style }: { style?: object }) {
   return (
     <Animated.View
       style={[
-        tw`flex-row items-center gap-1.5 rounded-full bg-green-600/15 px-3 py-1.5 border border-green-400/30`,
+        tw`flex-row items-center gap-2 rounded-2xl px-4 py-2`,
+        {
+          backgroundColor: "rgba(24, 24, 27, 0.9)",
+          borderWidth: 1.5,
+          borderColor: "rgba(255, 255, 255, 0.15)",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 6,
+        },
         scaleStyle,
         style,
       ]}
     >
-      <Image source={GEM_ICON_SOURCE} resizeMode="contain" style={{ width: 16, height: 16 }} />
-      <Text style={tw`text-base font-bold text-green-700 dark:text-green-300`}>
+      <Image source={GEM_ICON_SOURCE} resizeMode="contain" style={{ width: 22, height: 22 }} />
+      <Text style={[tw`text-lg font-bold`, { color: "#FFFFFF", letterSpacing: 0.5 }]}>
         {balance.toLocaleString()}
       </Text>
     </Animated.View>

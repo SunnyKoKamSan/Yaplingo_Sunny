@@ -107,10 +107,10 @@ const FLOATING_CARD_STYLE: ViewStyle = {
   backgroundColor: "#FFFFFF",
   borderRadius: 20,
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.15,
-  shadowRadius: 20,
-  elevation: 6,
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.25,
+  shadowRadius: 28,
+  elevation: 12,
 };
 
 const GemAssetIcon = ({ size, dimmed = false }: { size: number; dimmed?: boolean }) => (
@@ -118,12 +118,16 @@ const GemAssetIcon = ({ size, dimmed = false }: { size: number; dimmed?: boolean
     source={GEM_ICON_SOURCE}
     resizeMode="contain"
     style={{
-      width: size,
-      height: size,
+      width: size * 1.3,
+      height: size * 1.3,
       opacity: dimmed ? 0.45 : 1,
     }}
   />
 );
+
+// Button style constants matching the "Start" button from learn tab
+const BUTTON_BORDER_WIDTH = 2;
+const BUTTON_SHADOW_WIDTH = BUTTON_BORDER_WIDTH * 2.5;
 
 const ShopItemCard = ({
   item,
@@ -171,30 +175,26 @@ const ShopItemCard = ({
           </Text>
         )}
       </View>
-      {/* Light realistic pill button with enhanced shadow */}
+      {/* Button styled like "Start" button with border-bottom shadow */}
       <Pressable
         onPress={canAfford ? onBuy : undefined}
         disabled={!canAfford}
         style={({ pressed }) => [
-          tw`flex-row items-center gap-1.5 px-4 py-2.5 rounded-full`,
+          tw`flex-row items-center justify-center gap-2 px-5 py-2.5 rounded-xl`,
           {
-            backgroundColor: canAfford ? "#FFFFFF" : "#F5F5F5",
-            borderWidth: 1,
-            borderColor: canAfford ? "rgba(0,0,0,0.08)" : "rgba(0,0,0,0.04)",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: canAfford ? 0.18 : 0.05,
-            shadowRadius: 8,
-            elevation: canAfford ? 5 : 2,
-            borderTopColor: canAfford ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.5)",
-            borderTopWidth: 1.5,
-            transform: [{ scale: pressed && canAfford ? 0.96 : 1 }],
+            backgroundColor: canAfford ? "#F4F4F5" : "#FAFAFA",
+            borderWidth: BUTTON_BORDER_WIDTH,
+            borderColor: canAfford ? "rgba(113,113,122,0.5)" : "rgba(113,113,122,0.25)",
+            borderBottomWidth: pressed && canAfford ? BUTTON_BORDER_WIDTH : BUTTON_SHADOW_WIDTH,
+            borderBottomColor: canAfford ? "rgba(113,113,122,0.5)" : "rgba(113,113,122,0.25)",
+            transform: [{ scale: pressed && canAfford ? 0.95 : 1 }],
             opacity: canAfford ? 1 : 0.5,
+            marginTop: pressed && canAfford ? BUTTON_SHADOW_WIDTH - BUTTON_BORDER_WIDTH : 0,
           },
         ]}
       >
-        <GemAssetIcon size={14} dimmed={!canAfford} />
-        <Text style={[tw`text-[13px] font-semibold`, { color: canAfford ? item.color : "#9CA3AF" }]}>{cost}</Text>
+        <GemAssetIcon size={22} dimmed={!canAfford} />
+        <Text style={[tw`text-base font-bold`, { color: "#18181B" }]}>{cost}</Text>
       </Pressable>
     </Pressable>
   );
@@ -381,9 +381,9 @@ export default function GemShop({
           <View style={tw`flex-row items-center justify-between px-5 mb-4`}>
             <Text style={tw`text-xl font-bold text-zinc-900 dark:text-zinc-100`}>Gem Shop</Text>
             <View style={tw`flex-row items-center gap-3`}>
-              <View style={tw`flex-row items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full`}>
-                <GemAssetIcon size={16} />
-                <Text style={tw`text-sm font-bold text-zinc-700 dark:text-zinc-300`}>
+              <View style={tw`flex-row items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-3.5 py-2 rounded-full`}>
+                <GemAssetIcon size={22} />
+                <Text style={tw`text-base font-bold text-zinc-900 dark:text-zinc-100`}>
                   {balance.toLocaleString()}
                 </Text>
               </View>
@@ -493,30 +493,26 @@ export default function GemShop({
                         {isEmpty ? "None owned" : `${count} available`}
                       </Text>
                     </View>
-                    {/* Light realistic Use button with enhanced shadow */}
+                    {/* Button styled like "Start" button with border-bottom shadow */}
                     <Pressable
                       onPress={() => !isEmpty && handleUseSkill(item)}
                       disabled={isEmpty}
                       style={({ pressed }) => [
-                        tw`flex-row items-center gap-1.5 px-4 py-2.5 rounded-full`,
+                        tw`flex-row items-center justify-center gap-2 px-5 py-2.5 rounded-xl`,
                         {
-                          backgroundColor: isEmpty ? "#F5F5F5" : "#FFFFFF",
-                          borderWidth: 1,
-                          borderColor: isEmpty ? "rgba(0,0,0,0.04)" : "rgba(0,0,0,0.08)",
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: isEmpty ? 0.05 : 0.18,
-                          shadowRadius: 8,
-                          elevation: isEmpty ? 2 : 5,
-                          borderTopColor: isEmpty ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.95)",
-                          borderTopWidth: 1.5,
-                          transform: [{ scale: pressed && !isEmpty ? 0.96 : 1 }],
+                          backgroundColor: isEmpty ? "#FAFAFA" : "#F4F4F5",
+                          borderWidth: BUTTON_BORDER_WIDTH,
+                          borderColor: isEmpty ? "rgba(113,113,122,0.25)" : "rgba(113,113,122,0.5)",
+                          borderBottomWidth: pressed && !isEmpty ? BUTTON_BORDER_WIDTH : BUTTON_SHADOW_WIDTH,
+                          borderBottomColor: isEmpty ? "rgba(113,113,122,0.25)" : "rgba(113,113,122,0.5)",
+                          transform: [{ scale: pressed && !isEmpty ? 0.95 : 1 }],
                           opacity: isEmpty ? 0.5 : 1,
+                          marginTop: pressed && !isEmpty ? BUTTON_SHADOW_WIDTH - BUTTON_BORDER_WIDTH : 0,
                         },
                       ]}
                     >
-                      <PlayCircleIcon size={13} color={isEmpty ? "#9CA3AF" : item.color} strokeWidth={2.5} />
-                      <Text style={[tw`text-[13px] font-semibold`, { color: isEmpty ? "#9CA3AF" : item.color }]}>Use</Text>
+                      <PlayCircleIcon size={16} color={isEmpty ? "#9CA3AF" : "#18181B"} strokeWidth={2.5} />
+                      <Text style={[tw`text-base font-bold`, { color: isEmpty ? "#9CA3AF" : "#18181B" }]}>Use</Text>
                     </Pressable>
                   </Pressable>
                 );
