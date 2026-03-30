@@ -360,11 +360,14 @@ export default function MainLearnEchoScreen() {
   const checkInMutation = useCheckInMutation();
 
   const { session, submit, proceed, abort, complete } = useEchoSession({
-    onClose: () => {
+    onClose: async () => {
       if (router.canDismiss()) router.dismissAll();
-      // refresh user activity and gamification data after session
-      client.invalidateQueries({ queryKey: ["auth", "me"] });
-      client.invalidateQueries({ queryKey: ["gamification"] });
+      // Force refetch user activity and gamification data after session
+      await Promise.all([
+        client.refetchQueries({ queryKey: ["auth", "me"] }),
+        client.refetchQueries({ queryKey: ["gamification", "mastery"] }),
+        client.refetchQueries({ queryKey: ["gamification"] }),
+      ]);
     },
   });
   const transcript = session.data && "transcript" in session.data ? session.data.transcript : undefined;

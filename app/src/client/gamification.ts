@@ -218,7 +218,7 @@ export const useMasteryQuery = (): UseQueryResult<TopicMasteryResponse[], AxiosE
       const { data } = await client.get<TopicMasteryResponse[]>("/gamification/mastery");
       return data;
     },
-    staleTime: 60 * 1000,
+    staleTime: 0,
     gcTime: 5 * 60 * 1000,
   });
 

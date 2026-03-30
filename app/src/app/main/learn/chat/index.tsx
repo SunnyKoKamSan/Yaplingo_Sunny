@@ -13,6 +13,7 @@ import {
 } from "expo-audio";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import Color from "color";
 import {
   AudioLinesIcon,
@@ -287,6 +288,7 @@ export default function MainLearnChatScreen() {
   const player = useAudioPlayer();
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder);
+  const queryClient = useQueryClient();
 
   const ref = useRef<FlatList<ConversationMessage>>(null);
   const sheetTasks = useRef<TrueSheet>(null);
@@ -295,8 +297,14 @@ export default function MainLearnChatScreen() {
   const [selection, setSelection] = useState<Turn | null>(null);
 
   const { session, turn, abort, end } = useChatSession({
-    onClose: () => {
+    onClose: async () => {
       if (router.canDismiss()) router.dismissAll();
+      // Force refetch user activity and gamification data after session
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["auth", "me"] }),
+        queryClient.refetchQueries({ queryKey: ["gamification", "mastery"] }),
+        queryClient.refetchQueries({ queryKey: ["gamification"] }),
+      ]);
     },
   });
 
