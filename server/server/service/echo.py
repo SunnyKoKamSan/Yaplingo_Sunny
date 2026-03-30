@@ -7,7 +7,7 @@ from server.broker.tasks import analyze_echo
 from server.core import EchoPipeline
 from server.core.models.echo import Result
 from server.repository import Repository
-from server.repository.models import EchoSession, User
+from server.repository.entities import User
 from server.store import Store
 from server.store.echo import EchoSessionState
 
@@ -72,7 +72,7 @@ class EchoService:
 
         async def complete(self) -> EchoSessionState.Summary:
             assert self.state.completed, "session not completed yet"
-            await self._service.repository.echo.save(EchoSession.from_state(self.state))
+            await self._service.repository.echo.save(self.state.entity())
             await self._service.store.echo.discard_session(self.state)
             return self.state.summary
 

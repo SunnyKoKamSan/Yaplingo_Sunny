@@ -53,6 +53,7 @@ async def websocket_session(
             await session.refresh()
             await send_response(session.state)
         summary = await session.finish()
+        await service.user.add_points_with_streak(user, summary.points)
         await send_response(summary)
         await ws.receive()
     except WebSocketDisconnect:

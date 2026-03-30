@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from .models import EchoSession, User
+from .entities import EchoSession
 
 
 class EchoRepository:
@@ -9,12 +9,8 @@ class EchoRepository:
         self._session = session
 
     async def save(self, s: EchoSession) -> EchoSession:
-        # FIXME: this should be optimized with back population
         async with self._session() as session:
-            user = await session.get(User, s.user_id)
-            if user is not None:
-                user.points += s.points
-                session.add(s)
+            session.add(s)
             await session.commit()
         return s
 

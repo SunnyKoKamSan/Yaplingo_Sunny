@@ -40,7 +40,7 @@ export default function AccountLoginScreen() {
 
   return (
     <View style={[tw`flex-1`, { paddingBottom: insets.bottom }]}>
-      <KeyboardAvoidingView behavior="padding" style={tw`flex-grow justify-center gap-4 p-4`}>
+      <KeyboardAvoidingView behavior="padding" style={tw`grow justify-center gap-4 p-4`}>
         <View style={tw`gap-6`}>
           <View style={tw`gap-2`}>
             <Text style={tw`text-base font-medium text-neutral-500`}>CREDENTIALS</Text>

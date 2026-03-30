@@ -7,7 +7,7 @@ from server.broker.tasks import process_chat
 from server.core import ChatPipeline
 from server.core.models.chat import Result
 from server.repository import Repository
-from server.repository.models import ChatSession, User
+from server.repository.entities import User
 from server.store import Store
 from server.store.chat import ChatSessionState
 
@@ -65,7 +65,7 @@ class ChatService:
 
         async def finish(self) -> ChatSessionState.Summary:
             assert self.state.finished, "session not finished yet"
-            await self._service.repository.chat.save(ChatSession.from_state(self.state))
+            await self._service.repository.chat.save(self.state.entity())
             await self._service.store.chat.discard_session(self.state)
             return self.state.summary
 

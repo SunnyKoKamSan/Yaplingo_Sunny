@@ -6,7 +6,7 @@ from redis.asyncio import Redis as AsyncRedis
 
 from .chat import ChatStore
 from .echo import EchoStore
-from .user import UserStore
+from .points import PointsStore
 
 if TYPE_CHECKING:
     cached_property = property
@@ -43,8 +43,8 @@ class Store:
         return ChatStore(self.client)
 
     @cached_property
-    def user(self) -> UserStore:
-        return UserStore(self.client)
+    def points(self) -> PointsStore:
+        return PointsStore(self.client)
 
 
 __all__ = ["Store"]

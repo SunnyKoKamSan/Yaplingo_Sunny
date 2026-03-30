@@ -9,7 +9,7 @@ export default function AccountIndexScreen() {
   const router = useRouter();
   return (
     <SafeAreaView style={tw`flex-1 p-4`}>
-      <View style={tw`flex-grow items-center justify-center gap-4`}>
+      <View style={tw`grow items-center justify-center gap-4`}>
         <Image source={require("@/mascot.png")} style={tw`mb-4 size-32`} />
         <Text style={[tw`text-5xl text-green-500`, { fontFamily: "Feather-Bold" }]}>yaplingo</Text>
         <Text style={[tw`text-2xl`, { fontFamily: "Feather-Bold" }]}>enjoy pronunciation learning</Text>

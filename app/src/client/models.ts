@@ -3,7 +3,9 @@ export type User = {
   name: string;
   language: string;
   timezone: string;
-  points: number;
+  streak: number;
+  milestone: number;
+  points: [number, number]; // [today, total]
   activity: Record<string, number>;
 };
 

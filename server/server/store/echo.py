@@ -13,6 +13,7 @@ from typing_extensions import Self
 from ulid import ULID
 
 from server.core.models.echo import Result, Scenario, Transcript
+from server.repository.entities import EchoAttempt, EchoSession
 
 if TYPE_CHECKING:
     cached_property = property
@@ -73,8 +74,34 @@ class EchoSessionState(BaseModel):
     @cached_property
     def summary(self) -> Summary:
         assert self.completed, "session not completed yet"
-        scores = [max(a.pronunciation.score for a in attempts) if attempts else 0 for attempts in self.attempts]
-        return EchoSessionState.Summary(points=int(sum(scores) * 100))
+        from server import formula
+
+        points = formula.get_echo_session_points(self)
+        return EchoSessionState.Summary(points=points)
+
+    def entity(self) -> EchoSession:
+        s = EchoSession(
+            user_id=self._uid,
+            topic=self.scenario.topic,
+            scenario=self.scenario.scenario,
+            points=self.summary.points,
+            transcripts=[t.text for t in self.scenario.transcripts],
+        )
+        s.attempts = [
+            EchoAttempt(
+                session_id=s.id,
+                index=index,
+                audio=attempt.audio,
+                feedback=attempt.feedback,
+                pronunciation=attempt.pronunciation.model_dump(
+                    mode="json",
+                    exclude_computed_fields=True,
+                ),
+            )
+            for index, attempts in enumerate(self.attempts)
+            for attempt in attempts
+        ]
+        return s
 
 
 class EchoStore:

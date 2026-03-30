@@ -4,18 +4,15 @@ import { useTheme } from "@react-navigation/native";
 import { CalendarIcon, FlameIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
-import { useAuthedUserQuery } from "~/client";
+import { useAuthedUserQuery, type User } from "~/client";
 import { Heatmap } from "~/components";
 import { Text } from "~/components/primitives";
 import { useNavigationOptions } from "~/hooks";
 import { formatCompactNumber } from "~/utils";
 
-const Header = () => {
+const Header = ({ user }: { user?: User }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-
-  const query = useAuthedUserQuery();
-
   return (
     <View
       style={[
@@ -36,64 +33,84 @@ const Header = () => {
         <View style={tw`absolute inset-x-0 items-center justify-center`}>
           <Text style={[tw`text-3xl leading-[0] text-green-500`, { fontFamily: "Feather-Bold" }]}>yaplingo</Text>
         </View>
-        {query.isSuccess && (
-          <View style={tw`flex-row items-center gap-1.5 rounded-full bg-sky-500/25 px-2 py-0.5`}>
-            <ZapIcon size={16} color={tw.color("sky-500")} fill={tw.color("sky-500")} />
-            <Text style={tw`text-lg font-bold text-sky-500`}>{formatCompactNumber(query.data.points)}</Text>
-          </View>
-        )}
+        <View style={tw`flex-row items-center gap-1.5 rounded-full bg-sky-500/25 px-2 py-0.5`}>
+          <ZapIcon size={16} color={tw.color("sky-500")} fill={tw.color("sky-500")} />
+          <Text style={tw`text-lg font-bold tracking-tighter text-sky-500`}>
+            {user ? formatCompactNumber(user.points[1]) : "-"}
+          </Text>
+        </View>
       </View>
     </View>
   );
 };
 
-const StreakMeter = () => {
+const StreakCard = ({ user }: { user: User }) => {
   return (
-    <View style={tw`mt-4 items-center justify-center`}>
+    <View style={tw`grow items-center justify-center rounded-2xl border-2 border-zinc-500/50 p-4`}>
       <View style={tw`flex-row items-center`}>
         <FlameIcon color={tw.color("orange-500")} fill={tw.color("orange-500")} size={36} />
-        <Text style={tw`text-5xl font-bold leading-[0] tracking-tighter text-orange-500`}>12</Text>
+        <Text style={tw`text-5xl font-bold leading-[0] tracking-tighter text-orange-500`}>{user.streak ?? "-"}</Text>
       </View>
       <Text style={tw`text-center text-xl font-medium text-orange-500`}>Day Streak</Text>
     </View>
   );
 };
 
-const WELCOME_MESSAGES = [
-  "Let’s nail those tricky sounds today!",
-  "Time to train those tongue muscles!",
-  "Let’s make your words shine today!",
-  "What are we practicing today?",
-  "Ready to crush some goals?",
-  "Good to have you back!",
-];
-
-const WelcomeMessage = () => {
-  const message = WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)];
+const MilestoneCard = ({ user }: { user: User }) => {
+  const [today, total] = user.points;
+  const remaining = user.milestone - user.points[0];
+  const progress = Math.round((user.points[0] / user.milestone) * 100);
   return (
-    <View style={tw`mx-4 items-center`}>
-      <Text style={tw`text-center text-lg font-medium leading-tight`}>{`📢  ${message}`}</Text>
+    <View style={tw`grow items-center justify-center gap-2 rounded-2xl border-2 border-zinc-500/50 p-4`}>
+      {remaining > 0 ? (
+        <View>
+          <Text style={tw`text-center text-3xl font-bold tracking-tighter text-sky-500`}>{remaining} XP</Text>
+          <Text style={tw`text-center text-base font-medium`}>to keep your streak</Text>
+        </View>
+      ) : (
+        <View>
+          <Text style={tw`text-center text-3xl font-bold tracking-tighter text-sky-500`}>{user.milestone} XP</Text>
+          <Text style={tw`text-center text-lg font-medium`}>Completed</Text>
+        </View>
+      )}
+      <View style={tw`flex-row items-center justify-center gap-2`}>
+        <Text style={tw`text-xs font-medium tracking-tighter text-neutral-500`}>{total - today}</Text>
+        <View style={tw`w-32 items-stretch justify-center`}>
+          <View style={tw`h-2.5 overflow-hidden rounded bg-zinc-500/50`}>
+            <View style={[tw`h-full bg-sky-500`, { width: `${progress}%` }]} />
+          </View>
+        </View>
+        <Text style={tw`text-xs font-medium tracking-tighter text-neutral-500`}>{total - today + user.milestone}</Text>
+      </View>
     </View>
   );
 };
 
-const ActivityCard = () => {
-  const query = useAuthedUserQuery();
+const ActivityCard = ({ user }: { user: User }) => {
   return (
     <View style={tw`gap-4 rounded-2xl border-2 border-zinc-500/50 py-2.5`}>
       <Text style={tw`px-4 text-2xl font-bold`}>Activity</Text>
-      <Heatmap entries={query.data?.activity ?? {}} contentContainerStyle={tw`px-4`} />
+      <Heatmap entries={user.activity ?? {}} contentContainerStyle={tw`px-4`} />
     </View>
   );
 };
 
 export default function MainHomeScreen() {
-  useNavigationOptions({ header: () => <Header /> });
+  const query = useAuthedUserQuery();
+
+  useNavigationOptions({ header: () => <Header user={query.data} /> });
+
   return (
-    <ScrollView alwaysBounceVertical={false} contentContainerStyle={tw`flex-1 gap-8 p-4`}>
-      <StreakMeter />
-      <WelcomeMessage />
-      <ActivityCard />
+    <ScrollView alwaysBounceVertical={false} contentContainerStyle={tw`flex-1 gap-4 p-4`}>
+      {query.isSuccess && (
+        <>
+          <View style={tw`flex-row gap-4`}>
+            <StreakCard user={query.data} />
+            <MilestoneCard user={query.data} />
+          </View>
+          <ActivityCard user={query.data} />
+        </>
+      )}
     </ScrollView>
   );
 }

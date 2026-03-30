@@ -14,6 +14,7 @@ from typing_extensions import Self
 from ulid import ULID
 
 from server.core.models.chat import Conversation, Evaluation, Result, Scenario
+from server.repository.entities import ChatSession, ChatTurn
 
 SESSION_TTL = timedelta(hours=1)
 
@@ -71,9 +72,38 @@ class ChatSessionState(BaseModel):
     def summary(self) -> Summary:
         assert self.finished, "session not finished yet"
         assert len(self.turns) > 0, "no turns taken in the session"  # should never happen
-        points = sum(1 for t in self.tasks if t.completed) * 133
-        points += sum(round(t.pronunciation.score * 100) for t in self.turns) // len(self.turns)
+        from server import formula
+
+        points = formula.get_chat_session_points(self)
         return ChatSessionState.Summary(points=points)
+
+    def entity(self) -> ChatSession:
+        s = ChatSession(
+            user_id=self._uid,
+            scenario=self.scenario.scenario,
+            opening=self.scenario.opening,
+            points=self.summary.points,
+            tasks=[t.task for t in self.tasks],
+        )
+        s.turns = [
+            ChatTurn(
+                session_id=s.id,
+                index=turn.index,
+                audio=turn.audio,
+                context=turn.context.transcript.text,
+                reply=turn.reply.content,
+                pronunciation=turn.pronunciation.model_dump(
+                    mode="json",
+                    exclude_computed_fields=True,
+                ),
+                evaluation=turn.evaluation.model_dump(
+                    mode="json",
+                    exclude_computed_fields=True,
+                ),
+            )
+            for turn in self.turns
+        ]
+        return s
 
 
 class ChatStore:

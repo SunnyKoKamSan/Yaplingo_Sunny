@@ -175,7 +175,7 @@ const SummaryView = ({ session }: { session: Extract<EchoSession, { status: Echo
           </Text>
           <Text style={tw`text-lg font-medium leading-tight`}>{session.data.scenario.scenario}</Text>
         </View>
-        <View style={tw`flex-grow gap-2`}>
+        <View style={tw`grow gap-2`}>
           <View style={tw`flex-row items-center justify-between gap-2`}>
             <Text
               style={tw`text-base font-medium uppercase text-neutral-500`}>{`${session.data.scenario.transcripts.length} Transcripts`}</Text>
@@ -183,9 +183,7 @@ const SummaryView = ({ session }: { session: Extract<EchoSession, { status: Echo
               {`${session.data.attempts.reduce((total, attempts) => total + attempts.length, 0)} Attempts`}
             </Text>
           </View>
-          <ScrollView
-            style={tw`flex-grow rounded-xl border-2 border-zinc-500/50`}
-            contentContainerStyle={tw`gap-2.5 p-3`}>
+          <ScrollView style={tw`grow rounded-xl border-2 border-zinc-500/50`} contentContainerStyle={tw`gap-2.5 p-3`}>
             {session.data.scenario.transcripts.map((transcript, index) => {
               const attempts = session.data.attempts[index];
               const attempt = attempts[0];
@@ -199,7 +197,7 @@ const SummaryView = ({ session }: { session: Extract<EchoSession, { status: Echo
                     selection === index ? "border-zinc-500" : "border-zinc-500/50",
                   )}>
                   <Text style={tw`text-xl font-bold text-sky-500`}>#{index + 1}</Text>
-                  <Text style={tw`flex-shrink text-left text-base`} numberOfLines={2}>
+                  <Text style={tw`shrink text-left text-base`} numberOfLines={2}>
                     {transcript.text}
                   </Text>
                   {attempts.length > 0 ? (
@@ -385,7 +383,7 @@ export default function MainLearnEchoScreen() {
           </View>
           {session.status !== EchoSessionStatus.LOADING_NEXT && (
             <>
-              <View style={tw`w-full flex-grow items-center justify-center`}>
+              <View style={tw`w-full grow items-center justify-center`}>
                 <Animated.View
                   entering={SlideInRight}
                   exiting={SlideOutLeft}

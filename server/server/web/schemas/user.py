@@ -19,8 +19,9 @@ class UserResponse(BaseModel):
     name: str
     language: LanguageAlpha2
     timezone: TimeZoneName
-    points: int
-
+    streak: int
+    milestone: int
+    points: tuple[int, int]  # (today, total)
     activity: dict[date, int]
 
 

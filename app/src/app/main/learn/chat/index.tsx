@@ -92,7 +92,7 @@ const MessageListItem = ({
       <Pressable
         onPress={onPress}
         style={tw.style(
-          "flex-shrink rounded-xl border-2 px-2.5 py-1.5",
+          "shrink rounded-xl border-2 px-2.5 py-1.5",
           selected ? "border-zinc-500" : "border-transparent",
           message.role === "user" && "bg-green-500/50",
           message.role === "assistant" && "bg-neutral-300/50 dark:bg-neutral-700/50",
@@ -139,7 +139,7 @@ const TurnSheet = ({
             { label: "Appropriacy", value: turn.evaluation.criteria.appropriacy },
             { label: "Vocabulary", value: turn.evaluation.criteria.vocabulary },
           ].map(({ label, value }) => (
-            <View key={label} style={tw`flex-shrink`}>
+            <View key={label} style={tw`shrink`}>
               <Text style={[tw`text-center text-3xl font-bold tracking-tighter`, { color: getScoreColor(value) }]}>
                 {Math.round(value * 100)}%
               </Text>
@@ -254,7 +254,7 @@ export default function MainLearnChatScreen() {
               );
             }}
             style={tw`w-full flex-1`}
-            contentContainerStyle={tw`flex-grow justify-end gap-2 p-4 pt-16`}
+            contentContainerStyle={tw`grow justify-end gap-2 p-4 pt-16`}
           />
           <View style={tw`h-1/7 w-full items-center justify-center px-8`}>
             <Pressable

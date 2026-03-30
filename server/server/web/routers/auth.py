@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -39,8 +40,17 @@ async def login(credentials: UserCredentialsInput, service: Service):
 
 @router.get("/me")
 async def me(user: User, service: Service) -> UserResponse:
-    activity = await service.user.get_year_activity(user)
-    return UserResponse(**user.model_dump(), activity=activity)
+    (today_points, total_points, activity) = await asyncio.gather(
+        service.user.get_today_points(user),
+        service.user.get_total_points(user),
+        service.user.get_year_activity(user),
+    )
+    return UserResponse(
+        **user.model_dump(),
+        milestone=user.streak_milestone,
+        points=(today_points, total_points),
+        activity=activity,
+    )
 
 
 __all__ = ["router"]
