@@ -74,7 +74,7 @@ class EchoService:
                 await self._service.store.echo.increment_session_progress(self.state)
                 return True  # indicates has more
             # handle session completion
-            latest_state = await self._service.store.echo.get_session(self.state.uid)
+            latest_state = await self._service.store.echo.get_session(self.state._uid)
             if latest_state is not None:
                 self.state = latest_state
             self._completed = True

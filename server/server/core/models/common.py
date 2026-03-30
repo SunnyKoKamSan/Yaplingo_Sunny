@@ -114,6 +114,8 @@ class Pronunciation(BaseModel):
         @computed_field
         @cached_property
         def score(self) -> float:
+            if not self.alignments:
+                return 0.0
             return sum(a.score for a in self.alignments) / len(self.alignments)
 
     phonemes: list[str]
@@ -196,4 +198,6 @@ class Pronunciation(BaseModel):
     @computed_field
     @cached_property
     def score(self) -> float:
+        if not self.alignments:
+            return 0.0
         return sum(a.score for a in self.alignments) / len(self.alignments)

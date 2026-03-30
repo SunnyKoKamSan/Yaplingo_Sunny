@@ -75,7 +75,8 @@ class ChatSessionState(BaseModel):
     def summary(self) -> Summary:
         assert self.finished, "session not finished yet"
         points = sum(1 for t in self.tasks if t.completed) * 33
-        points += sum(round(t.pronunciation.score * 100) for t in self.turns) // len(self.turns)
+        if self.turns:
+            points += sum(round(t.pronunciation.score * 100) for t in self.turns) // len(self.turns)
         return ChatSessionState.Summary(
             points=points,
             quota=self.quota <= 0,
