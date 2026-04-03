@@ -11,7 +11,7 @@ class ScenarioGenerator(BaseGenerator):
     SYSTEM_PROMPT_FILE_PATH = Path(__file__).parent / "prompts" / "chat" / "scenario.md"
 
     async def __call__(self) -> Scenario:
-        text = await super().call(
+        response = await super().call(
             "Generate a new scenario.",
             temperature=1.25,
             response_format={
@@ -20,7 +20,7 @@ class ScenarioGenerator(BaseGenerator):
             },
         )
         try:
-            return Scenario.model_validate_json(text)
+            return Scenario.model_validate_json(response)
         except ValidationError:
             return await self()
 
@@ -71,7 +71,7 @@ class EvaluationGenerator(BaseGenerator):
         Tasks: \n{tasks}
         Conversation: \n{history}
         """
-        text = await super().call(
+        response = await super().call(
             prompt,
             temperature=0,
             response_format={
@@ -80,7 +80,7 @@ class EvaluationGenerator(BaseGenerator):
             },
         )
         try:
-            return Evaluation.model_validate_json(text)
+            return Evaluation.model_validate_json(response)
         except ValidationError:
             return await self(scenario, conversation)
 

@@ -1,31 +1,43 @@
 import random
-import re
 from pathlib import Path
 
-from ..models.echo import Pronunciation, Scenario, Transcript
+from pydantic import ValidationError
+
+from ..models.common import Pronunciation
+from ..models.echo import Scenario, Transcript
 from . import BaseGenerator
 
 
 class ScenarioGenerator(BaseGenerator):
     SYSTEM_PROMPT_FILE_PATH = Path(__file__).parent / "prompts" / "echo" / "scenario.md"
 
-    TOPICS = ["food", "culture", "travel", "business"]
+    TOPICS = ["food", "culture", "travel", "business", "sports"]
+
+    class Response(Scenario):
+        transcripts: list[str]
 
     async def __call__(self) -> Scenario:
         topic = random.choice(self.TOPICS)
-        text = await super().call(
-            f"Topic: {topic}",
+        response = await super().call(
+            f"""
+            Generate one new set.
+            Topic: {topic}
+            """,
             temperature=1.25,
-            # frequency_penalty=2.0,
-            # presence_penalty=2.0,
+            response_format={
+                "type": "json_schema",
+                "json_schema": ScenarioGenerator.Response.model_json_schema(),
+            },
         )
-        lines = list(filter(bool, [s.strip() for s in text.splitlines()]))
-        if len(lines) < 6:
-            return await self()  # FIXME: prevent unlimited retry on invalid output
-        scenario = re.split(r"^\s?[+]\s?", lines[0], maxsplit=1)[-1].strip()
-        sentences = [re.split(r"^\s?[-–*]\s?", line, maxsplit=1)[-1].strip() for line in lines[1:]]
-        items = [Transcript(text=s) for s in sentences]
-        return Scenario(topic=topic, scenario=scenario, transcripts=items)
+        try:
+            scenario = ScenarioGenerator.Response.model_validate_json(response)
+            return Scenario(
+                topic=scenario.topic,
+                scenario=scenario.scenario,
+                transcripts=[Transcript(text=s) for s in scenario.transcripts],
+            )
+        except ValidationError:
+            return await self()
 
 
 class FeedbackGenerator(BaseGenerator):
@@ -37,5 +49,4 @@ class FeedbackGenerator(BaseGenerator):
         Text: "{transcript.text}"
         Errors: \n{errors}
         """
-        text = await super().call(prompt, temperature=0)
-        return text.strip()
+        return (await super().call(prompt, temperature=0)).strip()
