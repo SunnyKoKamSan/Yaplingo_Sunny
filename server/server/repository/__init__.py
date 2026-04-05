@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from .aggregation import AggregationRepository
 from .chat import ChatRepository
 from .echo import EchoRepository
 from .user import UserRepository
@@ -54,6 +55,10 @@ class Repository:
     @cached_property
     def chat(self) -> ChatRepository:
         return ChatRepository(self.session)
+
+    @cached_property
+    def aggregation(self) -> AggregationRepository:
+        return AggregationRepository(self.session)
 
 
 __all__ = ["Repository"]

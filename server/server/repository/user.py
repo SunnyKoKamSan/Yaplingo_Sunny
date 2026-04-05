@@ -3,11 +3,11 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlmodel import select, union_all
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from ulid import ULID
 
-from .entities import ChatSession, EchoSession, User
+from .entities import User
 from .exceptions import EntityExistsError
 
 
@@ -24,36 +24,21 @@ class UserRepository:
             raise EntityExistsError()
         return user
 
-    async def get(self, uid_name: ULID | str) -> User | None:
+    async def get_one(self, uid_name: ULID | str) -> User | None:
         async with self._session() as session:
             if isinstance(uid_name, ULID):
                 user = await session.get(User, uid_name)
             else:
                 query = select(User).where(User.name == uid_name)
                 user = (await session.exec(query)).one_or_none()
-        return user
+            return user
 
-    async def get_sessions(
-        self,
-        user: User,
-        *,
-        start: datetime | None = None,
-        end: datetime | None = None,
-    ) -> list[EchoSession | ChatSession]:
-        start = start.astimezone(ZoneInfo("UTC")) if start else None
-        end = end.astimezone(ZoneInfo("UTC")) if end else None
+    async def get_many(self, uids: list[ULID]) -> list[User]:
+        if not uids:
+            return []
         async with self._session() as session:
-            echo_query = select(EchoSession).where(
-                EchoSession.user_id == user.id,
-                *([EchoSession.completed_at >= start] if start else []),
-                *([EchoSession.completed_at < end] if end else []),
-            )
-            chat_query = select(ChatSession).where(
-                ChatSession.user_id == user.id,
-                *([ChatSession.completed_at >= start] if start else []),
-                *([ChatSession.completed_at < end] if end else []),
-            )
-            results = await session.exec(union_all(echo_query, chat_query))  # type: ignore
+            query = select(User).where(col(User.id).in_(uids))
+            results = await session.exec(query)
             return list(results.all())
 
     async def reset_streak(self, user: User) -> None:

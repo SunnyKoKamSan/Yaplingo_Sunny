@@ -14,7 +14,7 @@ import { PortalProvider } from "@gorhom/portal";
 import { useAtomValue } from "jotai";
 import tw, { useDeviceContext } from "twrnc";
 
-import { useAuthedUserQuery } from "~/client";
+import { useCurrentUserQuery } from "~/client";
 import { $authed } from "~/store";
 
 const DefaultTheme = {
@@ -56,7 +56,7 @@ const Layout = () => {
     "DINNextRoundedLTW01-Bold": require("@/fonts/DINNextRoundedLTW01-Bold.otf"),
   });
 
-  const check = useAuthedUserQuery();
+  const check = useCurrentUserQuery();
 
   useEffect(() => {
     if (loaded && check.isSuccess) {

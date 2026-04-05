@@ -4,9 +4,9 @@ import { useTheme } from "@react-navigation/native";
 import { CalendarIcon, FlameIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
-import { useAuthedUserQuery, type User } from "~/client";
+import { useCurrentUserQuery, type User } from "~/client";
 import { Heatmap } from "~/components";
-import { Text } from "~/components/primitives";
+import { Spinner, Text } from "~/components/primitives";
 import { useNavigationOptions } from "~/hooks";
 import { formatCompactNumber } from "~/utils";
 
@@ -33,7 +33,7 @@ const Header = ({ user }: { user?: User }) => {
         <View style={tw`absolute inset-x-0 items-center justify-center`}>
           <Text style={[tw`text-3xl leading-[0] text-green-500`, { fontFamily: "Feather-Bold" }]}>yaplingo</Text>
         </View>
-        <View style={tw`flex-row items-center gap-1.5 rounded-full bg-sky-500/25 px-2 py-0.5`}>
+        <View style={tw`flex-row items-center gap-1.5 rounded-full bg-sky-500/25 px-2.5 py-0.5`}>
           <ZapIcon size={16} color={tw.color("sky-500")} fill={tw.color("sky-500")} />
           <Text style={tw`text-lg font-bold tracking-tighter text-sky-500`}>
             {user ? formatCompactNumber(user.points[1]) : "-"}
@@ -96,21 +96,25 @@ const ActivityCard = ({ user }: { user: User }) => {
 };
 
 export default function MainHomeScreen() {
-  const query = useAuthedUserQuery();
+  const { data: user } = useCurrentUserQuery();
 
-  useNavigationOptions({ header: () => <Header user={query.data} /> });
+  useNavigationOptions({ header: () => <Header user={user} /> });
 
   return (
-    <ScrollView alwaysBounceVertical={false} contentContainerStyle={tw`flex-1 gap-4 p-4`}>
-      {query.isSuccess && (
-        <>
+    <>
+      {user ? (
+        <ScrollView alwaysBounceVertical={false} contentContainerStyle={tw`flex-1 gap-4 p-4`}>
           <View style={tw`flex-row gap-4`}>
-            <StreakCard user={query.data} />
-            <MilestoneCard user={query.data} />
+            <StreakCard user={user} />
+            <MilestoneCard user={user} />
           </View>
-          <ActivityCard user={query.data} />
-        </>
+          <ActivityCard user={user} />
+        </ScrollView>
+      ) : (
+        <View style={tw`flex-1 items-center justify-center`}>
+          <Spinner size={36} />
+        </View>
       )}
-    </ScrollView>
+    </>
   );
 }

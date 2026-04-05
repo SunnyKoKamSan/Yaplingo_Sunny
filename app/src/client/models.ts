@@ -9,6 +9,18 @@ export type User = {
   activity: Record<string, number>;
 };
 
+export type LeaderboardEntry = {
+  uid: string;
+  name: string;
+  rank: number;
+  score: number;
+};
+
+export type Leaderboard = {
+  entries: LeaderboardEntry[];
+  me: LeaderboardEntry;
+};
+
 export type PronunciationAlignment = {
   token: string;
   score: number;

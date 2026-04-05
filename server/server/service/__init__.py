@@ -6,6 +6,7 @@ from server.store import Store
 
 from .chat import ChatService
 from .echo import EchoService
+from .game import GameService
 from .user import UserService
 
 if TYPE_CHECKING:
@@ -25,7 +26,9 @@ class Service:
         broker = await Broker.create()
         store = await Store.create()
         repository = await Repository.create()
-        return cls(broker=broker, store=store, repository=repository)
+        self = cls(broker=broker, store=store, repository=repository)
+        await self.game.init()
+        return self
 
     async def dispose(self):
         await self._broker.dispose()
@@ -43,6 +46,10 @@ class Service:
     @cached_property
     def chat(self) -> ChatService:
         return ChatService(broker=self._broker, store=self._store, repository=self._repository)
+
+    @cached_property
+    def game(self) -> GameService:
+        return GameService(store=self._store, repository=self._repository)
 
 
 __all__ = ["Service"]

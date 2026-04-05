@@ -5,13 +5,13 @@ import { useSetAtom } from "jotai";
 
 import store, { $token } from "../store";
 import client from "./client";
-import type { User } from "./models";
+import type { Leaderboard, User } from "./models";
 
-export const useAuthedUserQuery = () =>
+export const useCurrentUserQuery = () =>
   useQuery<User, AxiosError>({
-    queryKey: ["auth", "me"],
+    queryKey: ["user", "me"],
     queryFn: async () => {
-      const response = await client.get("/auth/me", {
+      const response = await client.get("/user/me", {
         timeout: 5000,
         validateStatus: (status) => [200, 401, 403].includes(status),
       });
@@ -40,7 +40,7 @@ export const useLoginMutation = () => {
     },
     onSuccess: ({ token }) => setToken(token),
     onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-      context.client.invalidateQueries({ queryKey: ["auth", "me"] }),
+      context.client.invalidateQueries({ queryKey: ["user", "me"] }),
   });
 };
 
@@ -64,8 +64,17 @@ export const useRegisterMutation = () => {
     },
     onSuccess: ({ token }) => setToken(token),
     onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-      context.client.invalidateQueries({ queryKey: ["auth", "me"] }),
+      context.client.invalidateQueries({ queryKey: ["user", "me"] }),
   });
 };
+
+export const useLeaderboardQuery = () =>
+  useQuery<Leaderboard, AxiosError>({
+    queryKey: ["game", "leaderboard"],
+    queryFn: async () => {
+      const response = await client.get("/game/leaderboard");
+      return response.data;
+    },
+  });
 
 export * from "./models";

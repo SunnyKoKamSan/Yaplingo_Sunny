@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -7,8 +6,8 @@ from ulid import ULID
 
 from server.repository.exceptions import EntityExistsError
 
-from ..dependencies import Service, User
-from ..schemas.user import UserCreationInput, UserCredentialsInput, UserResponse
+from ..dependencies import Service
+from ..schemas.user import UserCreationInput, UserCredentialsInput
 from ..settings import settings
 
 TOKEN_TTL = timedelta(days=7)
@@ -36,21 +35,6 @@ async def login(credentials: UserCredentialsInput, service: Service):
     if (user := await service.user.verify(credentials)) is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return {"token": generate_token(user.id)}
-
-
-@router.get("/me")
-async def me(user: User, service: Service) -> UserResponse:
-    (today_points, total_points, activity) = await asyncio.gather(
-        service.user.get_today_points(user),
-        service.user.get_total_points(user),
-        service.user.get_year_activity(user),
-    )
-    return UserResponse(
-        **user.model_dump(),
-        milestone=user.streak_milestone,
-        points=(today_points, total_points),
-        activity=activity,
-    )
 
 
 __all__ = ["router"]

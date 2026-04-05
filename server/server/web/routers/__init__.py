@@ -1,3 +1,3 @@
-from . import auth, chat, echo
+from . import auth, chat, echo, game
 
-__all__ = ["auth", "chat", "echo"]
+__all__ = ["auth", "chat", "echo", "game"]

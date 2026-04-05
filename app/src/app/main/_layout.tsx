@@ -10,20 +10,20 @@ type Tab = {
 
 const TABS: Record<string, Tab> = {
   index: {
-    title: "Home",
+    title: "HOME",
     icon: require("@/icons/tabs/home.png"),
   },
   learn: {
     header: false,
-    title: "Learn",
+    title: "LEARN",
     icon: require("@/icons/tabs/learn.png"),
   },
-  community: {
-    title: "Community",
-    icon: require("@/icons/tabs/community.png"),
+  leaderboard: {
+    title: "LEADERBOARD",
+    icon: require("@/icons/tabs/leaderboard.png"),
   },
   profile: {
-    title: "Profile",
+    title: "PROFILE",
     icon: require("@/icons/tabs/profile.png"),
   },
 };

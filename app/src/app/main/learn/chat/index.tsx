@@ -3,9 +3,9 @@ import { Alert, FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { useTheme } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { CircleCheckBigIcon, CircleIcon, ListTodoIcon, XIcon } from "lucide-react-native";
-import { useQueryClient } from "node_modules/@tanstack/react-query/build/modern/QueryClientProvider";
 import tw from "twrnc";
 
 import {
@@ -201,7 +201,7 @@ export default function MainLearnChatScreen() {
   const { session, submit, abort, end } = useChatSession({
     onClose: () => {
       if (router.canDismiss()) router.dismissAll();
-      client.invalidateQueries({ queryKey: ["auth", "me"] });
+      client.invalidateQueries({ queryKey: ["user", "me"] });
     },
   });
 

@@ -3,14 +3,14 @@ import { Alert, View } from "react-native";
 import { useSetAtom } from "jotai";
 import tw from "twrnc";
 
-import { useAuthedUserQuery } from "~/client";
+import { useCurrentUserQuery } from "~/client";
 import { Button, Text } from "~/components/primitives";
 import { $token } from "~/store";
 
 export default function MainProfileScreen() {
   const setToken = useSetAtom($token);
 
-  const { data: user } = useAuthedUserQuery();
+  const { data: user } = useCurrentUserQuery();
 
   const handleLogout = useCallback(() => {
     Alert.alert("Logout", "Are you sure you want to logout?", [

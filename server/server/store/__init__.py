@@ -6,6 +6,7 @@ from redis.asyncio import Redis as AsyncRedis
 
 from .chat import ChatStore
 from .echo import EchoStore
+from .leaderboard import LeaderboardStore
 from .points import PointsStore
 
 if TYPE_CHECKING:
@@ -45,6 +46,10 @@ class Store:
     @cached_property
     def points(self) -> PointsStore:
         return PointsStore(self.client)
+
+    @cached_property
+    def leaderboard(self) -> LeaderboardStore:
+        return LeaderboardStore(self.client)
 
 
 __all__ = ["Store"]
