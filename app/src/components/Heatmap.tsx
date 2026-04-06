@@ -10,11 +10,13 @@ export default function Heatmap({
   entries = {},
   squareGap = 4,
   squareSize = 16,
+  disabled = false,
   ...props
 }: {
   entries?: Record<string, number>;
   squareGap?: number;
   squareSize?: number;
+  disabled?: boolean;
 } & ScrollViewProps) {
   const scheme = useColorScheme();
 
@@ -72,6 +74,7 @@ export default function Heatmap({
                 return (
                   <Tooltip
                     key={day.date.getTime()}
+                    disabled={disabled}
                     content={`${day.date.toLocaleDateString("en-GB", {
                       weekday: "short",
                       month: "short",

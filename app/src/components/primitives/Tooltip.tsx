@@ -14,9 +14,11 @@ export default function Tooltip({
   children,
   content,
   style,
+  disabled = false,
 }: {
   content: string | React.ReactNode;
   children: (visible: boolean) => React.ReactNode;
+  disabled?: boolean;
 } & Omit<ViewProps, "children">) {
   const theme = useTheme();
 
@@ -43,7 +45,7 @@ export default function Tooltip({
 
   return (
     <>
-      <Pressable ref={ref} onPress={handlePress}>
+      <Pressable ref={ref} onPress={handlePress} disabled={disabled}>
         {children(active)}
       </Pressable>
       {active && position && (

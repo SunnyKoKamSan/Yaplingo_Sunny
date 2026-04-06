@@ -16,8 +16,8 @@ import {
   type Evaluation,
   type Turn,
 } from "~/client/chat";
-import { LoadingView, PronunciationBreakdown, RecordButton } from "~/components";
-import { Text } from "~/components/primitives";
+import { PronunciationBreakdown, RecordButton } from "~/components";
+import { Spinner, Text } from "~/components/primitives";
 import { useAudio, useNavigationOptions } from "~/hooks";
 import { getScoreColor } from "~/utils";
 
@@ -229,7 +229,12 @@ export default function MainLearnChatScreen() {
   return (
     <View style={[tw`flex-1 items-center justify-between py-4`, { paddingBottom: insets.bottom }]}>
       {session.status === ChatSessionStatus.LOADING ? (
-        <LoadingView />
+        <View style={tw`w-4/6 grow items-center justify-center gap-8`}>
+          <Spinner size={48} />
+          <Text style={tw`text-center text-base font-medium leading-tight text-neutral-500`}>
+            Please ensure you are in a quiet environment for the best experience.
+          </Text>
+        </View>
       ) : (
         <>
           <View style={tw`mx-4 mb-2 rounded-xl border-2 border-zinc-500/50 p-2.5`}>

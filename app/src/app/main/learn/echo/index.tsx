@@ -21,7 +21,7 @@ import { ArrowRightIcon, EarIcon, FlipHorizontalIcon, PlayIcon, RedoIcon, StarsI
 import tw from "twrnc";
 
 import { EchoSessionStatus, useEchoSession, type Attempt, type EchoSession } from "~/client/echo";
-import { LoadingView, PronunciationBreakdown, RecordButton } from "~/components";
+import { PronunciationBreakdown, RecordButton } from "~/components";
 import { Spinner, Text } from "~/components/primitives";
 import { useAudio, useNavigationOptions } from "~/hooks";
 import { getScoreColor } from "~/utils";
@@ -368,7 +368,12 @@ export default function MainLearnEchoScreen() {
   return (
     <View style={[tw`flex-1 items-center justify-between gap-4 p-4`, { paddingBottom: insets.bottom }]}>
       {session.status === EchoSessionStatus.LOADING_NEW ? (
-        <LoadingView />
+        <View style={tw`w-4/6 grow items-center justify-center gap-8`}>
+          <Spinner size={48} />
+          <Text style={tw`text-center text-base font-medium leading-tight text-neutral-500`}>
+            Please ensure you are in a quiet environment for the best experience.
+          </Text>
+        </View>
       ) : (
         <>
           <View style={tw`rounded-xl border-2 border-zinc-500/50 p-3`}>

@@ -11,17 +11,29 @@ export const useCurrentUserQuery = () =>
   useQuery<User, AxiosError>({
     queryKey: ["user", "me"],
     queryFn: async () => {
-      const response = await client.get("/user/me", {
+      const response = await client.get("/user", {
         timeout: 5000,
         validateStatus: (status) => [200, 401, 403].includes(status),
       });
-      if (response.status === 401) {
-        store.set($token, "");
+      if (response.status !== 200) {
+        if (response.status === 401) {
+          store.set($token, "");
+        }
+        throw new Error(response.statusText);
       }
       return response.data;
     },
     retry: true,
     staleTime: Infinity,
+  });
+
+export const useUserQuery = (uid: string) =>
+  useQuery<User, AxiosError>({
+    queryKey: ["user", uid],
+    queryFn: async () => {
+      const response = await client.get(`/user/${uid}`);
+      return response.data;
+    },
   });
 
 export const useLoginMutation = () => {

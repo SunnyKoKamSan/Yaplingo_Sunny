@@ -1,14 +1,15 @@
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@react-navigation/native";
-import { CalendarIcon, FlameIcon, ZapIcon } from "lucide-react-native";
+import { CalendarIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 import { useCurrentUserQuery, type User } from "~/client";
-import { Heatmap } from "~/components";
 import { Spinner, Text } from "~/components/primitives";
-import { useNavigationOptions } from "~/hooks";
+import { useNavigationOptions, useTomorrowCountdown } from "~/hooks";
 import { formatCompactNumber } from "~/utils";
+
+import { ActivityCard, StreakCard } from "./leaderboard/profile";
 
 const Header = ({ user }: { user?: User }) => {
   const theme = useTheme();
@@ -44,33 +45,28 @@ const Header = ({ user }: { user?: User }) => {
   );
 };
 
-const StreakCard = ({ user }: { user: User }) => {
-  return (
-    <View style={tw`grow items-center justify-center rounded-2xl border-2 border-zinc-500/50 p-4`}>
-      <View style={tw`flex-row items-center`}>
-        <FlameIcon color={tw.color("orange-500")} fill={tw.color("orange-500")} size={36} />
-        <Text style={tw`text-5xl font-bold leading-[0] tracking-tighter text-orange-500`}>{user.streak ?? "-"}</Text>
-      </View>
-      <Text style={tw`text-center text-xl font-medium text-orange-500`}>Day Streak</Text>
-    </View>
-  );
-};
-
 const MilestoneCard = ({ user }: { user: User }) => {
   const [today, total] = user.points;
   const remaining = user.milestone - user.points[0];
   const progress = Math.round((user.points[0] / user.milestone) * 100);
+
+  const countdown = useTomorrowCountdown();
+
   return (
     <View style={tw`grow items-center justify-center gap-2 rounded-2xl border-2 border-zinc-500/50 p-4`}>
       {remaining > 0 ? (
         <View>
           <Text style={tw`text-center text-3xl font-bold tracking-tighter text-sky-500`}>{remaining} XP</Text>
-          <Text style={tw`text-center text-base font-medium`}>to keep your streak</Text>
+          <Text style={tw`text-center text-base font-medium`}>to bump your streak</Text>
+          {user.streak > 0 && (
+            <Text style={tw`text-center text-sm font-medium text-neutral-500`}>streak resets at {countdown}</Text>
+          )}
         </View>
       ) : (
         <View>
           <Text style={tw`text-center text-3xl font-bold tracking-tighter text-sky-500`}>{user.milestone} XP</Text>
           <Text style={tw`text-center text-lg font-medium`}>Completed</Text>
+          <Text style={tw`text-center text-sm font-medium text-neutral-500`}>next milestone at {countdown}</Text>
         </View>
       )}
       <View style={tw`flex-row items-center justify-center gap-2`}>
@@ -86,35 +82,25 @@ const MilestoneCard = ({ user }: { user: User }) => {
   );
 };
 
-const ActivityCard = ({ user }: { user: User }) => {
-  return (
-    <View style={tw`gap-4 rounded-2xl border-2 border-zinc-500/50 py-2.5`}>
-      <Text style={tw`px-4 text-2xl font-bold`}>Activity</Text>
-      <Heatmap entries={user.activity ?? {}} contentContainerStyle={tw`px-4`} />
-    </View>
-  );
-};
-
 export default function MainHomeScreen() {
   const { data: user } = useCurrentUserQuery();
 
   useNavigationOptions({ header: () => <Header user={user} /> });
 
+  if (!user) {
+    return (
+      <View style={tw`flex-1 items-center justify-center`}>
+        <Spinner size={36} />
+      </View>
+    );
+  }
   return (
-    <>
-      {user ? (
-        <ScrollView alwaysBounceVertical={false} contentContainerStyle={tw`flex-1 gap-4 p-4`}>
-          <View style={tw`flex-row gap-4`}>
-            <StreakCard user={user} />
-            <MilestoneCard user={user} />
-          </View>
-          <ActivityCard user={user} />
-        </ScrollView>
-      ) : (
-        <View style={tw`flex-1 items-center justify-center`}>
-          <Spinner size={36} />
-        </View>
-      )}
-    </>
+    <ScrollView alwaysBounceVertical={false} contentContainerStyle={tw`flex-1 gap-4 p-4`}>
+      <View style={tw`flex-row gap-4`}>
+        <StreakCard user={user} />
+        <MilestoneCard user={user} />
+      </View>
+      <ActivityCard user={user} />
+    </ScrollView>
   );
 }

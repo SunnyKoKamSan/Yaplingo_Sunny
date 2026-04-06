@@ -1,4 +1,5 @@
-import { FlatList, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, View } from "react-native";
+import { useRouter } from "expo-router";
 import { ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
@@ -6,14 +7,30 @@ import { useLeaderboardQuery, type LeaderboardEntry } from "~/client";
 import { Spinner, Text } from "~/components/primitives";
 
 export default function MainLeaderboardScreen() {
-  const { data: leaderboard } = useLeaderboardQuery();
+  const router = useRouter();
+  const { data: leaderboard, isRefetching, refetch } = useLeaderboardQuery();
   return (
     <View style={tw`flex-1 items-center justify-center`}>
       {leaderboard ? (
         <>
           <FlatList
             data={leaderboard.entries}
-            renderItem={({ item }) => <LeaderboardListItem entry={item} />}
+            renderItem={({ item }) => (
+              <LeaderboardListItem
+                entry={item}
+                onPress={() =>
+                  router.navigate(
+                    {
+                      pathname: "./profile",
+                      params: { uid: item.uid },
+                    },
+                    { relativeToDirectory: true },
+                  )
+                }
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
             style={tw`w-full border-b-2 border-zinc-500/50`}
             contentContainerStyle={tw`grow gap-2 p-2`}
           />
@@ -28,9 +45,11 @@ export default function MainLeaderboardScreen() {
   );
 }
 
-const LeaderboardListItem = ({ entry }: { entry: LeaderboardEntry }) => {
+const LeaderboardListItem = ({ entry, onPress }: { entry: LeaderboardEntry; onPress?: () => void }) => {
   return (
-    <View style={tw`flex-row items-center rounded-xl border-2 border-zinc-500/50 bg-zinc-800/50 p-2`}>
+    <Pressable
+      onPress={onPress}
+      style={tw`flex-row items-center rounded-xl border-2 border-zinc-500/50 bg-zinc-800/50 p-2`}>
       <View style={tw`w-1/10 items-center justify-center rounded-lg`}>
         <Text style={tw`text-xl font-bold`}>{entry.rank}</Text>
       </View>
@@ -41,6 +60,6 @@ const LeaderboardListItem = ({ entry }: { entry: LeaderboardEntry }) => {
         <ZapIcon size={16} color={tw.color("sky-500")} fill={tw.color("sky-500")} />
         <Text style={tw`text-xl font-bold tracking-tighter text-sky-500`}>{entry.score}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 };
