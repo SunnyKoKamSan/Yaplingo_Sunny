@@ -23,42 +23,28 @@ class AggregationRepository:
     ) -> list[EchoSession | ChatSession]:
         start = start.astimezone(ZoneInfo("UTC")) if start else None
         end = end.astimezone(ZoneInfo("UTC")) if end else None
-
-        query = union_all(
-            select(EchoSession).where(
-                EchoSession.user_id == user.id,
-                *([EchoSession.completed_at >= start] if start else []),
-                *([EchoSession.completed_at < end] if end else []),
-            ),
-            select(ChatSession).where(
-                ChatSession.user_id == user.id,
-                *([ChatSession.completed_at >= start] if start else []),
-                *([ChatSession.completed_at < end] if end else []),
-            ),
-        )
-
         async with self._session() as session:
+            query = union_all(
+                select(EchoSession).where(
+                    EchoSession.user_id == user.id,
+                    *([EchoSession.completed_at >= start] if start else []),
+                    *([EchoSession.completed_at < end] if end else []),
+                ),
+                select(ChatSession).where(
+                    ChatSession.user_id == user.id,
+                    *([ChatSession.completed_at >= start] if start else []),
+                    *([ChatSession.completed_at < end] if end else []),
+                ),
+            )
             results = await session.exec(query)  # type: ignore
             return list(results.all())
 
     async def list_total_points_per_user(self) -> list[tuple[ULID, int]]:
-        subquery = union_all(
-            select(
-                col(EchoSession.user_id).label("user_id"),
-                col(EchoSession.points).label("points"),
-            ),
-            select(
-                col(ChatSession.user_id).label("user_id"),
-                col(ChatSession.points).label("points"),
-            ),
-        ).subquery()
-
-        query = select(
-            subquery.c.user_id,
-            func.coalesce(func.sum(subquery.c.points), 0),
-        ).group_by(subquery.c.user_id)
-
         async with self._session() as session:
+            query = select(
+                col(User.id),
+                func.coalesce(func.sum(User.points), 0),
+            ).group_by(col(User.id))
             results = await session.exec(query)
             return [(uid, int(points)) for (uid, points) in results.all()]
 

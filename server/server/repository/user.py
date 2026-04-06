@@ -41,9 +41,9 @@ class UserRepository:
             results = await session.exec(query)
             return list(results.all())
 
-    async def reset_streak(self, user: User) -> None:
+    async def increment_points(self, user: User, points_to_add: int) -> None:
         async with self._session() as session:
-            user.streak = 0
+            user.points += points_to_add
             session.add(user)
             await session.commit()
 
@@ -54,6 +54,12 @@ class UserRepository:
         async with self._session() as session:
             user.streak = user.streak + 1 if expected == today else 1
             user.streaked_at = now
+            session.add(user)
+            await session.commit()
+
+    async def reset_streak(self, user: User) -> None:
+        async with self._session() as session:
+            user.streak = 0
             session.add(user)
             await session.commit()
 

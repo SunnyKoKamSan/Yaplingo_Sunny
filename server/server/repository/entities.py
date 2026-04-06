@@ -36,6 +36,7 @@ class User(SQLModel, table=True):
     password: str
     language: LanguageAlpha2
     timezone: TimeZoneName
+    points: int = 0
 
     streak: int = 0
     streaked_at: datetime = Field(

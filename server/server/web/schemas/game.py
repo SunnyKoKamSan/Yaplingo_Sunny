@@ -1,16 +1,11 @@
 from pydantic import BaseModel
-from ulid import ULID
+
+from server.service.game import LeaderboardEntry
 
 
 class LeaderboardResponse(BaseModel):
-    class Entry(BaseModel):
-        uid: ULID
-        name: str
-        rank: int
-        score: int
-
-    entries: list[Entry]
-    me: Entry
+    me: LeaderboardEntry
+    entries: list[LeaderboardEntry]
 
 
 __all__ = ["LeaderboardResponse"]
