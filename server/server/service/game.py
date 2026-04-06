@@ -1,5 +1,6 @@
 from collections import Counter
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel
@@ -17,6 +18,9 @@ class LeaderboardEntry(BaseModel):
     score: int
 
 
+LeaderboardPeriod = Literal["this-week", "all-time"]
+
+
 class GameService:
     def __init__(self, store: Store, repository: Repository):
         self.store = store
@@ -26,35 +30,59 @@ class GameService:
         entries = await self.repository.aggregation.list_total_points_per_user()
         await self.store.leaderboard.dump(entries)
 
-    async def list_leaderboard(self, limit: int = 50) -> list[LeaderboardEntry]:
-        top = await self.store.leaderboard.list(limit)
+    @staticmethod
+    def _current_week_bounds_utc() -> tuple[datetime, datetime]:
+        now = datetime.now(timezone.utc)
+        start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc) - timedelta(days=now.weekday())
+        end = start + timedelta(days=7)
+        return start, end
 
-        users = await self.repository.user.get_many([uid for uid, _ in top])
+    async def _hydrate_leaderboard_entries(self, ranked_scores: list[tuple[ULID, int]]) -> list[LeaderboardEntry]:
+        users = await self.repository.user.get_many([uid for uid, _ in ranked_scores])
         mapping: dict[ULID, User] = {u.id: u for u in users}
 
         entries: list[LeaderboardEntry] = []
-        for rank, (uid, score) in enumerate(top, start=1):
-            user = mapping[uid]
-            entries.append(
-                LeaderboardEntry(
-                    uid=user.id,
-                    name=user.name,
-                    rank=rank,
-                    score=score,
+        for uid, score in ranked_scores:
+            if user := mapping.get(uid):
+                entries.append(
+                    LeaderboardEntry(
+                        uid=user.id,
+                        name=user.name,
+                        rank=len(entries) + 1,
+                        score=score,
+                    )
                 )
-            )
         return entries
 
-    async def get_leaderboard_user(self, user: User) -> LeaderboardEntry:
-        if rank_score := await self.store.leaderboard.get(user):
+    async def list_leaderboard(self, period: LeaderboardPeriod = "all-time", limit: int = 50) -> list[LeaderboardEntry]:
+        if period == "all-time":
+            ranked_scores = await self.store.leaderboard.list(limit)
+        else:
+            start, end = self._current_week_bounds_utc()
+            ranked_scores = (await self.repository.aggregation.list_points_per_user(start=start, end=end))[:limit]
+
+        return await self._hydrate_leaderboard_entries(ranked_scores)
+
+    async def get_leaderboard_user(self, user: User, period: LeaderboardPeriod = "all-time") -> LeaderboardEntry:
+        if period == "all-time" and (rank_score := await self.store.leaderboard.get(user)):
             return LeaderboardEntry(
                 uid=user.id,
                 name=user.name,
                 rank=rank_score[0],
                 score=rank_score[1],
             )
-        count = await self.store.leaderboard.count()
-        return LeaderboardEntry(uid=user.id, name=user.name, rank=count + 1, score=0)
+
+        if period == "all-time":
+            count = await self.store.leaderboard.count()
+            return LeaderboardEntry(uid=user.id, name=user.name, rank=count + 1, score=0)
+
+        start, end = self._current_week_bounds_utc()
+        ranked_scores = await self.repository.aggregation.list_points_per_user(start=start, end=end)
+        for rank, (uid, score) in enumerate(ranked_scores, start=1):
+            if uid == user.id:
+                return LeaderboardEntry(uid=user.id, name=user.name, rank=rank, score=score)
+
+        return LeaderboardEntry(uid=user.id, name=user.name, rank=len(ranked_scores) + 1, score=0)
 
     async def get_user_year_activity(self, user: User) -> dict[date, int]:
         tz = ZoneInfo(user.timezone)
@@ -80,4 +108,4 @@ class GameService:
             await self.repository.user.increment_streak(user)
 
 
-__all__ = ["GameService"]
+__all__ = ["GameService", "LeaderboardPeriod"]
