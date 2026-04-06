@@ -138,11 +138,15 @@ const Podium = ({
   token,
   tab,
   onTab,
+  onUserPress,
+  currentUserId,
 }: {
   top3: LeaderboardEntry[];
   token: number;
   tab: TimeTab;
   onTab: (tab: TimeTab) => void;
+  onUserPress: (uid: string) => void;
+  currentUserId?: string;
 }) => {
   const first = top3.find((entry) => entry.rank === 1);
   const second = top3.find((entry) => entry.rank === 2);
@@ -157,9 +161,21 @@ const Podium = ({
         <AnimatedPodium
           playToken={token}
           entries={{
-            1: first ? { name: first.name, xpLabel: fmtXP(first.score) } : undefined,
-            2: second ? { name: second.name, xpLabel: fmtXP(second.score) } : undefined,
-            3: third ? { name: third.name, xpLabel: fmtXP(third.score) } : undefined,
+            1: first ? { 
+              name: first.name, 
+              xpLabel: fmtXP(first.score),
+              onPress: first.uid === currentUserId ? undefined : () => onUserPress(first.uid)
+            } : undefined,
+            2: second ? { 
+              name: second.name, 
+              xpLabel: fmtXP(second.score),
+              onPress: second.uid === currentUserId ? undefined : () => onUserPress(second.uid)
+            } : undefined,
+            3: third ? { 
+              name: third.name, 
+              xpLabel: fmtXP(third.score),
+              onPress: third.uid === currentUserId ? undefined : () => onUserPress(third.uid)
+            } : undefined,
           }}
           championContent={<FloatingMascot crown={true} />}
         />
@@ -372,6 +388,12 @@ export default function MainLeaderboardScreen() {
   const top3 = useMemo(() => entries.filter((entry) => entry.rank <= 3), [entries]);
   const rest = useMemo(() => entries.filter((entry) => entry.rank > 3), [entries]);
   const me = leaderboard?.me;
+  
+  // Check if current user is already in the visible list (top 3 or rest)
+  const meInList = useMemo(() => {
+    if (!me) return false;
+    return entries.some((entry) => entry.uid === me.uid);
+  }, [entries, me]);
 
   const openProfile = (uid: string) => {
     router.navigate(
@@ -431,7 +453,7 @@ export default function MainLeaderboardScreen() {
           <View>
             <Header rank={me?.rank ?? 0} xp={me?.score ?? 0} streak={user?.streak ?? 0} loading={!me} />
             <Tips />
-            <Podium top3={top3} token={token} tab={tab} onTab={setTab} />
+            <Podium top3={top3} token={token} tab={tab} onTab={setTab} onUserPress={openProfile} currentUserId={me?.uid} />
           </View>
         }
         ListEmptyComponent={!top3.length ? <Empty /> : null}
@@ -450,9 +472,11 @@ export default function MainLeaderboardScreen() {
         removeClippedSubviews={true}
         style={{ backgroundColor: BG }}
       />
-      <View style={tw`px-4 pb-4`}>
-        <Footer rank={me?.rank ?? 0} xp={me?.score ?? 0} loading={!me} error={Boolean(error) && !me} name={user?.name} />
-      </View>
+      {!meInList && me && (
+        <View style={tw`px-4 pb-4`}>
+          <Footer rank={me.rank} xp={me.score} loading={false} error={false} name={user?.name} />
+        </View>
+      )}
     </View>
   );
 }
