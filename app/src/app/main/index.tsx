@@ -46,9 +46,9 @@ const Header = ({ user }: { user?: User }) => {
 };
 
 const MilestoneCard = ({ user }: { user: User }) => {
-  const [today, total] = user.points;
-  const remaining = user.milestone - user.points[0];
-  const progress = Math.round((user.points[0] / user.milestone) * 100);
+  const [points] = user.points; // only care about daily points for milestone progress
+  const remaining = user.milestone - points;
+  const progress = Math.round((points / user.milestone) * 100);
 
   const countdown = useTomorrowCountdown();
 
@@ -70,13 +70,19 @@ const MilestoneCard = ({ user }: { user: User }) => {
         </View>
       )}
       <View style={tw`flex-row items-center justify-center gap-2`}>
-        <Text style={tw`text-xs font-medium tracking-tighter text-neutral-500`}>{total - today}</Text>
+        <Text style={tw`text-xs font-medium tracking-tighter text-neutral-500`}>0</Text>
         <View style={tw`w-32 items-stretch justify-center`}>
-          <View style={tw`h-2.5 overflow-hidden rounded bg-zinc-500/50`}>
+          <View style={tw`h-2.5 overflow-hidden rounded bg-zinc-200 dark:bg-zinc-800`}>
             <View style={[tw`h-full bg-sky-500`, { width: `${progress}%` }]} />
           </View>
         </View>
-        <Text style={tw`text-xs font-medium tracking-tighter text-neutral-500`}>{total - today + user.milestone}</Text>
+        <Text
+          style={tw.style(
+            "text-xs font-medium tracking-tighter text-neutral-500",
+            points > user.milestone && "font-bold text-sky-500",
+          )}>
+          {Math.max(user.milestone, points)}
+        </Text>
       </View>
     </View>
   );

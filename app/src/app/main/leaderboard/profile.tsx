@@ -51,9 +51,22 @@ export const PointsCard = ({ user }: { user: User }) => {
 };
 
 export const ActivityCard = ({ user, disabled = false }: { user: User; disabled?: boolean }) => {
+  const theme = useTheme();
   return (
     <View style={tw`gap-4 rounded-2xl border-2 border-zinc-500/50 py-2.5`}>
-      <Text style={tw`px-4 text-2xl font-bold`}>Activity</Text>
+      <View style={tw`flex-row items-center justify-between px-4`}>
+        <Text style={tw`text-2xl font-bold`}>Activity</Text>
+        <View style={tw`flex-row items-center gap-1`}>
+          <Text style={tw`mr-1 text-sm text-neutral-500`}>Less</Text>
+          {[...Array(5)].map((_, i) => {
+            const step = i + i;
+            const intensity = theme.dark ? Math.max(900 - step * 100, 100) : Math.min((step + 1) * 100, 900);
+            const color = tw.color(`emerald-${intensity}`);
+            return <View key={i} style={[tw`size-3 rounded-sm`, { backgroundColor: color }]} />;
+          })}
+          <Text style={tw`ml-1 text-sm text-neutral-500`}>More</Text>
+        </View>
+      </View>
       <Heatmap entries={user.activity} contentContainerStyle={tw`px-4`} disabled={disabled} />
     </View>
   );

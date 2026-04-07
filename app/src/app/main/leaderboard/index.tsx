@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 import { useFocusEffect, useRouter } from "expo-router";
-import { FlameIcon, TrophyIcon, ZapIcon } from "lucide-react-native";
+import { TrophyIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 import { useCurrentUserQuery, useLeaderboardQuery, type LeaderboardEntry } from "~/client";
@@ -203,15 +203,15 @@ export default function MainLeaderboardScreen() {
                       <ZapIcon size={24} color={tw.color("sky-500")} fill={tw.color("sky-500")} />
                       <Text style={tw`text-3xl font-bold text-sky-500`}>{leaderboard.me.score}</Text>
                     </View>
-                    <Text style={tw`text-lg font-medium`}>Current XP</Text>
+                    <Text style={tw`text-lg font-medium`}>Current Balance</Text>
                   </View>
                   <View
                     style={tw`grow items-center justify-center rounded-xl border-2 border-zinc-500/50 bg-zinc-200 p-2 dark:bg-zinc-800`}>
                     <View style={tw`flex-row items-center gap-1`}>
-                      <FlameIcon size={24} color={tw.color("orange-500")} fill={tw.color("orange-500")} />
-                      <Text style={tw`text-3xl font-bold text-orange-500`}>{user.streak}</Text>
+                      <ZapIcon size={24} color={tw.color("blue-500")} />
+                      <Text style={tw`text-3xl font-bold text-blue-500`}>{user.points[0]}</Text>
                     </View>
-                    <Text style={tw`text-lg font-medium`}>Day Streak</Text>
+                    <Text style={tw`text-lg font-medium`}>Gained Today</Text>
                   </View>
                 </View>
                 <Text style={tw`text-center text-base text-neutral-500`}>
