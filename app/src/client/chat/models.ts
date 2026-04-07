@@ -24,6 +24,7 @@ export type Turn = {
   reply: ConversationAssistantMessage;
   pronunciation: Pronunciation;
   evaluation: Evaluation;
+  score: number;
 };
 
 export type Conversation = {

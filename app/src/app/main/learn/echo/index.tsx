@@ -287,6 +287,12 @@ export default function MainLearnEchoScreen() {
     (value) => runOnJS(setFlipped)(value),
   );
 
+  useNavigationOptions({
+    header: () => (
+      <Header session={session} recorderState={audio.recorderState} onProceed={handleProceed} onClose={handleClose} />
+    ),
+  });
+
   const handleProceed = () => {
     const callback = () => {
       proceed();
@@ -315,12 +321,6 @@ export default function MainLearnEchoScreen() {
       },
     ]);
   };
-
-  useNavigationOptions({
-    header: () => (
-      <Header session={session} recorderState={audio.recorderState} onProceed={handleProceed} onClose={handleClose} />
-    ),
-  });
 
   const handlePronounce = () => {
     setPlaybacking(false);

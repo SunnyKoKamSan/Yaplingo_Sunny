@@ -57,14 +57,16 @@ class EchoSessionState(BaseModel):
     @computed_field
     @cached_property
     def price(self) -> int:
-        extras = sum(self.chances) - len(self.scenario.transcripts)
-        return (extras + 1) * 50
+        from server.formula import ECHO_SESSION_PRICE_BASE
+
+        return self.expense + ECHO_SESSION_PRICE_BASE
 
     @computed_field
     @cached_property
     def expense(self) -> int:
-        extras = sum(self.chances) - len(self.scenario.transcripts)
-        return sum((i + 1) * 50 for i in range(extras))
+        from server import formula
+
+        return formula.get_echo_session_expense(self)
 
     @computed_field
     @cached_property

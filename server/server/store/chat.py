@@ -23,6 +23,13 @@ class ChatSessionState(BaseModel):
     class Turn(Result):
         index: int  # index of the turn in the conversation
 
+        @computed_field
+        @cached_property
+        def score(self) -> float:
+            from server import formula
+
+            return formula.calculate_chat_turn_score(self)
+
     _uid: ULID = PrivateAttr()
 
     scenario: Scenario

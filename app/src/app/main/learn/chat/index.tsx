@@ -5,7 +5,7 @@ import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { useTheme } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { CircleCheckBigIcon, CircleIcon, ListTodoIcon, XIcon } from "lucide-react-native";
+import { CircleCheckBigIcon, CircleIcon, ListTodoIcon, PlayIcon, StarsIcon, XIcon } from "lucide-react-native";
 import tw from "twrnc";
 
 import {
@@ -69,36 +69,49 @@ const MessageListItem = ({
   turn,
   selected,
   onPress,
+  onLongPress,
 }: {
   message: ConversationMessage;
   turn?: Turn;
   selected: boolean;
   onPress: () => void;
+  onLongPress: () => void;
 }) => {
-  const score = turn
-    ? turn.pronunciation.score * 0.4 +
-      turn.evaluation.criteria.accuracy * 0.2 +
-      turn.evaluation.criteria.appropriacy * 0.3 +
-      turn.evaluation.criteria.vocabulary * 0.1
-    : undefined;
   return (
-    <View style={tw.style("flex-row items-center gap-2.5", message.role === "user" ? "justify-end" : "justify-start")}>
-      {score !== undefined && (
-        <View style={tw`items-center`}>
-          <Text style={[tw`text-sm font-medium`, { color: getScoreColor(score) }]}>{Math.round(score * 100)}%</Text>
-          <Text style={tw`text-xs leading-none text-neutral-500`}>overall</Text>
+    <View style={tw.style("justify-center gap-1", message.role === "user" ? "items-end" : "items-start")}>
+      <View style={tw`flex-row items-center gap-2.5`}>
+        {turn && (
+          <View style={tw`items-center`}>
+            <Text style={[tw`text-base font-bold`, { color: getScoreColor(turn.score) }]}>
+              {Math.round(turn.score * 100)}%
+            </Text>
+            <Text style={tw`text-xs leading-none text-neutral-500`}>overall</Text>
+          </View>
+        )}
+        <Pressable
+          onPress={onPress}
+          onLongPress={onLongPress}
+          style={tw.style(
+            "shrink rounded-xl border-2 px-2.5 py-1.5",
+            selected ? "border-zinc-500" : "border-transparent",
+            message.role === "user" && "bg-green-500/50",
+            message.role === "assistant" && "bg-neutral-300/50 dark:bg-neutral-700/50",
+          )}>
+          <Text style={tw`text-base`}>{message.role === "assistant" ? message.content : message.transcript.text}</Text>
+        </Pressable>
+      </View>
+      {turn && (
+        <View style={tw`flex-row items-center justify-end gap-4`}>
+          <View style={tw`flex-row items-center gap-1`}>
+            <StarsIcon size={12} color={tw.color("neutral-500")} />
+            <Text style={tw`text-xs font-medium text-neutral-500`}>Tap for result</Text>
+          </View>
+          <View style={tw`flex-row items-center gap-1`}>
+            <PlayIcon size={12} color={tw.color("neutral-500")} />
+            <Text style={tw`text-xs font-medium text-neutral-500`}>Long Press for playback</Text>
+          </View>
         </View>
       )}
-      <Pressable
-        onPress={onPress}
-        style={tw.style(
-          "shrink rounded-xl border-2 px-2.5 py-1.5",
-          selected ? "border-zinc-500" : "border-transparent",
-          message.role === "user" && "bg-green-500/50",
-          message.role === "assistant" && "bg-neutral-300/50 dark:bg-neutral-700/50",
-        )}>
-        <Text style={tw`text-base`}>{message.role === "assistant" ? message.content : message.transcript.text}</Text>
-      </Pressable>
     </View>
   );
 };
@@ -117,8 +130,7 @@ const TurnSheet = ({
   return (
     <TrueSheet
       ref={ref}
-      detents={["auto"]}
-      maxHeight={500}
+      detents={[0.5]}
       initialDetentIndex={0}
       initialDetentAnimated={true}
       onWillDismiss={onWillDismiss}>
@@ -205,6 +217,10 @@ export default function MainLearnChatScreen() {
     },
   });
 
+  useNavigationOptions({
+    header: () => <Header session={session} onClose={handleClose} />,
+  });
+
   const handleClose = () => {
     if (session.status === ChatSessionStatus.FINISHED) return end();
     Alert.alert("Abort Session", "Are you sure you want to abort this session?", [
@@ -222,9 +238,11 @@ export default function MainLearnChatScreen() {
     if (result === null) Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
   };
 
-  useNavigationOptions({
-    header: () => <Header session={session} onClose={handleClose} />,
-  });
+  const playback = (turn: Turn) => {
+    audio.player.replace(turn.audio);
+    audio.player.seekTo(0);
+    audio.player.play();
+  };
 
   return (
     <View style={[tw`flex-1 items-center justify-between py-4`, { paddingBottom: insets.bottom }]}>
@@ -255,6 +273,7 @@ export default function MainLearnChatScreen() {
                   turn={turn}
                   selected={turn ? turn.index === selection?.index : false}
                   onPress={() => (turn ? setSelection(turn) : undefined)}
+                  onLongPress={() => (turn ? playback(turn) : undefined)}
                 />
               );
             }}
