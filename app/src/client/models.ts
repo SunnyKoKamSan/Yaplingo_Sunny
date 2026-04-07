@@ -21,8 +21,6 @@ export type Leaderboard = {
   me: LeaderboardEntry;
 };
 
-export type LeaderboardPeriod = "this-week" | "all-time";
-
 export type PronunciationAlignment = {
   token: string;
   score: number;

@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, View } from "react-native";
+import { useTheme } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlameIcon, XIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
@@ -6,16 +7,19 @@ import tw from "twrnc";
 import { useUserQuery, type User } from "~/client";
 import { Heatmap } from "~/components";
 import { Spinner, Text } from "~/components/primitives";
+import { useNavigationOptions } from "~/hooks";
 
-const Header = ({ user, onClose }: { user?: User; onClose: () => void }) => {
+const Header = ({ user }: { user?: User }) => {
+  const theme = useTheme();
+  const router = useRouter();
   return (
-    <View style={tw`flex-row items-center justify-between p-4 bg-white dark:bg-zinc-900`}>
-      <Pressable onPress={onClose} style={({ pressed }) => tw.style(pressed && "opacity-50")}>
+    <View style={[tw`flex-row items-center justify-between p-4`, { backgroundColor: theme.colors.card }]}>
+      <Pressable onPress={() => router.dismiss()} style={({ pressed }) => tw.style(pressed && "opacity-50")}>
         <XIcon color={tw.color("zinc-500")} size={26} strokeWidth={2.5} />
       </Pressable>
       {user && (
-        <View style={tw`absolute inset-x-0 items-center justify-center pointer-events-none`}>
-          <Text style={tw`text-2xl font-medium`}>{`@${user.name}`}</Text>
+        <View style={[tw`absolute inset-x-0 items-center justify-center`]}>
+          <Text style={tw`text-2xl font-medium leading-[0]`}>{`@${user.name}`}</Text>
         </View>
       )}
     </View>
@@ -56,10 +60,13 @@ export const ActivityCard = ({ user, disabled = false }: { user: User; disabled?
 };
 
 export default function MainLeaderboardProfileScreen() {
-  const router = useRouter();
   const { uid } = useLocalSearchParams<{ uid: string }>();
 
   const { data: user } = useUserQuery(uid);
+
+  useNavigationOptions({
+    header: () => <Header user={user} />,
+  });
 
   if (!user) {
     return (
@@ -69,15 +76,12 @@ export default function MainLeaderboardProfileScreen() {
     );
   }
   return (
-    <View style={tw`flex-1`}>
-      <Header user={user} onClose={() => router.dismiss()} />
-      <ScrollView alwaysBounceVertical={false} contentContainerStyle={tw`flex-1 gap-4 p-4`}>
-        <View style={tw`flex-row gap-4`}>
-          <StreakCard user={user} />
-          <PointsCard user={user} />
-        </View>
-        <ActivityCard user={user} disabled={true} />
-      </ScrollView>
-    </View>
+    <ScrollView alwaysBounceVertical={false} contentContainerStyle={tw`flex-1 gap-4 p-4`}>
+      <View style={tw`flex-row gap-4`}>
+        <StreakCard user={user} />
+        <PointsCard user={user} />
+      </View>
+      <ActivityCard user={user} disabled={true} />
+    </ScrollView>
   );
 }

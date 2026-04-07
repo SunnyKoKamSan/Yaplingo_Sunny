@@ -38,7 +38,7 @@
       "appleTeamId": "R5U6UH4TAF"
     },
     "android": {
-      "package": "com.yaplingo.app",
+      "package": "yaplingo",
       "userInterfaceStyle": "automatic",
       "permissions": [
         "android.permission.RECORD_AUDIO",

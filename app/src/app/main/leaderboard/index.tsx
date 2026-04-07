@@ -1,481 +1,231 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { FlatList, Image, Pressable, RefreshControl, View } from "react-native";
-import Animated, {
-  Easing,
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
-import { useIsFocused } from "@react-navigation/native";
-import { useRouter } from "expo-router";
-import { FlameIcon, LightbulbIcon, TrophyIcon, UserIcon, ZapIcon } from "lucide-react-native";
-import LottieView from "lottie-react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
+import { useCallback, useEffect, useState } from "react";
+import { FlatList, Pressable, RefreshControl, View } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
+import { useFocusEffect, useRouter } from "expo-router";
+import { FlameIcon, TrophyIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
-import { useCurrentUserQuery, useLeaderboardQuery, type LeaderboardEntry, type LeaderboardPeriod } from "~/client";
-import AnimatedPodium from "~/components/AnimatedPodium";
-import { Button, Spinner, Text } from "~/components/primitives";
+import { useCurrentUserQuery, useLeaderboardQuery, type LeaderboardEntry } from "~/client";
+import { Spinner, Text } from "~/components/primitives";
 
-const BG = "#ffffff";
-const CROWN_URI = "https://lottie.host/e371643e-e22e-4a3e-a1ce-b8ab03785b60/WiYpVXACUw.lottie";
-const REFRESH_COLOR = tw.color("green-500") ?? "#22C55E";
-
-type TimeTab = LeaderboardPeriod;
-
-const fmtXP = (value: number) => value.toLocaleString();
-
-const FloatingMascot = ({ crown = false }: { crown?: boolean }) => {
-  const ty = useSharedValue(0);
-
-  useEffect(() => {
-    ty.value = withRepeat(
-      withSequence(
-        withTiming(-6, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      true,
-    );
-  }, [ty]);
-
-  const style = useAnimatedStyle(() => ({ transform: [{ translateY: ty.value }] }));
-
-  return (
-    <Animated.View style={[tw`items-center z-10`, style]}>
-      {crown && (
-        <View style={tw`-mb-9 z-20`}>
-          <LottieView source={{ uri: CROWN_URI }} autoPlay loop style={{ width: 70, height: 70 }} />
-        </View>
-      )}
-      <Image source={require("@/mascot.png")} style={tw`w-13 h-13`} resizeMode="contain" />
-    </Animated.View>
-  );
-};
-
-const StatCard = ({ label, value, icon }: { label: string; value: string; icon: ReactNode }) => (
-  <View style={tw`items-center bg-green-600/20 rounded-2xl px-3 py-3 min-w-[95px] border border-green-400/30`}>
-    {icon}
-    <Text style={tw`text-xl font-bold text-green-800 mt-1`}>{value}</Text>
-    <Text style={tw`text-xs text-green-700/70 mt-0.5`}>{label}</Text>
-  </View>
-);
-
-const Header = ({ rank, xp, streak, loading }: { rank: number; xp: number; streak: number; loading: boolean }) => {
-  const insets = useSafeAreaInsets();
-
-  return (
-    <View style={{ paddingTop: insets.top + 4, backgroundColor: BG }}>
-      <View style={tw`items-center mb-4 mt-2`}>
-        <Text style={[tw`text-4xl`, { fontFamily: "Feather-Bold", color: "#115c1a" }]}>Leaderboard</Text>
-      </View>
-      <View style={tw`flex-row justify-around px-3 pb-4`}>
-        <StatCard
-          label="Your Rank"
-          value={loading ? "..." : `#${rank}`}
-          icon={<TrophyIcon size={20} color="#16A34A" fill="#e1d612" />}
-        />
-        <StatCard label="XP" value={loading ? "..." : fmtXP(xp)} icon={<ZapIcon size={20} color="#2c8fc1" fill="#22C55E" />} />
-        <StatCard
-          label="Day Streak"
-          value={loading ? "..." : `${streak}`}
-          icon={<FlameIcon size={20} color="#fb923c" fill="#c91c16" />}
-        />
-      </View>
-    </View>
-  );
-};
-
-const Tips = () => (
-  <View style={tw`mx-4 mt-2 mb-2 bg-amber-50 rounded-xl px-4 py-3`}>
-    <View style={tw`flex-row items-center gap-2 mb-2`}>
-      <LightbulbIcon size={16} color={tw.color("amber-500")} />
-      <Text style={tw`text-sm font-bold text-amber-700`}>Climbing Tips</Text>
-    </View>
-    <View style={tw`gap-1.5`}>
-      <Text style={tw`text-sm text-amber-800 leading-tight`}>• Complete daily check-ins to maintain your streak.</Text>
-      <Text style={tw`text-sm text-amber-800 leading-tight`}>• Keep practicing in lessons to gain bonus XP.</Text>
-    </View>
-  </View>
-);
-
-const TimeTabs = ({ sel, onSel, overlay = false }: { sel: TimeTab; onSel: (tab: TimeTab) => void; overlay?: boolean }) => (
-  <View style={tw.style("flex-row bg-zinc-100 rounded-full p-0.5", overlay ? "mx-8" : "mx-8 mt-1 mb-2")}>
-    {(["this-week", "all-time"] as TimeTab[]).map((tab) => (
-      <Pressable
-        key={tab}
-        onPress={() => onSel(tab)}
-        style={tw.style("flex-1 items-center rounded-full py-1.5", sel === tab && "bg-green-700 shadow-sm")}>
-        <Text style={tw.style("text-sm font-bold", sel === tab ? "text-white" : "text-zinc-500")}>
-          {tab === "this-week" ? "This Week" : "All Time"}
-        </Text>
-      </Pressable>
-    ))}
-  </View>
-);
-
-const GradientBackground = () => (
-  <View style={tw`absolute inset-0`}>
-    <Svg width="100%" height="100%" preserveAspectRatio="none">
-      <Defs>
-        <SvgLinearGradient id="podium-bg" x1="0.5" y1="0" x2="0.5" y2="1">
-          <Stop offset="0" stopColor={BG} stopOpacity="1" />
-          <Stop offset="0.5" stopColor="#D1FAE5" stopOpacity="1" />
-          <Stop offset="1" stopColor={BG} stopOpacity="1" />
-        </SvgLinearGradient>
-      </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill="url(#podium-bg)" />
-    </Svg>
-  </View>
-);
-
-const Podium = ({
-  top3,
-  token,
-  tab,
-  onTab,
-  onUserPress,
-  currentUserId,
-}: {
-  top3: LeaderboardEntry[];
-  token: number;
-  tab: TimeTab;
-  onTab: (tab: TimeTab) => void;
-  onUserPress: (uid: string) => void;
-  currentUserId?: string;
-}) => {
-  const first = top3.find((entry) => entry.rank === 1);
-  const second = top3.find((entry) => entry.rank === 2);
-  const third = top3.find((entry) => entry.rank === 3);
-
-  if (!first && !second && !third) return <TimeTabs sel={tab} onSel={onTab} />;
-
-  return (
-    <View style={tw`pt-2 pb-0`}>
-      <GradientBackground />
-      <View>
-        <AnimatedPodium
-          playToken={token}
-          entries={{
-            1: first ? { 
-              name: first.name, 
-              xpLabel: fmtXP(first.score),
-              onPress: first.uid === currentUserId ? undefined : () => onUserPress(first.uid)
-            } : undefined,
-            2: second ? { 
-              name: second.name, 
-              xpLabel: fmtXP(second.score),
-              onPress: second.uid === currentUserId ? undefined : () => onUserPress(second.uid)
-            } : undefined,
-            3: third ? { 
-              name: third.name, 
-              xpLabel: fmtXP(third.score),
-              onPress: third.uid === currentUserId ? undefined : () => onUserPress(third.uid)
-            } : undefined,
-          }}
-          championContent={<FloatingMascot crown={true} />}
-        />
-        <View pointerEvents="box-none" style={[tw`absolute left-0 right-0`, { bottom: 8 }]}>
-          <TimeTabs sel={tab} onSel={onTab} overlay={true} />
-        </View>
-      </View>
-    </View>
-  );
-};
-
-const Row = ({
-  item,
-  me,
-  idx,
+const PodiumPillar = ({
+  entry,
+  place,
   onPress,
 }: {
-  item: LeaderboardEntry;
-  me: boolean;
-  idx: number;
+  entry: LeaderboardEntry;
+  place: 1 | 2 | 3;
   onPress?: () => void;
-}) => (
-  <Animated.View entering={FadeInDown.delay(idx * 30).duration(250).easing(Easing.out(Easing.quad))}>
-    <Pressable onPress={onPress} disabled={!onPress}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingVertical: 14,
-          paddingHorizontal: 16,
-          marginHorizontal: 12,
-          marginTop: idx === 0 ? 12 : 0,
-          marginBottom: 12,
-          borderRadius: 14,
-          backgroundColor: me ? "#ECFDF5" : "#FFF",
-          borderWidth: 1,
-          borderColor: "#EEF7F0",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.04,
-          shadowRadius: 12,
-          elevation: 3,
-        }}>
-        <View
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            borderWidth: 2,
-            borderColor: me ? "#16A34A" : "#E5E7EB",
-            alignItems: "center",
-            justifyContent: "center",
-            marginRight: 14,
-            backgroundColor: "#FFF",
-          }}>
-          <Text style={{ fontSize: 20, fontWeight: "900", color: "#065F46" }}>{`#${item.rank}`}</Text>
-        </View>
-        <View style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", marginRight: 14 }}>
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: me ? "#DCFCE7" : "#F3F4F6",
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-            <UserIcon size={18} color={me ? "#16A34A" : "#9CA3AF"} />
-          </View>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: "800", color: me ? "#065F46" : "#111827" }} numberOfLines={1}>
-            {item.name}
-          </Text>
-        </View>
-        <View
-          style={{
-            minWidth: 80,
-            alignItems: "center",
-            justifyContent: "center",
-            paddingVertical: 8,
-            paddingHorizontal: 14,
-            borderRadius: 999,
-            borderWidth: 2,
-            borderColor: "#34D399",
-            backgroundColor: "#FFF",
-            shadowColor: "#34D399",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.06,
-            shadowRadius: 10,
-            elevation: 2,
-          }}>
-          <Text style={{ fontSize: 14, fontWeight: "800", color: "#059669" }}>{fmtXP(item.score)}</Text>
-        </View>
-      </View>
-    </Pressable>
-  </Animated.View>
-);
-
-const Empty = () => (
-  <View style={tw`flex-1 items-center justify-center py-20`}>
-    <Text style={tw`text-6xl mb-4`}>🏆</Text>
-    <Text style={tw`mt-2 text-lg font-bold text-zinc-400`}>No rankings yet</Text>
-    <Text style={tw`mt-2 text-sm text-zinc-400 text-center px-8`}>Be the first to earn XP and climb the leaderboard!</Text>
-  </View>
-);
-
-const ErrorState = ({ retry }: { retry: () => void }) => (
-  <View style={tw`flex-1 items-center justify-center py-20`}>
-    <Text style={tw`text-lg font-bold text-red-500`}>Failed to load leaderboard</Text>
-    <Button style={tw`mt-4 px-6`} onPress={retry}>
-      <Text style={tw`text-base font-semibold`}>Retry</Text>
-    </Button>
-  </View>
-);
-
-const Footer = ({
-  rank,
-  xp,
-  loading,
-  error,
-  name,
-}: {
-  rank: number;
-  xp: number;
-  loading: boolean;
-  error: boolean;
-  name?: string;
 }) => {
-  if (loading) {
-    return (
-      <View style={[tw`py-4 items-center`, { backgroundColor: "#188152" }]}>
-        <Spinner size={24} color="#FFFFFF" />
-      </View>
-    );
-  }
-  if (error) {
-    return (
-      <View style={[tw`py-4 items-center`, { backgroundColor: "#188152" }]}>
-        <Text style={tw`text-sm text-red-200`}>Unable to load your rank</Text>
-      </View>
-    );
-  }
+  const PODIUM_CONFIG = {
+    1: { height: 180, color: "green-500", delay: 0 },
+    2: { height: 150, color: "blue-500", delay: 100 },
+    3: { height: 120, color: "slate-400", delay: 200 },
+  } as const;
+
+  const config = PODIUM_CONFIG[place];
+  const height = useSharedValue(0);
+
+  const [key, setKey] = useState(Math.random());
+
+  useEffect(() => {
+    height.value = 0;
+    height.value = withDelay(config.delay, withTiming(config.height, { duration: 750 }));
+  }, [config.delay, config.height, height, key]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setKey(Math.random());
+    }, []),
+  );
+
+  const style = useAnimatedStyle(() => ({ height: height.value }));
+
   return (
-    <View style={tw`flex-row items-center justify-between px-5 py-3.5 bg-green-600/20 rounded-3xl border border-green-700`}>
-      <View
-        style={{
-          width: 50,
-          height: 50,
-          borderRadius: 25,
-          alignItems: "center",
-          justifyContent: "center",
-          borderWidth: 2,
-          borderColor: "#000",
-          backgroundColor: "#fff",
-        }}>
-        <Text style={{ color: "#000", fontWeight: "900", fontSize: 18 }}>{`#${rank}`}</Text>
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginLeft: 12 }}>
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            backgroundColor: "#46786b",
-            alignItems: "center",
-            justifyContent: "center",
-            marginRight: 12,
-          }}>
-          <UserIcon size={20} color="white" />
+    <Pressable onPress={onPress} style={tw`flex-1 items-center gap-2`}>
+      {place === 1 && <Text style={tw`text-center text-2xl`}>👑</Text>}
+      <Text style={tw`text-center text-lg font-bold text-${config.color}`}>{entry.name}</Text>
+      <Animated.View
+        style={[
+          tw`items-center justify-between overflow-hidden rounded-t-xl border-2 border-b-0 p-4`,
+          { borderColor: tw.color(config.color), backgroundColor: tw.color(`${config.color}/20`) },
+          style,
+        ]}>
+        <Text style={tw`mt-auto text-5xl font-bold text-${config.color}`}>{place}</Text>
+        <View style={tw`mt-auto flex-row items-center gap-1`}>
+          <ZapIcon size={14} color={tw.color(config.color)} fill={tw.color(config.color)} />
+          <Text style={tw`text-lg font-bold text-${config.color} tracking-tighter`}>{entry.score}</Text>
         </View>
-        <Text style={{ color: "#000", fontWeight: "800" }}>{name ?? "You"}</Text>
-      </View>
-      <View
-        style={{
-          minWidth: 88,
-          alignItems: "center",
-          justifyContent: "center",
-          paddingVertical: 8,
-          paddingHorizontal: 16,
-          borderRadius: 999,
-          backgroundColor: "#fff",
-        }}>
-        <Text style={{ color: "#000", fontWeight: "800" }}>{fmtXP(xp)}</Text>
-      </View>
+      </Animated.View>
+    </Pressable>
+  );
+};
+
+const PodiumView = ({
+  entries,
+  onEntryPress,
+}: {
+  entries: LeaderboardEntry[];
+  onEntryPress?: (entry: LeaderboardEntry) => void;
+}) => {
+  const [first, second, third] = entries;
+
+  return (
+    <View style={tw`w-full flex-row items-end gap-2 border-b border-zinc-500/50`}>
+      {second && <PodiumPillar entry={second} place={2} onPress={() => onEntryPress?.(second)} />}
+      {first && <PodiumPillar entry={first} place={1} onPress={() => onEntryPress?.(first)} />}
+      {third && <PodiumPillar entry={third} place={3} onPress={() => onEntryPress?.(third)} />}
     </View>
+  );
+};
+
+const LeaderboardListItem = ({
+  entry,
+  index = 0,
+  animated = true,
+  highlighted = false,
+  onPress,
+}: {
+  entry: LeaderboardEntry;
+  index?: number;
+  animated?: boolean;
+  highlighted?: boolean;
+  onPress?: () => void;
+}) => {
+  const translateX = useSharedValue(100);
+  const opacity = useSharedValue(0);
+
+  const [key, setKey] = useState(Math.random());
+
+  useEffect(() => {
+    translateX.value = 500;
+    opacity.value = 0;
+    translateX.value = withDelay(index * 50, withTiming(0, { duration: 500 }));
+    opacity.value = withDelay(index * 50, withTiming(1, { duration: 500 }));
+  }, [index, translateX, opacity, key]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setKey(Math.random());
+    }, []),
+  );
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  return (
+    <Animated.View style={animated ? style : undefined}>
+      <Pressable
+        onPress={onPress}
+        style={tw.style(
+          "flex-row items-center rounded-xl border-2 border-zinc-500/50 bg-zinc-200/50 p-2 dark:bg-zinc-800/50",
+          highlighted && "border-zinc-500",
+        )}>
+        <View style={tw`w-1/10 items-center justify-center rounded-lg`}>
+          <Text style={tw`text-xl font-bold`}>#{entry.rank}</Text>
+        </View>
+        <View style={tw`w-5/10 grow px-2.5`}>
+          <Text style={tw`text-xl font-medium`}>{entry.name}</Text>
+        </View>
+        <View style={tw`w-3/10 flex-row items-center justify-center gap-1.5 rounded-lg bg-sky-500/25`}>
+          <ZapIcon size={16} color={tw.color("sky-500")} fill={tw.color("sky-500")} />
+          <Text style={tw`text-xl font-bold tracking-tighter text-sky-500`}>{entry.score}</Text>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 };
 
 export default function MainLeaderboardScreen() {
   const router = useRouter();
-  const focused = useIsFocused();
-  const { data: user } = useCurrentUserQuery();
 
-  const [token, setToken] = useState(0);
-  const [tab, setTab] = useState<TimeTab>("this-week");
-  const [refreshing, setRefreshing] = useState(false);
+  const { data: user, isRefetching: isRefetchingUser, refetch: refetchUser } = useCurrentUserQuery();
 
-  const { data: leaderboard, isLoading, isRefetching, error, refetch } = useLeaderboardQuery(tab);
+  const {
+    data: leaderboard,
+    isRefetching: isRefetchingLeaderboard,
+    refetch: refetchLeaderboard,
+  } = useLeaderboardQuery();
 
-  useEffect(() => {
-    if (focused) setToken((prev) => prev + 1);
-  }, [focused]);
-
-  useEffect(() => {
-    setToken((prev) => prev + 1);
-  }, [tab]);
-
-  const entries = useMemo(() => leaderboard?.entries ?? [], [leaderboard?.entries]);
-  const top3 = useMemo(() => entries.filter((entry) => entry.rank <= 3), [entries]);
-  const rest = useMemo(() => entries.filter((entry) => entry.rank > 3), [entries]);
-  const me = leaderboard?.me;
-  
-  // Check if current user is already in the visible list (top 3 or rest)
-  const meInList = useMemo(() => {
-    if (!me) return false;
-    return entries.some((entry) => entry.uid === me.uid);
-  }, [entries, me]);
-
-  const openProfile = (uid: string) => {
+  const openProfile = (entry: LeaderboardEntry) =>
     router.navigate(
       {
         pathname: "./profile",
-        params: { uid },
+        params: { uid: entry.uid },
       },
       { relativeToDirectory: true },
     );
-  };
-
-  const doRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await refetch();
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  if (isLoading && !leaderboard) {
-    return (
-      <View style={tw`flex-1`}>
-        <Header rank={0} xp={0} streak={0} loading={true} />
-        <View style={tw`flex-1 items-center justify-center`}>
-          <Spinner size={48} />
-          <Text style={tw`mt-4 text-zinc-500`}>Loading leaderboard...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (error && !leaderboard) {
-    return (
-      <View style={tw`flex-1`}>
-        <Header rank={0} xp={0} streak={0} loading={true} />
-        <ErrorState retry={() => void refetch()} />
-      </View>
-    );
-  }
 
   return (
-    <View style={tw`flex-1`}>
-      <FlatList
-        data={rest}
-        renderItem={({ item, index }) => (
-          <Row
-            item={item}
-            me={item.uid === me?.uid}
-            idx={index}
-            onPress={item.uid === me?.uid ? undefined : () => openProfile(item.uid)}
+    <View style={tw`flex-1 items-center justify-center pt-4`}>
+      {user && leaderboard ? (
+        <>
+          <PodiumView entries={leaderboard.entries.slice(0, 3)} onEntryPress={openProfile} />
+          <FlatList
+            data={leaderboard.entries}
+            renderItem={({ item, index }) => (
+              <LeaderboardListItem
+                entry={item}
+                index={index}
+                highlighted={item.uid === leaderboard.me.uid}
+                onPress={() => openProfile(item)}
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                tintColor={tw.color("zinc-500")}
+                refreshing={isRefetchingUser || isRefetchingLeaderboard}
+                onRefresh={() => {
+                  refetchUser();
+                  refetchLeaderboard();
+                }}
+              />
+            }
+            style={tw`w-full border-b-2 border-zinc-500/50`}
+            contentContainerStyle={tw`grow gap-2 p-2`}
+            ListHeaderComponent={
+              <View style={tw`gap-2`}>
+                <View style={tw`flex-row items-stretch gap-2`}>
+                  <View
+                    style={tw`grow items-center justify-center rounded-xl border-2 border-zinc-500/50 bg-zinc-200 p-2 dark:bg-zinc-800`}>
+                    <View style={tw`flex-row items-center gap-1`}>
+                      <TrophyIcon size={24} color={tw.color("yellow-500")} fill={tw.color("yellow-500")} />
+                      <Text style={tw`text-3xl font-bold text-yellow-500`}>#{leaderboard.me.rank}</Text>
+                    </View>
+                    <Text style={tw`text-lg font-medium`}>Your Rank</Text>
+                  </View>
+                  <View
+                    style={tw`grow items-center justify-center rounded-xl border-2 border-zinc-500/50 bg-zinc-200 p-2 dark:bg-zinc-800`}>
+                    <View style={tw`flex-row items-center gap-1`}>
+                      <ZapIcon size={24} color={tw.color("sky-500")} fill={tw.color("sky-500")} />
+                      <Text style={tw`text-3xl font-bold text-sky-500`}>{leaderboard.me.score}</Text>
+                    </View>
+                    <Text style={tw`text-lg font-medium`}>Current XP</Text>
+                  </View>
+                  <View
+                    style={tw`grow items-center justify-center rounded-xl border-2 border-zinc-500/50 bg-zinc-200 p-2 dark:bg-zinc-800`}>
+                    <View style={tw`flex-row items-center gap-1`}>
+                      <FlameIcon size={24} color={tw.color("orange-500")} fill={tw.color("orange-500")} />
+                      <Text style={tw`text-3xl font-bold text-orange-500`}>{user.streak}</Text>
+                    </View>
+                    <Text style={tw`text-lg font-medium`}>Day Streak</Text>
+                  </View>
+                </View>
+                <Text style={tw`text-center text-base text-neutral-500`}>
+                  Start climbing the global leaderboard by gaining XP!
+                </Text>
+              </View>
+            }
           />
-        )}
-        keyExtractor={(item) => item.uid}
-        contentContainerStyle={tw`pb-4`}
-        ListHeaderComponent={
-          <View>
-            <Header rank={me?.rank ?? 0} xp={me?.score ?? 0} streak={user?.streak ?? 0} loading={!me} />
-            <Tips />
-            <Podium top3={top3} token={token} tab={tab} onTab={setTab} onUserPress={openProfile} currentUserId={me?.uid} />
+          <View style={tw`w-full p-2`}>
+            <LeaderboardListItem entry={leaderboard.me} animated={false} />
           </View>
-        }
-        ListEmptyComponent={!top3.length ? <Empty /> : null}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing || isRefetching}
-            onRefresh={doRefresh}
-            tintColor={REFRESH_COLOR}
-            colors={[REFRESH_COLOR]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-        initialNumToRender={15}
-        removeClippedSubviews={true}
-        style={{ backgroundColor: BG }}
-      />
-      {!meInList && me && (
-        <View style={tw`px-4 pb-4`}>
-          <Footer rank={me.rank} xp={me.score} loading={false} error={false} name={user?.name} />
-        </View>
+        </>
+      ) : (
+        <Spinner size={36} />
       )}
     </View>
   );

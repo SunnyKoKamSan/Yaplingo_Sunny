@@ -5,7 +5,7 @@ import { useSetAtom } from "jotai";
 
 import store, { $token } from "../store";
 import client from "./client";
-import type { Leaderboard, LeaderboardPeriod, User } from "./models";
+import type { Leaderboard, User } from "./models";
 
 export const useCurrentUserQuery = () =>
   useQuery<User, AxiosError>({
@@ -80,11 +80,11 @@ export const useRegisterMutation = () => {
   });
 };
 
-export const useLeaderboardQuery = (period: LeaderboardPeriod = "all-time") =>
+export const useLeaderboardQuery = () =>
   useQuery<Leaderboard, AxiosError>({
-    queryKey: ["game", "leaderboard", period],
+    queryKey: ["game", "leaderboard"],
     queryFn: async () => {
-      const response = await client.get("/game/leaderboard", { params: { period } });
+      const response = await client.get("/game/leaderboard");
       return response.data;
     },
   });
