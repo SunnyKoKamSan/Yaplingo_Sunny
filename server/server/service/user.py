@@ -48,10 +48,12 @@ class UserService:
 
     async def get(self, id: ULID, check_streak: bool = True) -> User | None:
         user = await self.repository.user.get_one(id)
-        # reset streak if over 1 day gap since last streak
+        # reset streak if over 1 day gap since last streak (in user's timezone)
         if check_streak and user is not None and user.streak > 0:
-            today = datetime.now(ZoneInfo("UTC")).date()
-            if today - user.streaked_at.date() >= timedelta(days=1):
+            tz = ZoneInfo(user.timezone)
+            today = datetime.now(tz).date()
+            streaked_date = user.streaked_at.astimezone(tz).date()
+            if today - streaked_date > timedelta(days=1):
                 await self.repository.user.reset_streak(user)
         return user
 

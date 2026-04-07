@@ -61,8 +61,11 @@ class User(SQLModel, table=True):
 
     @property
     def streak_claimed_today(self) -> bool:
-        today = datetime.now(ZoneInfo("UTC")).date()
-        return self.streaked_at.date() == today
+        if self.streak == 0:
+            return False
+        tz = ZoneInfo(self.timezone)
+        today = datetime.now(tz).date()
+        return self.streaked_at.astimezone(tz).date() == today
 
 
 class EchoAttempt(SQLModel, table=True):

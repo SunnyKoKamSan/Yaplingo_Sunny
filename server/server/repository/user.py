@@ -48,11 +48,17 @@ class UserRepository:
             await session.commit()
 
     async def increment_streak(self, user: User) -> None:
-        now = datetime.now(ZoneInfo("UTC"))
+        tz = ZoneInfo(user.timezone)
+        now = datetime.now(tz)
         today = now.date()
-        expected = user.streaked_at.date() + timedelta(days=1)
+        if user.streak == 0:
+            new_streak = 1
+        else:
+            streaked_date = user.streaked_at.astimezone(tz).date()
+            expected = streaked_date + timedelta(days=1)
+            new_streak = user.streak + 1 if expected == today else 1
         async with self._session() as session:
-            user.streak = user.streak + 1 if expected == today else 1
+            user.streak = new_streak
             user.streaked_at = now
             session.add(user)
             await session.commit()
