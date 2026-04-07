@@ -19,7 +19,9 @@ client.interceptors.request.use((config) => {
 // log error responses globally
 client.interceptors.response.use(undefined, (error) => {
   if (error instanceof AxiosError) {
-    if (error.status === 401) store.set($token, ""); // clear token on unauthorized
+    if (error.status === 401) {
+      store.set($token, ""); // clear token on unauthorized
+    }
     console.error(error.message);
   }
   return Promise.reject(error);

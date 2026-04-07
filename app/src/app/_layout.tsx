@@ -56,7 +56,7 @@ const Layout = () => {
     "DINNextRoundedLTW01-Bold": require("@/fonts/DINNextRoundedLTW01-Bold.otf"),
   });
 
-  const check = useCurrentUserQuery();
+  const check = useCurrentUserQuery({ check: true });
 
   useEffect(() => {
     if (loaded && check.isSuccess) {

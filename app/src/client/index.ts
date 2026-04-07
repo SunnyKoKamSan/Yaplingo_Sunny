@@ -1,26 +1,21 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getCalendars, getLocales } from "expo-localization";
-import { type AxiosError } from "axios";
+import { type AxiosError, type AxiosRequestConfig } from "axios";
 import { useSetAtom } from "jotai";
 
-import store, { $token } from "../store";
+import { $token } from "../store";
 import client from "./client";
 import type { Leaderboard, User } from "./models";
 
-export const useCurrentUserQuery = () =>
+export const useCurrentUserQuery = ({ check = false }: { check?: boolean } = {}) =>
   useQuery<User, AxiosError>({
     queryKey: ["user", "me"],
     queryFn: async () => {
-      const response = await client.get("/user", {
+      const options: AxiosRequestConfig = {
         timeout: 5000,
         validateStatus: (status) => [200, 401, 403].includes(status),
-      });
-      if (response.status !== 200) {
-        if (response.status === 401) {
-          store.set($token, "");
-        }
-        throw new Error(response.statusText);
-      }
+      };
+      const response = await client.get("/user", check ? options : undefined);
       return response.data;
     },
     retry: true,
