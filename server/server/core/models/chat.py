@@ -33,7 +33,6 @@ class Evaluation(BaseModel):
     class Criteria(BaseModel):
         accuracy: float  # grammar
         appropriacy: float  # context
-        vocabulary: float  # vocabulary
 
     tasks: list[Task]
     criteria: Criteria

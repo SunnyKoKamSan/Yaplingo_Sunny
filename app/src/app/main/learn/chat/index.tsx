@@ -135,24 +135,19 @@ const TurnSheet = ({
       initialDetentAnimated={true}
       onWillDismiss={onWillDismiss}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={tw`gap-8 p-4`}>
-        <View style={tw`mt-8`}>
-          <Text
-            style={[
-              tw`text-center text-5xl font-bold tracking-tighter`,
-              { color: getScoreColor(turn.pronunciation.score) },
-            ]}>
-            {Math.round(turn.pronunciation.score * 100)}%
-          </Text>
-          <Text style={tw`text-center text-xl font-medium`}>Pronunciation</Text>
-        </View>
-        <View style={tw`mb-4 flex-row justify-around`}>
+        <View style={tw`mt-8 flex-row justify-around`}>
           {[
             { label: "Accuracy", value: turn.evaluation.criteria.accuracy },
+            { label: "Pronunciation", value: turn.pronunciation.score },
             { label: "Appropriacy", value: turn.evaluation.criteria.appropriacy },
-            { label: "Vocabulary", value: turn.evaluation.criteria.vocabulary },
           ].map(({ label, value }) => (
-            <View key={label} style={tw`shrink`}>
-              <Text style={[tw`text-center text-3xl font-bold tracking-tighter`, { color: getScoreColor(value) }]}>
+            <View key={label} style={tw`shrink justify-center`}>
+              <Text
+                style={tw.style(
+                  "text-center font-bold tracking-tighter",
+                  label === "Pronunciation" ? "text-5xl" : "text-3xl",
+                  { color: getScoreColor(value) },
+                )}>
                 {Math.round(value * 100)}%
               </Text>
               <Text style={tw`text-center text-base font-medium`}>{label}</Text>

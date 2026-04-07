@@ -42,14 +42,6 @@ Score the learner's most recent message on each of the following criteria using 
    - 0.6–0.8: Appropriate and responsive to the partner's message, with only minor awkwardness in tone or register.
    - 0.8–1.0: Perfectly natural and contextually aware — only award 0.9+ for replies that a native speaker would consider ideal for the situation.
 
-3. Vocabulary Usage (vocabulary)
-   How effective is the learner's word choice — including range, precision, and naturalness?
-   - 0.0–0.2: Extremely limited vocabulary; unable to convey the intended meaning or relies on wrong words entirely.
-   - 0.2–0.4: Basic and repetitive word choices with frequent imprecision or awkward phrasing.
-   - 0.4–0.6: Functional vocabulary that communicates the point but lacks variety, precision, or natural collocations.
-   - 0.6–0.8: Good word choices that are mostly natural and precise, with only occasional awkwardness or missed opportunities for better phrasing.
-   - 0.8–1.0: Rich, varied, and idiomatic — only award 0.9+ for vocabulary that demonstrates genuine command of the language.
-
 IMPORTANT NOTES:
 
 - Evaluate based on the substance of what was communicated, not exact wording. The learner does not need to use the same words as the task description -- synonyms, paraphrases, and equivalent expressions all count.
@@ -66,5 +58,4 @@ Respond with a JSON object matching the provided schema. Do not include anything
 - "criteria": scores for the learner's most recent message
   - "accuracy": float 0.0–1.0
   - "appropriacy": float 0.0–1.0
-  - "vocabulary": float 0.0–1.0
 - "explanation": a brief (1-3 sentences) overall summary of the evaluation, highlighting the most notable strengths or weaknesses in the learner's most recent message and how it performed across the criteria. Do not repeat the numeric scores — focus on actionable, qualitative observations.

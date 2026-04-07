@@ -57,7 +57,6 @@ export type EvaluationTask = {
 export type EvaluationCriteria = {
   accuracy: number;
   appropriacy: number;
-  vocabulary: number;
 };
 
 export type Response = { type: "session"; response: Session } | { type: "turn"; response: Turn | null };

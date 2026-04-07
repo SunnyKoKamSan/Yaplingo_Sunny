@@ -21,9 +21,8 @@ def get_echo_session_points(session: EchoSessionState) -> int:
 def calculate_chat_turn_score(turn: ChatSessionState.Turn) -> float:
     return (
         turn.pronunciation.score * 0.4
-        + turn.evaluation.criteria.accuracy * 0.2
+        + turn.evaluation.criteria.accuracy * 0.3
         + turn.evaluation.criteria.appropriacy * 0.3
-        + turn.evaluation.criteria.vocabulary * 0.1
     )
 
 
