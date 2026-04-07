@@ -16,6 +16,7 @@ export type Session = {
   total: number;
   completed: boolean;
   attemptable: boolean;
+  points: number;
 };
 
 export type Attempt = {
@@ -26,11 +27,4 @@ export type Attempt = {
   };
 };
 
-export type Summary = {
-  points: number;
-};
-
-export type Response =
-  | { type: "session"; response: Session }
-  | { type: "attempt"; response: Attempt | null }
-  | { type: "summary"; response: Summary };
+export type Response = { type: "session"; response: Session } | { type: "attempt"; response: Attempt | null };

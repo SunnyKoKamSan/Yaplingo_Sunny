@@ -278,7 +278,7 @@ export default function MainLearnChatScreen() {
             {session.status === ChatSessionStatus.FINISHED ? (
               <>
                 <Text
-                  style={tw`text-4xl font-bold tracking-tighter text-sky-500`}>{`+ ${session.data.summary.points} XP`}</Text>
+                  style={tw`text-4xl font-bold tracking-tighter text-sky-500`}>{`+ ${session.data.points} XP`}</Text>
                 <Text style={tw`text-xl font-medium`}>
                   {session.data.tasks.every((t) => t.completed) ? "all tasks completed" : "no turns left"}
                 </Text>

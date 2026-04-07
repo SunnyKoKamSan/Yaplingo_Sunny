@@ -79,20 +79,19 @@ class EchoService:
             assert not self.state.completed, "session already completed"
             await self._service.store.echo.increment_session_progress(self.state)
 
-        async def complete(self) -> EchoSessionState.Summary:
+        async def complete(self) -> None:
             assert self.state.completed, "session not completed yet"
             await self._service.repository.echo.save(self.state.entity())
 
-            points_net = self.state.summary.points - self.state.expense
+            points_net = self.state.points - self.state.expense
             await self._service.repository.user.increment_points(self.user, points_net)
             await self._service.store.leaderboard.increment(self.user, points_net)
 
-            points_today = await self._service.store.points.increment_today(self.user, self.state.summary.points)
+            points_today = await self._service.store.points.increment_today(self.user, self.state.points)
             if points_today >= self.user.streak_milestone and not self.user.streak_claimed_today:
                 await self._service.repository.user.increment_streak(self.user)
 
             await self._service.store.echo.discard_session(self.state)
-            return self.state.summary
 
         async def abort(self) -> None:
             await self._service.store.echo.discard_session(self.state)

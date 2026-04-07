@@ -23,9 +23,6 @@ class ChatSessionState(BaseModel):
     class Turn(Result):
         index: int  # index of the turn in the conversation
 
-    class Summary(BaseModel):
-        points: int
-
     _uid: ULID = PrivateAttr()
 
     scenario: Scenario
@@ -68,21 +65,19 @@ class ChatSessionState(BaseModel):
     def finished(self) -> bool:
         return all(t.completed for t in self.tasks) or self.quota <= 0
 
+    @computed_field
     @cached_property
-    def summary(self) -> Summary:
-        assert self.finished, "session not finished yet"
-        assert len(self.turns) > 0, "no turns taken in the session"  # should never happen
+    def points(self) -> int:
         from server import formula
 
-        points = formula.get_chat_session_points(self)
-        return ChatSessionState.Summary(points=points)
+        return formula.get_chat_session_points(self) if len(self.turns) > 0 else 0
 
     def entity(self) -> ChatSession:
         s = ChatSession(
             user_id=self._uid,
             scenario=self.scenario.scenario,
             opening=self.scenario.opening,
-            points=self.summary.points,
+            points=self.points,
             tasks=[t.task for t in self.tasks],
         )
         s.turns = [

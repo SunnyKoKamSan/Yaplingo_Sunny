@@ -26,10 +26,6 @@ SESSION_TTL = timedelta(hours=1)
 class EchoSessionState(BaseModel):
     class Attempt(Result): ...
 
-    # FIXME: remove this
-    class Summary(BaseModel):
-        points: int
-
     _uid: ULID = PrivateAttr()
 
     scenario: Scenario
@@ -87,25 +83,24 @@ class EchoSessionState(BaseModel):
     def attemptable(self) -> bool:
         return not self.completed and self.chances[self.progress] > len(self.attempts[self.progress])
 
+    @computed_field
+    @cached_property
+    def points(self) -> int:
+        from server import formula
+
+        return formula.get_echo_session_points(self)
+
     @cached_property
     def transcript(self) -> Transcript:
         assert not self.completed, "session already completed"
         return self.scenario.transcripts[self.progress]
-
-    @cached_property
-    def summary(self) -> Summary:
-        assert self.completed, "session not completed yet"
-        from server import formula
-
-        points = formula.get_echo_session_points(self)
-        return EchoSessionState.Summary(points=points)
 
     def entity(self) -> EchoSession:
         s = EchoSession(
             user_id=self._uid,
             topic=self.scenario.topic,
             scenario=self.scenario.scenario,
-            points=self.summary.points,
+            points=self.points,
             transcripts=[t.text for t in self.scenario.transcripts],
         )
         s.attempts = [

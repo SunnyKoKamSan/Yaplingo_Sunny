@@ -1,5 +1,5 @@
 import useSession from "../useSession";
-import type { Response, Session, Summary, Turn } from "./models";
+import type { Response, Session, Turn } from "./models";
 
 export enum ChatSessionStatus {
   LOADING,
@@ -14,12 +14,8 @@ export type ChatSession =
       data: undefined;
     }
   | {
-      status: ChatSessionStatus.READY_TURN | ChatSessionStatus.PENDING_TURN;
+      status: ChatSessionStatus.READY_TURN | ChatSessionStatus.PENDING_TURN | ChatSessionStatus.FINISHED;
       data: Session;
-    }
-  | {
-      status: ChatSessionStatus.FINISHED;
-      data: Session & { summary: Summary };
     };
 
 type State = ChatSession & { next?: Response["type"] };
@@ -43,9 +39,9 @@ const reduceState = (state: State, [type, payload]: Action): State => {
       switch (type) {
         case "session": {
           return {
-            status: ChatSessionStatus.READY_TURN,
+            status: response.finished ? ChatSessionStatus.FINISHED : ChatSessionStatus.READY_TURN,
             data: response,
-            next: response.finished ? "summary" : "turn",
+            next: response.finished ? undefined : "turn",
           };
         }
         case "turn": {
@@ -55,13 +51,6 @@ const reduceState = (state: State, [type, payload]: Action): State => {
             status: ChatSessionStatus.READY_TURN,
             data: { ...session, turns },
             next: response === null ? "turn" : "session",
-          };
-        }
-        case "summary": {
-          return {
-            status: ChatSessionStatus.FINISHED,
-            data: { ...(state.data as Session), summary: response },
-            next: undefined,
           };
         }
       }

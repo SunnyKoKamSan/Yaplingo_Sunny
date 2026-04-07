@@ -65,8 +65,7 @@ async def websocket_session(
             await session.refresh()
             await send_response(session.state)
         # wrap up session
-        summary = await session.complete()
-        await send_response(summary)
+        await session.complete()
         await ws.receive()
     except WebSocketDisconnect:
         ...

@@ -15,23 +15,20 @@ class ChatInput(BaseModel):
     input: Base64Bytes | None = None
 
 
-ChatOutputType = ChatSessionState.Turn | ChatSessionState | ChatSessionState.Summary | None
+ChatOutputType = ChatSessionState.Turn | ChatSessionState | None
 
 
 class ChatResponse(BaseModel):
     class Type(str, Enum):
         SESSION = "session"
         TURN = "turn"
-        SUMMARY = "summary"
 
     class SessionResponse(ChatSessionState): ...
 
     class TurnResponse(ChatSessionState.Turn): ...
 
-    class SummaryResponse(ChatSessionState.Summary): ...
-
     type: Type
-    response: SessionResponse | TurnResponse | SummaryResponse | None
+    response: SessionResponse | TurnResponse | None
 
     @classmethod
     def dump(cls, data: ChatOutputType) -> dict[str, Any]:
@@ -42,9 +39,6 @@ class ChatResponse(BaseModel):
             case ChatSessionState.Turn() | None:
                 t = ChatResponse.Type.TURN
                 response = ChatResponse.TurnResponse(**data.model_dump()) if data else None
-            case ChatSessionState.Summary():
-                t = ChatResponse.Type.SUMMARY
-                response = ChatResponse.SummaryResponse(**data.model_dump())
         return cls(type=t, response=response).model_dump(mode="json", context={"web"})
 
 

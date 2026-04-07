@@ -17,23 +17,20 @@ class EchoInput(BaseModel):
     input: Base64Bytes | None = None
 
 
-EchoOutputType = EchoSessionState | EchoSessionState.Attempt | EchoSessionState.Summary | None
+EchoOutputType = EchoSessionState | EchoSessionState.Attempt | None
 
 
 class EchoResponse(BaseModel):
     class Type(str, Enum):
         SESSION = "session"
         ATTEMPT = "attempt"
-        SUMMARY = "summary"
 
     class SessionResponse(EchoSessionState): ...
 
     class AttemptResponse(EchoSessionState.Attempt): ...
 
-    class SummaryResponse(EchoSessionState.Summary): ...
-
     type: Type
-    response: SessionResponse | AttemptResponse | SummaryResponse | None
+    response: SessionResponse | AttemptResponse | None
 
     @classmethod
     def dump(cls, data: EchoOutputType) -> dict[str, Any]:
@@ -48,9 +45,6 @@ class EchoResponse(BaseModel):
                 else:
                     response = EchoResponse.AttemptResponse(**data.model_dump())
                     response.pronunciation.with_transcript(data.pronunciation._transcript)
-            case EchoSessionState.Summary():
-                t = EchoResponse.Type.SUMMARY
-                response = EchoResponse.SummaryResponse(**data.model_dump())
         return cls(type=t, response=response).model_dump(mode="json", context={"web"})
 
 

@@ -52,9 +52,7 @@ async def websocket_session(
                         return await session.abort()
             await session.refresh()
             await send_response(session.state)
-        summary = await session.finish()
-        await service.game.increment_user_points(user, summary.points)
-        await send_response(summary)
+        await session.finish()
         await ws.receive()
     except WebSocketDisconnect:
         ...

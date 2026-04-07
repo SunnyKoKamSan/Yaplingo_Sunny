@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import useSession from "../useSession";
-import type { Attempt, Response, Session, Summary } from "./models";
+import type { Attempt, Response, Session } from "./models";
 
 export enum EchoSessionStatus {
   LOADING_NEW,
@@ -22,12 +22,8 @@ export type EchoSession =
       data: Session;
     }
   | {
-      status: EchoSessionStatus.READY_ATTEMPT | EchoSessionStatus.READY_NEXT;
+      status: EchoSessionStatus.READY_ATTEMPT | EchoSessionStatus.READY_NEXT | EchoSessionStatus.COMPLETED;
       data: Session;
-    }
-  | {
-      status: EchoSessionStatus.COMPLETED;
-      data: Session & { summary: Summary };
     };
 
 type State = EchoSession & { next?: Response["type"] };
@@ -61,9 +57,9 @@ const reduceState = (state: State, [type, payload]: Action): State => {
       switch (type) {
         case "session": {
           return {
-            status: EchoSessionStatus.READY_ATTEMPT,
+            status: response.completed ? EchoSessionStatus.COMPLETED : EchoSessionStatus.READY_ATTEMPT,
             data: response,
-            next: response.completed ? "summary" : "attempt",
+            next: response.completed ? undefined : "attempt",
           };
         }
         case "attempt": {
@@ -78,13 +74,6 @@ const reduceState = (state: State, [type, payload]: Action): State => {
             status: attemptable ? EchoSessionStatus.READY_ATTEMPT : EchoSessionStatus.READY_NEXT,
             data: { ...session, attempts, attemptable },
             next: "session",
-          };
-        }
-        case "summary": {
-          return {
-            status: EchoSessionStatus.COMPLETED,
-            data: { ...(state.data as Session), summary: response },
-            next: undefined,
           };
         }
       }

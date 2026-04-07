@@ -32,10 +32,11 @@ class ChatService:
             session = await self.store.chat.stash_session(session)
         if session is None:
             return None
-        return ChatService.SessionDelegate(state=session, _service=self)
+        return ChatService.SessionDelegate(user=user, state=session, _service=self)
 
     class SessionDelegate:
-        def __init__(self, state: ChatSessionState, _service: "ChatService"):
+        def __init__(self, user: User, state: ChatSessionState, _service: "ChatService"):
+            self.user = user
             self.state = state
             self._service = _service
 
@@ -63,11 +64,20 @@ class ChatService:
                 await self._service.store.chat.record_session_turn(self.state, turn)
                 return turn
 
-        async def finish(self) -> ChatSessionState.Summary:
+        async def finish(self) -> None:
             assert self.state.finished, "session not finished yet"
             await self._service.repository.chat.save(self.state.entity())
+
+            # points_net = self.state.points - self.state.expense
+            points_net = self.state.points  # TODO: chat mode currently does not have expense
+            await self._service.repository.user.increment_points(self.user, points_net)
+            await self._service.store.leaderboard.increment(self.user, points_net)
+
+            points_today = await self._service.store.points.increment_today(self.user, self.state.points)
+            if points_today >= self.user.streak_milestone and not self.user.streak_claimed_today:
+                await self._service.repository.user.increment_streak(self.user)
+
             await self._service.store.chat.discard_session(self.state)
-            return self.state.summary
 
         async def abort(self) -> None:
             await self._service.store.chat.discard_session(self.state)

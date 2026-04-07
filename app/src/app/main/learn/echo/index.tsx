@@ -30,7 +30,7 @@ import {
 import tw from "twrnc";
 
 import { useCurrentUserQuery } from "~/client";
-import { EchoSessionStatus, useEchoSession, type Attempt, type EchoSession } from "~/client/echo";
+import { EchoSessionStatus, useEchoSession, type Attempt, type EchoSession, type Session } from "~/client/echo";
 import { PronunciationBreakdown, RecordButton } from "~/components";
 import { Spinner, Text } from "~/components/primitives";
 import { useAudio, useNavigationOptions } from "~/hooks";
@@ -157,7 +157,7 @@ const AttemptSheet = ({
   );
 };
 
-const SummaryView = ({ session }: { session: Extract<EchoSession, { status: EchoSessionStatus.COMPLETED }> }) => {
+const SummaryView = ({ session }: { session: Session }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -172,7 +172,7 @@ const SummaryView = ({ session }: { session: Extract<EchoSession, { status: Echo
 
   const attempt = useMemo(() => {
     if (selection === null) return undefined;
-    const attempts = session.data.attempts[selection];
+    const attempts = session.attempts[selection];
     return getBestAttempt(attempts);
   }, [session, selection]);
 
@@ -181,11 +181,11 @@ const SummaryView = ({ session }: { session: Extract<EchoSession, { status: Echo
       <View style={[tw`flex-1 gap-6 px-4 py-6`, { paddingBottom: insets.bottom }]}>
         <View style={tw`my-8 items-center justify-center gap-2`}>
           <Text style={tw`text-center text-6xl font-bold tracking-tighter text-sky-500`}>
-            {`+ ${session.data.summary.points} XP`}
+            {`+ ${session.points} XP`}
           </Text>
-          {session.data.expense > 0 && (
+          {session.expense > 0 && (
             <Text style={tw`text-center text-2xl font-bold tracking-tighter text-rose-500`}>
-              {`- ${session.data.expense} XP expense`}
+              {`- ${session.expense} XP expense`}
             </Text>
           )}
         </View>
@@ -195,21 +195,21 @@ const SummaryView = ({ session }: { session: Extract<EchoSession, { status: Echo
               tw`absolute -top-4 left-2.5 px-1.5 text-lg font-bold text-amber-500`,
               { backgroundColor: theme.colors.background },
             ]}>
-            #{session.data.scenario.topic}
+            #{session.scenario.topic}
           </Text>
-          <Text style={tw`text-lg font-medium leading-tight`}>{session.data.scenario.scenario}</Text>
+          <Text style={tw`text-lg font-medium leading-tight`}>{session.scenario.scenario}</Text>
         </View>
         <View style={tw`grow gap-2`}>
           <View style={tw`flex-row items-center justify-between gap-2`}>
             <Text
-              style={tw`text-base font-medium uppercase text-neutral-500`}>{`${session.data.scenario.transcripts.length} Transcripts`}</Text>
+              style={tw`text-base font-medium uppercase text-neutral-500`}>{`${session.scenario.transcripts.length} Transcripts`}</Text>
             <Text style={tw`text-base font-medium uppercase text-neutral-500`}>
-              {`${session.data.attempts.reduce((total, attempts) => total + attempts.length, 0)} Attempts`}
+              {`${session.attempts.reduce((total, attempts) => total + attempts.length, 0)} Attempts`}
             </Text>
           </View>
           <ScrollView style={tw`grow rounded-xl border-2 border-zinc-500/50`} contentContainerStyle={tw`gap-2.5 p-3`}>
-            {session.data.scenario.transcripts.map((transcript, index) => {
-              const attempts = session.data.attempts[index];
+            {session.scenario.transcripts.map((transcript, index) => {
+              const attempts = session.attempts[index];
               const attempt = getBestAttempt(attempts);
               const color = attempt ? getScoreColor(attempt.pronunciation.score) : undefined;
               return (
@@ -395,7 +395,7 @@ export default function MainLearnEchoScreen() {
   if (session.status === EchoSessionStatus.COMPLETED)
     return (
       <Animated.View entering={FadeIn.duration(200)} style={tw`flex-1`}>
-        <SummaryView session={session} />
+        <SummaryView session={session.data} />
       </Animated.View>
     );
 
