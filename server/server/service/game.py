@@ -70,14 +70,5 @@ class GameService:
             return await self.store.points.increment_today(user, 0)
         return points_today
 
-    # TODO: combine into one atomic operation
-    async def increment_user_points(self, user: User, points_to_add: int) -> None:
-        assert points_to_add >= 0, "points to add must be non-negative"
-        points_today = await self.store.points.increment_today(user, points_to_add)
-        await self.store.leaderboard.increment(user, points_to_add)
-        await self.repository.user.increment_points(user, points_to_add)
-        if points_today >= user.streak_milestone and not user.streak_claimed_today:
-            await self.repository.user.increment_streak(user)
-
 
 __all__ = ["GameService"]

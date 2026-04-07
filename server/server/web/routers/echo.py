@@ -33,30 +33,39 @@ async def websocket_session(
 
     await sessions.accept(user, ws)
 
-    session = await service.echo.session(user, generate=True)
-
     try:
+        # generate initial session state
+        session = await service.echo.session(user, generate=True)
         await session.prepare()
         await send_response(session.state)
+        # start session loop
         while not session.state.completed:
+            # start attempt loop
             while True:
                 input = await receive_input()
                 match input.type:
                     case EchoInput.Type.NEXT:
                         break
+                    case EchoInput.Type.BUY:
+                        await session.buy()
+                        await session.refresh()
+                        await send_response(session.state)
+                        continue
                     case EchoInput.Type.ABORT:
                         return await session.abort()
                     case EchoInput.Type.AUDIO:
+                        if not session.state.attemptable:
+                            continue
                         if input.input is None:
                             continue
-                        result = await session.attempt(input.input)
-                        await send_response(result)
+                        attempt = await session.attempt(input.input)
+                        await send_response(attempt)
+            # proceed to next
             await session.proceed()
             await session.refresh()
-            await session.prepare()
             await send_response(session.state)
+        # wrap up session
         summary = await session.complete()
-        await service.game.increment_user_points(user, summary.points)
         await send_response(summary)
         await ws.receive()
     except WebSocketDisconnect:

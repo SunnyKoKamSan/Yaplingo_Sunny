@@ -270,7 +270,7 @@ export default function MainLearnChatScreen() {
                   pressed && "border-zinc-500/50",
                 )
               }>
-              <ListTodoIcon color={theme.colors.text} size={20} />
+              <ListTodoIcon color={theme.colors.text} size={18} />
               <Text style={tw`text-base font-medium`}>
                 {`Tasks — ${session.data.tasks.filter((task) => task.completed).length}/${session.data.tasks.length}`}
               </Text>

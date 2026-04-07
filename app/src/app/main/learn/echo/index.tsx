@@ -17,9 +17,19 @@ import { useTheme } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RecorderState } from "expo-audio";
 import { useRouter } from "expo-router";
-import { ArrowRightIcon, EarIcon, FlipHorizontalIcon, PlayIcon, RedoIcon, StarsIcon, XIcon } from "lucide-react-native";
+import {
+  ArrowRightIcon,
+  EarIcon,
+  FlipHorizontalIcon,
+  PlayIcon,
+  RedoIcon,
+  RotateCwIcon,
+  StarsIcon,
+  XIcon,
+} from "lucide-react-native";
 import tw from "twrnc";
 
+import { useCurrentUserQuery } from "~/client";
 import { EchoSessionStatus, useEchoSession, type Attempt, type EchoSession } from "~/client/echo";
 import { PronunciationBreakdown, RecordButton } from "~/components";
 import { Spinner, Text } from "~/components/primitives";
@@ -74,10 +84,10 @@ const Header = ({
             disabled={disableProceed}
             onPress={() => onProceed()}
             style={({ pressed }) => tw.style(pressed && "opacity-50", disableProceed && "opacity-30")}>
-            {session.data.attempts[session.data.progress].length > 0 ? (
-              <ArrowRightIcon color={tw.color("green-500")} size={26} strokeWidth={2.5} />
-            ) : (
+            {session.data.attemptable ? (
               <RedoIcon color={tw.color("red-500")} size={26} strokeWidth={2.5} />
+            ) : (
+              <ArrowRightIcon color={tw.color("green-500")} size={26} strokeWidth={2.5} />
             )}
           </Pressable>
         )}
@@ -153,18 +163,32 @@ const SummaryView = ({ session }: { session: Extract<EchoSession, { status: Echo
 
   const [selection, setSelection] = useState<number | null>(null);
 
-  const attempt = useMemo(
-    // let's just assume only one attempt per transcript for now
-    () => (selection !== null ? session.data.attempts[selection][0] : null),
-    [session, selection],
-  );
+  const getBestAttempt = (attempts: Attempt[]) => {
+    if (attempts.length === 0) return undefined;
+    return attempts.reduce((best, attempt) =>
+      attempt.pronunciation.score > best.pronunciation.score ? attempt : best,
+    );
+  };
+
+  const attempt = useMemo(() => {
+    if (selection === null) return undefined;
+    const attempts = session.data.attempts[selection];
+    return getBestAttempt(attempts);
+  }, [session, selection]);
 
   return (
     <>
       <View style={[tw`flex-1 gap-6 px-4 py-6`, { paddingBottom: insets.bottom }]}>
-        <Text style={tw`my-8 text-center text-6xl font-bold tracking-tighter text-sky-500`}>
-          {`+ ${session.data.summary.points} XP`}
-        </Text>
+        <View style={tw`my-8 items-center justify-center gap-2`}>
+          <Text style={tw`text-center text-6xl font-bold tracking-tighter text-sky-500`}>
+            {`+ ${session.data.summary.points} XP`}
+          </Text>
+          {session.data.expense > 0 && (
+            <Text style={tw`text-center text-2xl font-bold tracking-tighter text-rose-500`}>
+              {`- ${session.data.expense} XP expense`}
+            </Text>
+          )}
+        </View>
         <View style={tw`rounded-xl border-2 border-zinc-500/50 p-3`}>
           <Text
             style={[
@@ -186,7 +210,7 @@ const SummaryView = ({ session }: { session: Extract<EchoSession, { status: Echo
           <ScrollView style={tw`grow rounded-xl border-2 border-zinc-500/50`} contentContainerStyle={tw`gap-2.5 p-3`}>
             {session.data.scenario.transcripts.map((transcript, index) => {
               const attempts = session.data.attempts[index];
-              const attempt = attempts[0];
+              const attempt = getBestAttempt(attempts);
               const color = attempt ? getScoreColor(attempt.pronunciation.score) : undefined;
               return (
                 <Pressable
@@ -200,7 +224,7 @@ const SummaryView = ({ session }: { session: Extract<EchoSession, { status: Echo
                   <Text style={tw`shrink text-left text-base`} numberOfLines={2}>
                     {transcript.text}
                   </Text>
-                  {attempts.length > 0 ? (
+                  {attempt ? (
                     <Text style={[tw`text-xl font-medium`, { color }]}>
                       {`${Math.round(attempt.pronunciation.score * 100)}%`}
                     </Text>
@@ -224,19 +248,20 @@ export default function MainLearnEchoScreen() {
   const insets = useSafeAreaInsets();
   const client = useQueryClient();
 
-  const sheet = useRef<TrueSheet>(null);
-
-  const audio = useAudio();
-
-  const { session, submit, proceed, abort, end } = useEchoSession({
+  const { session, submit, buy, proceed, abort, end } = useEchoSession({
     onClose: () => {
       if (router.canDismiss()) router.dismissAll();
       client.invalidateQueries({ queryKey: ["user", "me"] });
     },
   });
 
+  const audio = useAudio();
+  const sheet = useRef<TrueSheet>(null);
+  const { data: user } = useCurrentUserQuery();
+
   const attempt = useMemo(() => {
     if (!session.data || session.data.completed) return undefined;
+    if (session.data.attemptable) return undefined;
     const attempts = session.data.attempts[session.data.progress];
     return attempts.length > 0 ? attempts[attempts.length - 1] : undefined;
   }, [session.data]);
@@ -245,6 +270,11 @@ export default function MainLearnEchoScreen() {
     if (!session.data || session.data.completed) return undefined;
     return session.data.scenario.transcripts[session.data.progress];
   }, [session.data]);
+
+  const buyable = useMemo(() => {
+    if (user === undefined || session.data === undefined) return false;
+    return user.points[1] >= session.data.expense + session.data.price;
+  }, [session.data, user]);
 
   const _flipped = useSharedValue(false);
   const [flipped, setFlipped] = useState(false);
@@ -263,18 +293,15 @@ export default function MainLearnEchoScreen() {
       audio.player.replace("");
       _flipped.value = false;
     };
-    if (attempt) {
-      callback();
-    } else {
-      Alert.alert("Skip Attempt", "Are you sure you want to skip this attempt?", [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Skip",
-          style: "destructive",
-          onPress: callback,
-        },
-      ]);
-    }
+    if (attempt) return callback();
+    Alert.alert("Skip Attempt", "Are you sure you want to skip this attempt?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Skip",
+        style: "destructive",
+        onPress: callback,
+      },
+    ]);
   };
 
   const handleClose = () => {
@@ -310,6 +337,17 @@ export default function MainLearnEchoScreen() {
     audio.player.play();
   };
 
+  const handleBuy = () => {
+    Alert.alert("Buy Attempt", "Are you sure you want to buy an extra attempt for this transcript?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Buy",
+        style: "default",
+        onPress: () => buy(),
+      },
+    ]);
+  };
+
   const handleSubmit = async (data: string) => {
     const result = await submit(data);
     if (result === null) Alert.alert("Speak Up!", "We couldn't hear you. Try to speak louder and clearer.");
@@ -336,15 +374,11 @@ export default function MainLearnEchoScreen() {
     () =>
       attempt
         ? [
-            attempt.pronunciation.words.map(([word, { alignments }], key) => {
-              const score = alignments.reduce((a, b) => a + b.score, 0) / alignments.length;
-              const color = getScoreColor(score);
-              return (
-                <Text key={key} style={{ color, fontFamily: "" }}>
-                  {`${word} `}
-                </Text>
-              );
-            }),
+            attempt.pronunciation.words.map(([word, { score }], key) => (
+              <Text key={key} style={{ color: getScoreColor(score), fontFamily: "" }}>
+                {`${word} `}
+              </Text>
+            )),
             attempt.pronunciation.words.map(([, { alignments }]) =>
               alignments.map(({ score, token }, key) => (
                 <Text key={key} style={{ color: getScoreColor(score), fontFamily: "" }}>
@@ -418,7 +452,7 @@ export default function MainLearnEchoScreen() {
                     </AnimatedPressable>
                   ))}
                 </Animated.View>
-                {session.status === EchoSessionStatus.READY_ATTEMPT && (
+                {!attempt && (
                   <View style={[tw`mt-5 items-center justify-center`, { top: height / 2 }]}>
                     <View style={tw`flex-row items-center gap-1`}>
                       <FlipHorizontalIcon size={14} color={tw.color("neutral-500")} />
@@ -446,21 +480,45 @@ export default function MainLearnEchoScreen() {
                           pressed && "border-zinc-500/50",
                         )
                       }>
-                      <StarsIcon color={theme.colors.text} size={20} />
-                      <Text style={tw`text-base font-medium`}>Result</Text>
+                      <StarsIcon color={theme.colors.text} size={18} />
+                      <Text style={tw`text-base font-medium`}>
+                        {`Result — ${Math.round(attempt.pronunciation.score * 100)}%`}
+                      </Text>
                     </Pressable>
-                    <Pressable
-                      style={({ pressed }) =>
-                        tw.style(
-                          "mx-auto rounded-full bg-sky-500 p-4",
-                          pressed && "opacity-80",
-                          audio.playerStatus.playing && playbacking && "opacity-50",
-                        )
-                      }
-                      disabled={audio.playerStatus.playing && playbacking}
-                      onPress={handlePlayback}>
-                      <PlayIcon color="white" fill="white" size={32} />
-                    </Pressable>
+                    <View style={tw`w-full flex-row items-center justify-center`}>
+                      <Pressable
+                        style={({ pressed }) =>
+                          tw.style(
+                            "absolute left-1/2 -translate-x-1/2",
+                            "rounded-full bg-sky-500 p-4",
+                            pressed && "opacity-80",
+                            audio.playerStatus.playing && playbacking && "opacity-50",
+                          )
+                        }
+                        disabled={audio.playerStatus.playing && playbacking}
+                        onPress={handlePlayback}>
+                        <PlayIcon color="white" fill="white" size={32} />
+                      </Pressable>
+                      <View style={tw`ml-auto items-center justify-center gap-2`}>
+                        <Pressable
+                          style={({ pressed }) =>
+                            tw.style(
+                              "flex-row items-center justify-center gap-1.5 px-2 py-1",
+                              "rounded-full border-2 border-transparent bg-amber-200 dark:bg-amber-800",
+                              pressed && "border-amber-500/50",
+                              !buyable && "opacity-50",
+                            )
+                          }
+                          disabled={!buyable}
+                          onPress={handleBuy}>
+                          <RotateCwIcon color={theme.colors.text} size={16} />
+                          <Text style={tw`text-sm font-medium`}>Try Again</Text>
+                        </Pressable>
+                        <Text style={tw`absolute -bottom-6 text-center text-sm font-medium text-amber-500`}>
+                          {`Costs ${session.data.price} XP`}
+                        </Text>
+                      </View>
+                    </View>
                     {!(audio.playerStatus.playing && playbacking) && (
                       <Text style={tw`absolute bottom-0 text-sm font-medium`}>Playback Your Speech</Text>
                     )}

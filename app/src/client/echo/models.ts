@@ -8,10 +8,14 @@ export type Scenario = {
 
 export type Session = {
   scenario: Scenario;
-  total: number;
   progress: number;
+  chances: number[];
   attempts: Attempt[][];
+  price: number;
+  expense: number;
+  total: number;
   completed: boolean;
+  attemptable: boolean;
 };
 
 export type Attempt = {

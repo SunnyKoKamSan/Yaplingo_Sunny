@@ -10,6 +10,7 @@ class EchoInput(BaseModel):
     class Type(str, Enum):
         AUDIO = "audio"
         NEXT = "next"
+        BUY = "buy"
         ABORT = "abort"
 
     type: Type

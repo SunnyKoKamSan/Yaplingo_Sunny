@@ -31,10 +31,11 @@ class EchoService:
             session = EchoSessionState(scenario=scenario).with_uid(user.id)
             session = await self.store.echo.stash_session(session)
         session = cast(EchoSessionState, session)
-        return EchoService.SessionDelegate(state=session, _service=self)
+        return EchoService.SessionDelegate(user=user, state=session, _service=self)
 
     class SessionDelegate:
-        def __init__(self, state: EchoSessionState, _service: "EchoService"):
+        def __init__(self, user: User, state: EchoSessionState, _service: "EchoService"):
+            self.user = user
             self.state = state
             self._service = _service
 
@@ -46,9 +47,11 @@ class EchoService:
             session = await self._service.store.echo.get_session(self.state._uid)
             assert session is not None, "session deleted unexpectedly"
             self.state = session
+            await self.prepare()
 
         async def attempt(self, audio: bytes) -> EchoSessionState.Attempt | None:
             assert not self.state.completed, "session already completed"
+            assert self.state.attemptable, "session not attemptable"
             audio_b64 = base64.b64encode(audio)
             audio_md5 = hashlib.md5(audio).hexdigest()
             result = await self._service.broker.execute(
@@ -66,6 +69,12 @@ class EchoService:
                 await self._service.store.echo.record_session_attempt(self.state, attempt)
                 return attempt
 
+        async def buy(self) -> None:
+            assert not self.state.completed, "session already completed"
+            if (user := await self._service.repository.user.get_one(self.state._uid)) is not None:
+                if user.points >= self.state.expense + self.state.price:
+                    await self._service.store.echo.increment_session_chance(self.state)
+
         async def proceed(self) -> None:
             assert not self.state.completed, "session already completed"
             await self._service.store.echo.increment_session_progress(self.state)
@@ -73,6 +82,15 @@ class EchoService:
         async def complete(self) -> EchoSessionState.Summary:
             assert self.state.completed, "session not completed yet"
             await self._service.repository.echo.save(self.state.entity())
+
+            points_net = self.state.summary.points - self.state.expense
+            await self._service.repository.user.increment_points(self.user, points_net)
+            await self._service.store.leaderboard.increment(self.user, points_net)
+
+            points_today = await self._service.store.points.increment_today(self.user, self.state.summary.points)
+            if points_today >= self.user.streak_milestone and not self.user.streak_claimed_today:
+                await self._service.repository.user.increment_streak(self.user)
+
             await self._service.store.echo.discard_session(self.state)
             return self.state.summary
 

@@ -139,7 +139,7 @@ class ChatStore:
                 exclude_computed_fields=True,
             ),
         )
-        await cast(Awaitable[list[int | None]], op)
+        await cast(Awaitable, op)
 
     async def discard_session(self, session: ChatSessionState) -> None:
         await self._client.delete(repr(session))
