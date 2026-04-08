@@ -22,7 +22,7 @@ class AchievementRule(BaseModel):
     key: str
     title: str
     desc: str
-    threshold_type: Literal["lifetime_xp", "streak", "lifetime_lessons"]
+    threshold_type: Literal["lifetime_xp", "streak", "lifetime_lessons", "alltime_rank"]
     threshold: int
 
 
@@ -139,6 +139,13 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         threshold_type="lifetime_lessons",
         threshold=500,
     ),
+    AchievementRule(
+        key="alltime_legend",
+        title="All-Time Legend",
+        desc="Reach #1 on the all-time leaderboard",
+        threshold_type="alltime_rank",
+        threshold=1,
+    ),
 )
 
 
@@ -195,17 +202,29 @@ class GameService:
             return await self.store.user.increment_points_today(user, 0)
         return points_today
 
+    async def _is_alltime_rank_one(self, user: User) -> bool:
+        rank_score = await self.store.leaderboard.get(user)
+        return rank_score is not None and rank_score[0] == 1
+
     @staticmethod
-    def _metric_value(rule: AchievementRule, user: User, sessions_total: int) -> int:
+    def _metric_value(
+        rule: AchievementRule,
+        user: User,
+        sessions_total: int,
+        alltime_rank_one: bool,
+    ) -> int:
         if rule.threshold_type == "lifetime_xp":
             return max(user.points, 0)
         if rule.threshold_type == "streak":
             return max(user.streak, 0)
-        return max(sessions_total, 0)
+        if rule.threshold_type == "lifetime_lessons":
+            return max(sessions_total, 0)
+        return 1 if alltime_rank_one else 0
 
     async def list_achievements(self, user: User) -> list[AchievementStatus]:
         unlocked_map = await self.repository.achievement.list_unlocked(user.id)
         sessions_total = await self.repository.aggregation.count_sessions_by_user(user)
+        alltime_rank_one = await self._is_alltime_rank_one(user)
 
         achievements: list[AchievementStatus] = []
         for rule in ACHIEVEMENT_RULES:
@@ -223,7 +242,7 @@ class GameService:
                 )
                 continue
 
-            value = self._metric_value(rule, user, sessions_total)
+            value = self._metric_value(rule, user, sessions_total, alltime_rank_one)
             progress = min(value / rule.threshold, 1.0) if rule.threshold > 0 else 1.0
             achievements.append(
                 AchievementStatus(
@@ -247,7 +266,8 @@ class GameService:
             raise ValueError("Achievement already claimed")
 
         sessions_total = await self.repository.aggregation.count_sessions_by_user(user)
-        value = self._metric_value(rule, user, sessions_total)
+        alltime_rank_one = await self._is_alltime_rank_one(user)
+        value = self._metric_value(rule, user, sessions_total, alltime_rank_one)
         if value < rule.threshold:
             raise PermissionError("Achievement criteria not met")
 
