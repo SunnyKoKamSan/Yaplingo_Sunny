@@ -68,6 +68,17 @@ class User(SQLModel, table=True):
         return self.streaked_at.astimezone(tz).date() == today
 
 
+class UserAchievement(SQLModel, table=True):
+    __tablename__ = "user_achievement"  # type: ignore
+
+    user_id: ULID = Field(foreign_key="user.id", primary_key=True, sa_type=ULIDType)
+    achievement_key: str = Field(primary_key=True, max_length=64)
+    unlocked_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=TIMESTAMP(timezone=True),
+    )
+
+
 class EchoAttempt(SQLModel, table=True):
     __tablename__ = "echo_attempt"  # type: ignore
 
@@ -132,4 +143,4 @@ class ChatSession(SQLModel, table=True):
     turns: list[ChatTurn] = Relationship(back_populates="session")
 
 
-__all__ = ["User", "EchoAttempt", "EchoSession", "ChatTurn", "ChatSession"]
+__all__ = ["User", "UserAchievement", "EchoAttempt", "EchoSession", "ChatTurn", "ChatSession"]

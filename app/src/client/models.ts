@@ -52,3 +52,21 @@ export type Transcript = {
   audio: string;
   sequence: string;
 };
+
+export type AchievementResponse = {
+  key: string;
+  title: string;
+  desc: string;
+  unlocked: boolean;
+  unlocked_at: string | null;
+  progress: number;
+};
+
+export type ClaimAchievementRequest = {
+  achievement_key: string;
+};
+
+export type ClaimAchievementResponse = {
+  achievement_key: string;
+  unlocked_at: string;
+};

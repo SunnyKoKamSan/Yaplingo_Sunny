@@ -5,7 +5,14 @@ import { useSetAtom } from "jotai";
 
 import { $token } from "../store";
 import client from "./client";
-import type { Leaderboard, User, UserInsights } from "./models";
+import type {
+  AchievementResponse,
+  ClaimAchievementRequest,
+  ClaimAchievementResponse,
+  Leaderboard,
+  User,
+  UserInsights,
+} from "./models";
 
 export const useCurrentUserQuery = ({ check = false }: { check?: boolean } = {}) =>
   useQuery<User, AxiosError>({
@@ -92,6 +99,25 @@ export const useLeaderboardQuery = () =>
       const response = await client.get("/game/leaderboard");
       return response.data;
     },
+  });
+
+export const useAchievementsQuery = () =>
+  useQuery<AchievementResponse[], AxiosError>({
+    queryKey: ["game", "achievements"],
+    queryFn: async () => {
+      const response = await client.get("/game/achievements");
+      return response.data;
+    },
+  });
+
+export const useClaimAchievementMutation = () =>
+  useMutation<ClaimAchievementResponse, AxiosError, ClaimAchievementRequest>({
+    mutationFn: async (payload) => {
+      const response = await client.post("/game/achievements/claim", payload);
+      return response.data;
+    },
+    onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+      context.client.invalidateQueries({ queryKey: ["game", "achievements"] }),
   });
 
 export * from "./models";
