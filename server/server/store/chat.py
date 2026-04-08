@@ -136,10 +136,7 @@ class ChatStore:
         op = self._client.json().arrappend(
             repr(session),
             "$.turns",
-            turn.model_dump(
-                mode="json",
-                exclude_computed_fields=True,
-            ),
+            turn.model_dump(mode="json"),
         )
         await cast(Awaitable, op)
 

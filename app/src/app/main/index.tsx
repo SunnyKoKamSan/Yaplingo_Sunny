@@ -9,7 +9,7 @@ import { Spinner, Text } from "~/components/primitives";
 import { useNavigationOptions, useTomorrowCountdown } from "~/hooks";
 import { formatCompactNumber } from "~/utils";
 
-import { ActivityCard, StreakCard } from "./leaderboard/profile";
+import { ActivityCard, StreakCard } from "./profile";
 
 const Header = ({ user }: { user?: User }) => {
   const theme = useTheme();

@@ -87,7 +87,7 @@ class EchoService:
             await self._service.repository.user.increment_points(self.user, points_net)
             await self._service.store.leaderboard.increment(self.user, points_net)
 
-            points_today = await self._service.store.points.increment_today(self.user, self.state.points)
+            points_today = await self._service.store.user.increment_points_today(self.user, self.state.points)
             if points_today >= self.user.streak_milestone and not self.user.streak_claimed_today:
                 await self._service.repository.user.increment_streak(self.user)
 

@@ -111,10 +111,7 @@ class EchoSessionState(BaseModel):
                 index=index,
                 audio=attempt.audio,
                 feedback=attempt.feedback,
-                pronunciation=attempt.pronunciation.model_dump(
-                    mode="json",
-                    exclude_computed_fields=True,
-                ),
+                pronunciation=attempt.pronunciation.model_dump(mode="json"),
             )
             for index, attempts in enumerate(self.attempts)
             for attempt in attempts

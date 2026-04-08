@@ -30,6 +30,7 @@ dependencies = [
     "phonemizer",
     "pycountry>=24.6.1",
     "faster-whisper>=1.2.1",
+    "multiavatar>=1.0.3",
 ]
 
 [tool.ruff]

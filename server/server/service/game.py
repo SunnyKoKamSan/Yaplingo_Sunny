@@ -65,9 +65,9 @@ class GameService:
         return Counter([s.completed_at.astimezone(tz).date() for s in sessions])
 
     async def get_user_today_points(self, user: User) -> int:
-        points_today = await self.store.points.get_today(user)
+        points_today = await self.store.user.get_points_today(user)
         if points_today is None:
-            return await self.store.points.increment_today(user, 0)
+            return await self.store.user.increment_points_today(user, 0)
         return points_today
 
 

@@ -155,3 +155,27 @@ class Pronunciation(BaseModel):
     @cached_property
     def score(self) -> float:
         return sum(a.score for a in self.alignments) / len(self.alignments)
+
+
+class Insights(BaseModel):
+    class PhonemeError(BaseModel):
+        """Represents a frequently occurring phoneme error pattern."""
+
+        phoneme: str
+        expected: str | None
+        predicted: str | None
+        operation: str  # replace, insert, delete
+        count: int
+
+    class WordError(BaseModel):
+        """Represents a word that consistently causes pronunciation difficulty."""
+
+        word: str
+        average: float
+        count: int
+
+    """Aggregated pronunciation statistics from user's sessions."""
+
+    average: float
+    phoneme_errors: list[PhonemeError]  # top N most frequent
+    word_errors: list[WordError]  # top N lowest scoring

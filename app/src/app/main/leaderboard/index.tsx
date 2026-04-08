@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Image, Pressable, RefreshControl, View, type ViewProps } from "react-native";
+import { FlatList, Pressable, RefreshControl, View, type ViewProps } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -10,32 +10,30 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
-import Svg, { Defs, Path, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
+import Svg, { Defs, Path, Rect, Stop, LinearGradient as SvgLinearGradient, SvgUri } from "react-native-svg";
 import { useTheme } from "@react-navigation/native";
 import { useFocusEffect, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { TrophyIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
-import { useCurrentUserQuery, useLeaderboardQuery, type LeaderboardEntry } from "~/client";
+import { API_URL, useCurrentUserQuery, useLeaderboardQuery, type LeaderboardEntry } from "~/client";
 import { Spinner, Text } from "~/components/primitives";
 
 const LOTTIE_CROWN_URI = "https://lottie.host/e371643e-e22e-4a3e-a1ce-b8ab03785b60/WiYpVXACUw.lottie";
 
 type PodiumRank = 1 | 2 | 3;
-type PodiumEntry = { name: string; label: string; onPress?: () => void };
+type PodiumEntry = { uid: string; name: string; label: string; onPress?: () => void };
 type PodiumEntries = Partial<Record<PodiumRank, PodiumEntry>>;
 
-const AnimatedPodium = ({
+const AnimatedPodiumView = ({
   token,
   entries,
-  champion,
   style,
   ...props
 }: {
   token: number;
   entries: PodiumEntries;
-  champion?: React.ReactNode;
 } & ViewProps) => {
   const theme = useTheme();
 
@@ -138,22 +136,22 @@ const AnimatedPodium = ({
     const l = LAYOUT[r];
     const left = l.x * s;
     const lw = 118 * s;
-    const cs = Math.max(0.88, Math.min(s * 0.9, 1.05));
     const pt = l.y * s;
     const ah = 40 * s;
     const nh = 24 * s;
     const xh = Math.max(10, 11 * s);
-    const top = r === 1 && champion ? pt - 86 - nh - xh - 8 * s : Math.max(pt - ah - nh - xh - 8 * s, 96);
+    const top = r === 1 ? pt - 86 - nh - xh - 8 * s : pt - ah - nh - xh - 8 * s - 12;
 
     const label = (
       <View>
-        {r === 1 && champion && <View style={{ transform: [{ scale: cs }] }}>{champion}</View>}
+        <FloatingAvatar uid={e.uid} crown={r === 1} />
         <Text style={[tw`text-center font-bold`, { fontSize: Math.max(16, 10 * s), minHeight: nh }]} numberOfLines={1}>
           {e.name}
         </Text>
         <View style={tw`flex-row items-center justify-center gap-1`}>
           <ZapIcon size={12} color={tw.color("neutral-500")} fill={tw.color("neutral-500")} />
-          <Text style={[tw`font-medium tracking-tighter text-neutral-500`, { fontSize: Math.max(16, 10 * s) }]}>
+          <Text
+            style={[tw`text-base font-medium tracking-tighter text-neutral-500`, { fontSize: Math.max(16, 10 * s) }]}>
             {e.label}
           </Text>
         </View>
@@ -191,7 +189,7 @@ const AnimatedPodium = ({
 
     return (
       <Animated.View
-        key={`p-${r}`}
+        key={r}
         style={[tw`absolute overflow-hidden rounded-t-lg`, { left, top: 0, width: bw, height: bh }, as]}>
         <Svg width="100%" height="100%" style={tw`absolute inset-0`}>
           <Defs>
@@ -231,7 +229,7 @@ const AnimatedPodium = ({
         {renderPillar(2)}
         {renderPillar(1)}
       </View>
-      <View style={[tw`absolute top-0`, { left: ox, width: sw, height: GROUND * s, overflow: "visible" as const }]}>
+      <View style={[tw`absolute top-0`, { left: ox, width: sw, height: GROUND * s, overflow: "visible" }]}>
         {renderLabel(3)}
         {renderLabel(2)}
         {renderLabel(1)}
@@ -252,7 +250,7 @@ const AnimatedPodium = ({
   );
 };
 
-const FloatingMascot = ({ crown = false }: { crown?: boolean }) => {
+const FloatingAvatar = ({ uid, crown = false }: { uid: string; crown?: boolean }) => {
   const ty = useSharedValue(0);
 
   useEffect(() => {
@@ -280,7 +278,7 @@ const FloatingMascot = ({ crown = false }: { crown?: boolean }) => {
           />
         </View>
       )}
-      <Image source={require("@/mascot.png")} style={{ width: 46, height: 46 }} resizeMode="contain" />
+      <SvgUri width="46px" height="46px" uri={`${API_URL}/user/${uid}.svg`} />
     </Animated.View>
   );
 };
@@ -300,12 +298,12 @@ const PodiumView = ({
 
   const podium = useMemo((): PodiumEntries => {
     const entry = (e?: LeaderboardEntry) =>
-      e ? { name: e.name, label: e.score.toString(), onPress: () => onEntryPress?.(e) } : undefined;
+      e ? { uid: e.uid, name: e.name, label: e.score.toString(), onPress: () => onEntryPress?.(e) } : undefined;
     return { 1: entry(first), 2: entry(second), 3: entry(third) };
   }, [first, second, third, onEntryPress]);
 
   if (entries.length === 0) return null;
-  return <AnimatedPodium token={token} entries={podium} champion={<FloatingMascot crown={true} />} />;
+  return <AnimatedPodiumView token={token} entries={podium} />;
 };
 
 const LeaderboardListItem = ({
@@ -349,13 +347,14 @@ const LeaderboardListItem = ({
       <Pressable
         onPress={onPress}
         style={tw.style(
-          "flex-row items-center rounded-xl border-2 border-zinc-500/50 bg-zinc-200/50 p-2 dark:bg-zinc-800/50",
+          "flex-row items-stretch rounded-xl border-2 border-zinc-500/50 bg-zinc-200/50 p-2 dark:bg-zinc-800/50",
           highlighted && "border-zinc-500",
         )}>
         <View style={tw`w-1/10 items-center justify-center rounded-lg`}>
           <Text style={tw`text-xl font-bold`}>#{entry.rank}</Text>
         </View>
-        <View style={tw`w-5/10 grow px-2.5`}>
+        <View style={tw`w-5/10 grow flex-row items-center gap-4 px-2.5`}>
+          <SvgUri width="36px" height="36px" uri={`${API_URL}/user/${entry.uid}.svg`} />
           <Text style={tw`text-xl font-medium`}>{entry.name}</Text>
         </View>
         <View style={tw`w-3/10 flex-row items-center justify-center gap-1.5 rounded-lg bg-sky-500/25`}>

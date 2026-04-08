@@ -2,7 +2,7 @@ import axios, { AxiosError } from "axios";
 
 import store, { $token } from "../store";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+export const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const client = axios.create({
   baseURL: API_URL,

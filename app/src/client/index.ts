@@ -5,7 +5,7 @@ import { useSetAtom } from "jotai";
 
 import { $token } from "../store";
 import client from "./client";
-import type { Leaderboard, User } from "./models";
+import type { Leaderboard, User, UserInsights } from "./models";
 
 export const useCurrentUserQuery = ({ check = false }: { check?: boolean } = {}) =>
   useQuery<User, AxiosError>({
@@ -15,10 +15,20 @@ export const useCurrentUserQuery = ({ check = false }: { check?: boolean } = {})
         timeout: 5000,
         validateStatus: (status) => [200, 401, 403].includes(status),
       };
-      const response = await client.get("/user", check ? options : undefined);
+      const response = await client.get("/user/@", check ? options : undefined);
       return response.data;
     },
     retry: true,
+    staleTime: Infinity,
+  });
+
+export const useCurrentUserInsightsQuery = () =>
+  useQuery<UserInsights | null, AxiosError>({
+    queryKey: ["user", "me", "insights"],
+    queryFn: async () => {
+      const response = await client.get(`/user/@/insights`);
+      return response.data;
+    },
     staleTime: Infinity,
   });
 
@@ -85,3 +95,4 @@ export const useLeaderboardQuery = () =>
   });
 
 export * from "./models";
+export * from "./client";

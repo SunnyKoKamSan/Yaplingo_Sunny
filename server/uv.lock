@@ -971,6 +971,15 @@ wheels = [
 ]
 
 [[package]]
+name = "multiavatar"
+version = "1.0.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/18/d6/9432ef5d6714ef7cfba7cc32ab6906858d47a4fa9b854a0a77fdf57356c0/multiavatar-1.0.3.tar.gz", hash = "sha256:c8a63cb8fbd9be7ff06cc4d4eb6e6ea08aa9bd3137a70595bb9af02e88d5934a", size = 31514, upload-time = "2021-03-04T19:35:19.451Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d6/b9/05062d4a9866ca1d504993d76c824db3e4b1fa6058fdbad8aa2523afe982/multiavatar-1.0.3-py3-none-any.whl", hash = "sha256:12e6637d0ec2d42a2a04fe4ccdcbae626851277ee4498d01bc2e1c49a8b9c1f4", size = 30931, upload-time = "2021-03-04T19:35:18.24Z" },
+]
+
+[[package]]
 name = "multidict"
 version = "6.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2260,6 +2269,7 @@ dependencies = [
     { name = "faster-whisper" },
     { name = "gtts" },
     { name = "kokoro" },
+    { name = "multiavatar" },
     { name = "openai" },
     { name = "phonemizer" },
     { name = "pycountry" },
@@ -2291,6 +2301,7 @@ requires-dist = [
     { name = "faster-whisper", specifier = ">=1.2.1" },
     { name = "gtts", editable = "vendor/gtts" },
     { name = "kokoro", specifier = ">=0.9.4" },
+    { name = "multiavatar", specifier = ">=1.0.3" },
     { name = "openai", specifier = ">=2.1.0" },
     { name = "phonemizer", editable = "vendor/phonemizer" },
     { name = "pycountry", specifier = ">=24.6.1" },

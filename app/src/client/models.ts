@@ -9,6 +9,11 @@ export type User = {
   activity: Record<string, number>;
 };
 
+// TODO: define this properly
+export type UserInsights = {
+  summary: string;
+};
+
 export type LeaderboardEntry = {
   uid: string;
   name: string;
