@@ -15,7 +15,7 @@ async def analyze_echo(
     context: Context = TaskiqDepends(),
 ) -> EchoResult | None:
     audio = base64.b64decode(audio_b64)
-    return await context.state.echo(audio, session.transcript)
+    return await context.state.echo(audio=audio, transcript=session.transcript)
 
 
 @broker.task
@@ -25,7 +25,11 @@ async def process_chat(
     context: Context = TaskiqDepends(),
 ) -> ChatResult | None:
     audio = base64.b64decode(audio_b64)
-    return await context.state.chat(audio, session.scenario, session.conversation)
+    return await context.state.chat(
+        audio=audio,
+        scenario=session.scenario,
+        conversation=session.conversation,
+    )
 
 
 __all__ = ["analyze_echo", "process_chat"]

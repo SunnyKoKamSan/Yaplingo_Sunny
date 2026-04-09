@@ -179,3 +179,23 @@ class Insights(BaseModel):
     average: float
     phoneme_errors: list[PhonemeError]  # top N most frequent
     word_errors: list[WordError]  # top N lowest scoring
+
+    # TODO: to be improved
+    def format(self) -> str:
+        """Format into a human-readable string for LLM scenario prompts."""
+        lines = []
+        if self.word_errors:
+            words = ", ".join(f'"{e.word}"' for e in self.word_errors[:5])
+            lines.append(f"Frequently mispronounced words: {words}")
+        if self.phoneme_errors:
+            sounds = []
+            for e in self.phoneme_errors[:5]:
+                if e.operation == "replace" and e.expected and e.predicted:
+                    sounds.append(f"/{e.expected}/ (often pronounced as /{e.predicted}/)")
+                elif e.operation == "delete" and e.expected:
+                    sounds.append(f"/{e.expected}/ (often dropped)")
+                elif e.operation == "insert" and e.predicted:
+                    sounds.append(f"/{e.predicted}/ (often inserted)")
+            if sounds:
+                lines.append(f"Problematic sounds: {', '.join(sounds)}")
+        return "\n".join(lines)

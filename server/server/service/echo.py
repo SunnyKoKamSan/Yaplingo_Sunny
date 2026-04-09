@@ -1,10 +1,11 @@
 import base64
 import hashlib
-from typing import Literal, Optional, cast, overload
+from typing import Awaitable, Callable, Literal, Optional, cast, overload
 
 from server.broker import Broker
 from server.broker.tasks import analyze_echo
 from server.core import EchoPipeline
+from server.core.models.common import Insights
 from server.core.models.echo import Result
 from server.repository import Repository
 from server.repository.entities import User
@@ -20,14 +21,29 @@ class EchoService:
         self.pipeline = EchoPipeline()
 
     @overload
-    async def session(self, user: User, generate: Literal[True]) -> "SessionDelegate": ...
+    async def session(
+        self,
+        user: User,
+        generate: Literal[True],
+        insights: Callable[[], Awaitable[Insights | None]],
+    ) -> "SessionDelegate": ...
     @overload
-    async def session(self, user: User, generate: Literal[False] = False) -> Optional["SessionDelegate"]: ...
+    async def session(
+        self,
+        user: User,
+        generate: Literal[False] = False,
+        insights: Callable[[], Awaitable[Insights | None]] | None = None,
+    ) -> Optional["SessionDelegate"]: ...
 
-    async def session(self, user: User, generate: bool = False) -> Optional["SessionDelegate"]:
+    async def session(
+        self,
+        user: User,
+        generate: bool = False,
+        insights: Callable[[], Awaitable[Insights | None]] | None = None,
+    ) -> Optional["SessionDelegate"]:
         session = await self.store.echo.get_session(user.id)
         if session is None and generate:
-            scenario = await self.pipeline()
+            scenario = await self.pipeline(insights=(await insights()) if insights is not None else None)
             session = EchoSessionState(scenario=scenario).with_uid(user.id)
             session = await self.store.echo.stash_session(session)
         session = cast(EchoSessionState, session)

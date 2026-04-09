@@ -52,8 +52,8 @@ async def get_user(uid: ULID, user: User, service: Service) -> UserResponse:
 
 @router.get("/@/insights")
 async def get_my_insights(user: User, service: Service) -> UserInsightsResponse | None:
-    insights_with_summary = await service.user.get_insights_with_summary(user)
-    return UserInsightsResponse(**insights_with_summary.model_dump()) if insights_with_summary else None
+    insights = await service.user.get_insights_with_summary(user)
+    return UserInsightsResponse(**insights.model_dump()) if insights else None
 
 
 __all__ = ["router"]

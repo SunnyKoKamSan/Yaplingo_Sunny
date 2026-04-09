@@ -10,6 +10,7 @@ RULES:
 - Sound 100% like a native American speaker
 - NEVER include proper nouns, acronyms and initialisms
 - NEVER add explanations, introductions, or extra text
+- If pronunciation insights are provided, naturally incorporate words containing those challenging sounds into the sentences. Do not force them — weave them into natural sentences that fit the scenario.
 
 OUTPUT:
 Respond with a JSON object matching the provided schema. Do not include anything outside the JSON.

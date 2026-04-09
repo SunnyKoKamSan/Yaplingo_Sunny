@@ -1,6 +1,7 @@
 from typing import overload
 
 from .._utils import waveform_to_audio_b64
+from ..models.common import Insights
 from ..models.echo import Result, Scenario, Transcript
 from . import Pipeline
 
@@ -17,19 +18,21 @@ class EchoPipeline(Pipeline):
         self.scenario_generator = ScenarioGenerator()
 
     @overload
-    async def __call__(self) -> Scenario: ...
+    async def __call__(self, *, insights: Insights | None = None) -> Scenario: ...
 
     @overload
-    async def __call__(self, audio: bytes, transcript: Transcript) -> Result | None: ...
+    async def __call__(self, *, audio: bytes, transcript: Transcript) -> Result | None: ...
 
     async def __call__(
         self,
+        *,
         audio: bytes | None = None,
         transcript: Transcript | None = None,
+        insights: Insights | None = None,
     ) -> Scenario | (Result | None):
-        # no args provided: generate scenario
+        # no args or only insights provided: generate scenario
         if audio is None and transcript is None:
-            return await self.scenario_generator()
+            return await self.scenario_generator(insights)
         # both audio and transcript provided: analyze echo
         if audio is not None and transcript is not None:
             if (waveform := self.audio_processor(audio)) is None:

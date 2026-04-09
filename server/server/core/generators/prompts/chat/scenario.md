@@ -24,6 +24,7 @@ RULES:
 - NEVER break your character in the opening line.
 - NEVER add explanations or meta-commentary.
 - Make the scenario feel grounded, like something that would actually happen in someone's day.
+- If pronunciation insights are provided, design the scenario and tasks so the learner naturally needs to use words containing the challenging sounds. Do not mention pronunciation or coaching — keep the scenario realistic and grounded.
 
 OUTPUT:
 Respond with a JSON object matching the provided schema. Do not include anything outside the JSON.

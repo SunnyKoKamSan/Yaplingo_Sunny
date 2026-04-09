@@ -26,6 +26,7 @@ class ChatPipeline(Pipeline):
     @overload
     async def __call__(
         self,
+        *,
         audio: bytes,
         scenario: Scenario,
         conversation: Conversation,
@@ -33,6 +34,7 @@ class ChatPipeline(Pipeline):
 
     async def __call__(
         self,
+        *,
         audio: bytes | None = None,
         scenario: Scenario | None = None,
         conversation: Conversation | None = None,

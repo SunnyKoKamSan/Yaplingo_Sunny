@@ -66,11 +66,36 @@ class UserService:
                 await self.repository.user.reset_streak(user)
         return user
 
+    async def get_insights(self, user: User) -> Insights | None:
+        """Get cached insights or compute fresh ones. Used by scenario generators."""
+        insights = await self.store.user.get_insights(user)
+        if insights is not None:
+            return insights
+        insights = await self._extract_insights(user)
+        if insights is not None:
+            await self.store.user.set_insights(user, insights)
+        return insights
+
     async def get_insights_with_summary(self, user: User) -> UserInsightsWithSummary | None:
         """
         Generate pronunciation insights summary based on user's recent sessions.
         Analyzes pronunciation data from Echo and Chat sessions over the last 30 days.
         """
+        insights = await self.get_insights(user)
+        if insights is None:
+            return None
+
+        summary = await self.store.user.get_insights_summary(user)
+        if summary is None:
+            # generate a new summary via LLM and cache it
+            summary = await self._insights_generator(insights)
+            await self.store.user.set_insights_summary(user, summary)
+        return UserInsightsWithSummary(insights=insights, summary=summary)
+
+    # TODO: to be improved
+    async def _extract_insights(self, user: User) -> Insights | None:
+        """Core insights extraction from user's last 30 days of sessions."""
+
         echo_sessions, chat_sessions = await self.repository.aggregation.get_sessions_with_pronunciation_by_user(
             user, start=datetime.now(timezone.utc) - timedelta(days=30)
         )
@@ -142,18 +167,11 @@ class UserService:
         if total_attempts == 0 or not scores:
             return None
 
-        insights = Insights(
+        return Insights(
             average=sum(scores) / len(scores),
             phoneme_errors=top_phoneme_errors,
             word_errors=top_word_errors,
         )
-
-        summary = await self.store.user.get_insights_summary(user)
-        if summary is None:
-            # generate a new summary via LLM and cache it
-            summary = await self._insights_generator(insights)
-            await self.store.user.set_insights_summary(user, summary)
-        return UserInsightsWithSummary(insights=insights, summary=summary)
 
 
 __all__ = ["UserService", "UserCredentials", "UserCreation", "UserInsightsWithSummary"]

@@ -35,7 +35,11 @@ async def websocket_session(
 
     try:
         # generate initial session state
-        session = await service.echo.session(user, generate=True)
+        session = await service.echo.session(
+            user,
+            generate=True,
+            insights=lambda: service.user.get_insights(user),
+        )
         await session.prepare()
         await send_response(session.state)
         # start session loop

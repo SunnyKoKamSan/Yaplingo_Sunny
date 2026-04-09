@@ -3,7 +3,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from ..models.common import Pronunciation
+from ..models.common import Insights, Pronunciation
 from ..models.echo import Scenario, Transcript
 from . import BaseGenerator
 
@@ -16,13 +16,20 @@ class ScenarioGenerator(BaseGenerator):
     class Response(Scenario):
         transcripts: list[str]
 
-    async def __call__(self) -> Scenario:
+    async def __call__(self, insights: Insights | None = None) -> Scenario:
         topic = random.choice(self.TOPICS)
+        prompt = f"""
+        Generate one new set.
+        Topic: {topic}
+        """
+        if insights is not None:
+            prompt += f"""
+            PRONUNCIATION INSIGHTS (from the learner's recent practice):
+            {insights.format()}
+            Use these insights to craft sentences that naturally include some of these challenging words or sounds, while staying relevant to the topic. Do not mention pronunciation or coaching — just weave the difficult words and sounds into natural sentences.
+            """
         response = await super().call(
-            f"""
-            Generate one new set.
-            Topic: {topic}
-            """,
+            prompt,
             temperature=1.25,
             response_format={
                 "type": "json_schema",
@@ -37,7 +44,7 @@ class ScenarioGenerator(BaseGenerator):
                 transcripts=[Transcript(text=s) for s in scenario.transcripts],
             )
         except ValidationError:
-            return await self()
+            return await self(insights=insights)
 
 
 class FeedbackGenerator(BaseGenerator):
