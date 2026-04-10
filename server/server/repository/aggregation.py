@@ -89,7 +89,7 @@ class AggregationRepository:
             results = await session.exec(query)
             return [(uid, int(points)) for (uid, points) in results.all()]
 
-    async def count_sessions_by_user(self, user: User) -> int:
+    async def count_completed_sessions_by_user(self, user: User) -> int:
         async with self._session() as session:
             echo_count = int((await session.exec(
                 select(func.count()).select_from(EchoSession).where(EchoSession.user_id == user.id)
@@ -98,6 +98,9 @@ class AggregationRepository:
                 select(func.count()).select_from(ChatSession).where(ChatSession.user_id == user.id)
             )).one())
             return echo_count + chat_count
+
+    async def count_sessions_by_user(self, user: User) -> int:
+        return await self.count_completed_sessions_by_user(user)
 
 
 __all__ = ["AggregationRepository"]
