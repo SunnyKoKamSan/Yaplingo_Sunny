@@ -8,7 +8,7 @@ import tw from "twrnc";
 
 import { useCurrentUserQuery, useUserStatsQuery, type User, type UserStats } from "~/client";
 import { Spinner, Text } from "~/components/primitives";
-import { useNavigationOptions, useTomorrowCountdown } from "~/hooks";
+import { useSetNavigationOptions, useTomorrowCountdown } from "~/hooks";
 import { formatCompactNumber } from "~/utils";
 
 import { ActivityCard, StreakCard } from "./profile";
@@ -276,7 +276,7 @@ export default function MainHomeScreen() {
   const { data: stats, isLoading: statsLoading } = useUserStatsQuery();
   const [animationToken, setAnimationToken] = useState(Math.random());
 
-  useNavigationOptions({ header: () => <Header user={user} /> });
+  useSetNavigationOptions({ header: () => <Header user={user} /> });
 
   useEffect(() => {
     if (!focused) return;

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigation } from "expo-router";
 
-const useNavigationOptions = (options: any) => {
+const useSetNavigationOptions = (options: any) => {
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -9,4 +9,4 @@ const useNavigationOptions = (options: any) => {
   }, [navigation, options]);
 };
 
-export default useNavigationOptions;
+export default useSetNavigationOptions;

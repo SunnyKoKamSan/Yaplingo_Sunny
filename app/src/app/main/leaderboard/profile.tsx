@@ -6,7 +6,7 @@ import tw from "twrnc";
 
 import { useUserQuery, type User } from "~/client";
 import { Spinner, Text } from "~/components/primitives";
-import { useNavigationOptions } from "~/hooks";
+import { useSetNavigationOptions } from "~/hooks";
 
 import { ActivityCard, ProfileCard, StreakCard } from "../profile";
 
@@ -42,7 +42,7 @@ export default function MainLeaderboardProfileScreen() {
 
   const { data: user } = useUserQuery(uid);
 
-  useNavigationOptions({
+  useSetNavigationOptions({
     header: () => <Header />,
   });
 

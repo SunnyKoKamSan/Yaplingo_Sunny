@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import tw from "twrnc";
 
 import { Button, Text } from "~/components/primitives";
-import { useNavigationOptions } from "~/hooks";
+import { useSetNavigationOptions } from "~/hooks";
 
 type Mode = {
   disabled?: boolean;
@@ -65,7 +65,7 @@ const Header = () => {
 };
 
 export default function MainLearnIndexScreen() {
-  useNavigationOptions({ header: () => <Header /> });
+  useSetNavigationOptions({ header: () => <Header /> });
   return (
     <ScrollView
       alwaysBounceVertical={false}

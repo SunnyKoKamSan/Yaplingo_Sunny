@@ -9,7 +9,7 @@ import type { Leaderboard, User, UserInsights, UserStats } from "./models";
 
 export const useCurrentUserQuery = ({ check = false }: { check?: boolean } = {}) =>
   useQuery<User, AxiosError>({
-    queryKey: ["user", "me"],
+    queryKey: check ? [] : ["user", "me"],
     queryFn: async () => {
       const options: AxiosRequestConfig = {
         timeout: 5000,
@@ -19,7 +19,7 @@ export const useCurrentUserQuery = ({ check = false }: { check?: boolean } = {})
       return response.data;
     },
     retry: true,
-    staleTime: Infinity,
+    staleTime: check ? 0 : Infinity,
   });
 
 export const useCurrentUserInsightsQuery = () =>

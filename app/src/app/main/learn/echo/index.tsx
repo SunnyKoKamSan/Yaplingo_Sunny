@@ -33,7 +33,7 @@ import { useCurrentUserQuery } from "~/client";
 import { EchoSessionStatus, useEchoSession, type Attempt, type EchoSession, type Session } from "~/client/echo";
 import { PronunciationBreakdown, RecordButton } from "~/components";
 import { Spinner, Text } from "~/components/primitives";
-import { useAudio, useNavigationOptions } from "~/hooks";
+import { useAudio, useSetNavigationOptions } from "~/hooks";
 import { getScoreColor } from "~/utils";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -287,7 +287,7 @@ export default function MainLearnEchoScreen() {
     (value) => runOnJS(setFlipped)(value),
   );
 
-  useNavigationOptions({
+  useSetNavigationOptions({
     header: () => (
       <Header session={session} recorderState={audio.recorderState} onProceed={handleProceed} onClose={handleClose} />
     ),

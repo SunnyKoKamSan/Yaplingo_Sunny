@@ -5,7 +5,7 @@ import tw from "twrnc";
 
 import { useRegisterMutation } from "~/client";
 import { Spinner, Text, TextInput } from "~/components/primitives";
-import { useFormReducer, useNavigationOptions } from "~/hooks";
+import { useFormReducer, useSetNavigationOptions } from "~/hooks";
 
 const Header = () => (
   <View style={tw`bg-green-500 p-6`}>
@@ -40,7 +40,7 @@ export default function AccountRegisterScreen() {
 
   const valid = !!form.username && !!form.password && form.password === form.passwordConfirm;
 
-  useNavigationOptions({ header: () => <Header /> });
+  useSetNavigationOptions({ header: () => <Header /> });
 
   return (
     <View style={[tw`flex-1`, { paddingBottom: insets.bottom }]}>

@@ -10,7 +10,7 @@ import { decodeTime } from "ulid";
 import { API_URL, useCurrentUserInsightsQuery, useCurrentUserQuery, type User } from "~/client";
 import { Heatmap } from "~/components";
 import { Spinner, Text } from "~/components/primitives";
-import { useNavigationOptions } from "~/hooks";
+import { useSetNavigationOptions } from "~/hooks";
 import { $token } from "~/store";
 
 export const StreakCard = ({ user }: { user: User }) => {
@@ -82,7 +82,7 @@ export default function MainProfileScreen() {
     ]);
   }, [setToken]);
 
-  useNavigationOptions({
+  useSetNavigationOptions({
     headerRight: () => (
       <Pressable onPress={handleLogout} style={tw`px-3 py-1`}>
         <LogOutIcon size={24} color={tw.color("red-500")} />

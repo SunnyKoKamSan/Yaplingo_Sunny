@@ -18,7 +18,7 @@ import {
 } from "~/client/chat";
 import { PronunciationBreakdown, RecordButton } from "~/components";
 import { Spinner, Text } from "~/components/primitives";
-import { useAudio, useNavigationOptions } from "~/hooks";
+import { useAudio, useSetNavigationOptions } from "~/hooks";
 import { getScoreColor } from "~/utils";
 
 const Header = ({ session, onClose }: { session: ChatSession; onClose: () => void }) => {
@@ -212,7 +212,7 @@ export default function MainLearnChatScreen() {
     },
   });
 
-  useNavigationOptions({
+  useSetNavigationOptions({
     header: () => <Header session={session} onClose={handleClose} />,
   });
 
