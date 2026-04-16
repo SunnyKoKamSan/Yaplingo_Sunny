@@ -10,6 +10,7 @@ from . import BaseGenerator, settings
 class ScenarioGenerator(BaseGenerator):
     SYSTEM_PROMPT_FILE_PATH = Path(__file__).parent / "prompts" / "chat" / "scenario.md"
 
+    @log_execution_time
     async def __call__(self) -> Scenario:
         response = await super().call(
             "Generate a new scenario.",
@@ -71,6 +72,7 @@ class EvaluationGenerator(BaseGenerator):
         Tasks: \n{tasks}
         Conversation: \n{history}
         """
+        print(f"--- Evaluation Generator ---\n{prompt}\n" + "-" * 25)
         response = await super().call(
             prompt,
             temperature=0,

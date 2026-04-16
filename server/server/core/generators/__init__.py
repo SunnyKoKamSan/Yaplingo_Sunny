@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from openai import AsyncOpenAI
+from pydantic import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 IS_RELOAD_ENABLED = "--reload" in sys.argv
@@ -17,16 +18,17 @@ else:
 
 
 class Settings(BaseSettings):
-    model_id: str = "ai/llama3.1"
-    base_url: str = "http://model-runner.docker.internal/engines/v1"
     api_key: str = ""
+    model_id: str = "ai/llama3.1"
+    base_url: HttpUrl = HttpUrl("http://model-runner.docker.internal/engines/v1")
 
     model_config = SettingsConfigDict(env_prefix="llm_")
 
 
 settings = Settings.model_validate({})
+print(f"using {settings.model_id} from {settings.base_url.host}")
 
-client = AsyncOpenAI(base_url=settings.base_url, api_key=settings.api_key)
+client = AsyncOpenAI(base_url=str(settings.base_url), api_key=settings.api_key)
 
 
 class BaseGenerator(ABC):

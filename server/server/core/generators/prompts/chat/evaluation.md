@@ -51,6 +51,7 @@ IMPORTANT NOTES:
 - Scoring applies to the learner's most recent message, evaluated in the context of the preceding conversation.
 
 OUTPUT:
+
 Respond with a JSON object matching the provided schema. Do not include anything outside the JSON.
 - "tasks": one entry per task from the input, in the same order
   - "task": the original task description text exactly as given in the input

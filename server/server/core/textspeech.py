@@ -36,6 +36,7 @@ class KokoroTextSpeech(BaseTextSpeech):
         pipeline = KPipeline(
             repo_id="hexgrad/Kokoro-82M",
             lang_code="en-us",
+            device="mps",  # FIXME: experimental; not tested
         )
         self.generator = partial(
             pipeline,
