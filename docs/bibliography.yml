@@ -1,0 +1,431 @@
+# Existing Solutions
+
+duolingo:
+    type: Web
+    title: Duolingo
+    url: https://www.duolingo.com/
+
+elsaspeak:
+    type: Web
+    title: ELSA Speak
+    url: https://elsaspeak.com/
+
+speechling:
+    type: Web
+    title: Speechling
+    url: https://speechling.com/
+
+boldvoice:
+    type: Web
+    title: BoldVoice
+    url: https://www.boldvoice.com/
+
+babbel:
+    type: Web
+    title: Babbel
+    url: https://www.babbel.com/
+
+# ML Models
+
+wav2vec2-phoneme:
+    type: Article
+    title: Simple and Effective Zero-shot Cross-lingual Phoneme Recognition
+    author:
+        - Xu, Qiantong
+        - Baevski, Alexei
+        - Auli, Michael
+    date: 2021-09-23
+    serial-number:
+        doi: 10.48550/arXiv.2109.11680
+    url: https://huggingface.co/facebook/wav2vec2-lv-60-espeak-cv-ft
+    parent:
+        type: Proceedings
+        title: Interspeech 2022
+
+wav2vec2:
+    type: Article
+    title: "wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations"
+    author:
+        - Baevski, Alexei
+        - Zhou, Henry
+        - Mohamed, Abdelrahman
+        - Auli, Michael
+    date: 2020-10-22
+    serial-number:
+        doi: 10.48550/arXiv.2006.11477
+    parent:
+        type: Proceedings
+        title: Advances in Neural Information Processing Systems (NeurIPS)
+
+whisper:
+    type: Article
+    title: Robust Speech Recognition via Large-Scale Weak Supervision
+    author:
+        - Radford, Alec
+        - Kim, Jong Wook
+        - Xu, Tao
+        - Brockman, Greg
+        - McLeavey, Christine
+        - Sutskever, Ilya
+    date: 2022-12-06
+    serial-number:
+        doi: 10.48550/arXiv.2212.04356
+    url: https://github.com/openai/whisper
+    parent:
+        type: Proceedings
+        title: International Conference on Machine Learning (ICML)
+
+distil-whisper:
+    type: Article
+    title: "Distil-Whisper: Robust Knowledge Distillation via Large-Scale Pseudo Labelling"
+    author:
+        - Gandhi, Sanchit
+        - Platen, Patrick von
+        - Rush, Alexander M.
+    date: 2023-11-01
+    serial-number:
+        doi: 10.48550/arXiv.2311.00430
+    url: https://huggingface.co/distil-whisper/distil-small.en
+
+deepfilternet:
+    type: Article
+    title: "DeepFilterNet: A Low Complexity Speech Enhancement Framework for Full-Band Audio Based on Deep Filtering"
+    author:
+        - Schroter, Hendrik
+        - Escalante-B, Alberto N.
+        - Rosenkranz, Tobias
+        - Maier, Andreas
+    date: 2022-05-23
+    page-range: 7407-7411
+    serial-number:
+        doi: 10.1109/icassp43922.2022.9747055
+    url: https://github.com/Rikorose/DeepFilterNet
+    parent:
+        type: Proceedings
+        title: ICASSP 2022 - 2022 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)
+        organization: IEEE
+
+gemma:
+    type: Article
+    title: Gemma 3 Technical Report
+    author:
+        - Team, Gemma
+    date: 2025-03-25
+    serial-number:
+        doi: 10.48550/arXiv.2503.19786
+
+# Backend Libraries
+
+whisperx:
+    type: Article
+    title: "WhisperX: Time-Accurate Speech Transcription of Long-Form Audio"
+    author:
+        - Bain, Max
+        - Huh, Jaesung
+        - Han, Tengda
+        - Zisserman, Andrew
+    date: 2023-07-11
+    serial-number:
+        doi: 10.48550/arXiv.2303.00747
+    url: https://github.com/m-bain/whisperX
+    parent:
+        type: Proceedings
+        title: INTERSPEECH 2023
+
+faster-whisper:
+    type: Repository
+    title: "faster-whisper: Faster Whisper transcription with CTranslate2"
+    author: SYSTRAN
+    url: https://github.com/SYSTRAN/faster-whisper
+
+phonemizer:
+    type: Article
+    title: "Phonemizer: Text to Phones Transcription for Multiple Languages in Python"
+    author:
+        - Bernard, Mathieu
+        - Titeux, Hadrien
+    date: 2021-12-18
+    page-range: 3958
+    serial-number:
+        doi: 10.21105/joss.03958
+    url: https://github.com/bootphon/phonemizer
+    parent:
+        type: Periodical
+        title: Journal of Open Source Software
+        volume: 6
+        issue: 68
+
+espeak-ng:
+    type: Repository
+    title: "eSpeak NG: Text-to-Speech synthesizer"
+    url: https://github.com/espeak-ng/espeak-ng
+
+kokoro:
+    type: Repository
+    title: "Kokoro: TTS inference library for Kokoro-82M"
+    author: Hexgrad
+    url: https://github.com/hexgrad/kokoro
+
+gtts:
+    type: Repository
+    title: "gTTS: Google Translate Text-to-Speech"
+    author: "Durette, Pierre-Nick"
+    url: https://github.com/pndurette/gTTS
+
+cloudflare-workers-ai:
+    type: Web
+    title: Cloudflare Workers AI
+    author: Cloudflare
+    url: https://developers.cloudflare.com/workers-ai/
+
+taskiq:
+    type: Repository
+    title: "Taskiq: Async Distributed Task Manager for Python"
+    author: "Taskiq Team"
+    url: https://github.com/taskiq-python/taskiq
+
+multivatar:
+    type: Web
+    title: multivatar-python
+    url: https://pypi.org/project/multivatar-python/
+
+# Evaluated Alternatives
+
+demucs:
+    type: Article
+    title: Music Source Separation in the Waveform Domain
+    author:
+        - Défossez, Alexandre
+        - Usunier, Nicolas
+        - Bottou, Léon
+        - Bach, Francis
+    date: 2021-04-28
+    serial-number:
+        doi: 10.48550/arXiv.1911.13254
+
+librosa:
+    type: Web
+    title: "librosa: Audio and music signal analysis"
+    url: https://librosa.org/
+
+noisereduce:
+    type: Repository
+    title: "noisereduce: Noise reduction using spectral gating"
+    author: "Sainburg, Tim"
+    url: https://github.com/timsainb/noisereduce
+
+speechbrain:
+    type: Web
+    title: SpeechBrain
+    url: https://speechbrain.github.io/
+
+azure-pronunciation:
+    type: Web
+    title: Microsoft Azure Pronunciation Assessment
+    author: Microsoft
+    url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/pronunciation-assessment-tool
+
+mfa:
+    type: Web
+    title: Montreal Forced Aligner
+    url: https://montreal-forced-aligner.readthedocs.io/
+
+piper-tts:
+    type: Repository
+    title: Piper TTS
+    url: https://github.com/rhasspy/piper
+
+chatterbox-tts:
+    type: Repository
+    title: Chatterbox TTS
+    author: Resemble AI
+    url: https://github.com/resemble-ai/chatterbox
+
+elevenlabs:
+    type: Web
+    title: ElevenLabs
+    url: https://elevenlabs.io/
+
+# Research Papers
+
+torchaudio-ctc-alignment:
+    type: Web
+    title: "CTC forced alignment API tutorial"
+    author: ["Zhang, Xiaohui", "Hira, Moto"]
+    url: https://docs.pytorch.org/audio/stable/tutorials/ctc_forced_alignment_api_tutorial.html
+
+llm-mdd:
+    type: Article
+    title: Prompting Large Language Models with Mispronunciation Detection and Diagnosis Abilities
+    author:
+        - Wu, Minglin
+        - Xu, Jing
+        - Wu, Xixin
+        - Meng, Helen
+    date: 2024-09-01
+    page-range: 2990-2994
+    serial-number:
+        doi: 10.21437/interspeech.2024-1772
+    url: https://www1.se.cuhk.edu.hk/~hccl/publications/pub/Interspeech_2024_llm_camera_ready%20(5).pdf
+    parent:
+        type: Proceedings
+        title: Interspeech 2024
+
+few-shot-prompting:
+    type: Article
+    title: Language Models are Few-Shot Learners
+    author:
+        - Brown, Tom B.
+        - Mann, Benjamin
+        - Ryder, Nick
+        - Subbiah, Melanie
+        - Kaplan, Jared
+        - Dhariwal, Prafulla
+        - Neelakantan, Arvind
+        - Shyam, Pranav
+        - Sastry, Girish
+        - Askell, Amanda
+        - Agarwal, Sandhini
+        - Herbert-Voss, Ariel
+        - Krueger, Gretchen
+        - Henighan, Tom
+        - Child, Rewon
+        - Ramesh, Aditya
+        - Ziegler, Daniel M.
+        - Wu, Jeffrey
+        - Winter, Clemens
+        - Hesse, Christopher
+        - Chen, Mark
+        - Sigler, Eric
+        - Litwin, Mateusz
+        - Gray, Scott
+        - Chess, Benjamin
+        - Clark, Jack
+        - Berner, Christopher
+        - McCandlish, Sam
+        - Radford, Alec
+        - Sutskever, Ilya
+        - Amodei, Dario
+    date: 2020-07-22
+    serial-number:
+        doi: 10.48550/arXiv.2005.14165
+
+wav2vec2-mispronunciation:
+    type: Article
+    title: "Explore wav2vec 2.0 for Mispronunciation Detection"
+    author:
+        - Xu, Xiaoshuo
+        - Kang, Yueteng
+        - Cao, Songjun
+        - Lin, Binghuai
+        - Ma, Long
+    date: 2021-08-30
+    page-range: 4428-4432
+    serial-number:
+        doi: 10.21437/interspeech.2021-777
+    parent:
+        type: Proceedings
+        title: Interspeech 2021
+
+gop-improved:
+    type: Article
+    title: "An Improved Goodness of Pronunciation (GoP) Measure for Pronunciation Evaluation with DNN-HMM System Considering HMM Transition Probabilities"
+    author:
+        - Sudhakara, Sweekar
+        - Ramanathi, Manoj Kumar
+        - Yarra, Chiranjeevi
+        - Ghosh, Prasanta Kumar
+    date: 2019-09-15
+    page-range: 954-958
+    serial-number:
+        doi: 10.21437/interspeech.2019-2363
+    parent:
+        type: Proceedings
+        title: Interspeech 2019
+
+gop-compare:
+    type: Article
+    title: Relating pronunciation distance metrics to intelligibility across English accents
+    author:
+        - Bent, Tessa
+        - Henry, Malachi
+        - Holt, Rachael F.
+        - Lind-Combs, Holly
+    date: 2024-11
+    page-range: 101357
+    serial-number:
+        doi: 10.1016/j.wocn.2024.101357
+    parent:
+        type: Periodical
+        title: Journal of Phonetics
+        volume: 107
+
+gop-no-alignment:
+    type: Article
+    title: Goodness-of-pronunciation without phoneme time alignment
+    author:
+        - Wong, Jeremy H. M.
+        - Chen, Nancy F.
+    date: 2026-03-26
+    serial-number:
+        doi: 10.48550/arXiv.2603.25150
+
+gop-scoring-1:
+    type: Article
+    title: Phone-level pronunciation scoring and assessment for interactive language learning
+    author:
+        - Witt, S.M
+        - Young, S.J
+    date: 2000-02
+    page-range: 95-108
+    serial-number:
+        doi: 10.1016/s0167-6393(99)00044-8
+    parent:
+        type: Periodical
+        title: Speech Communication
+        volume: 30
+        issue: 2-3
+
+gop-scoring-2:
+    type: Article
+    title: Leveraging Phone-Level Linguistic-Acoustic Similarity For Utterance-Level Pronunciation Scoring
+    author:
+        - Liu, Wei
+        - Fu, Kaiqi
+        - Tian, Xiaohai
+        - Shi, Shuju
+        - Li, Wei
+        - Ma, Zejun
+        - Lee, Tan
+    date: 2023-06-04
+    page-range: 1-5
+    serial-number:
+        doi: 10.1109/icassp49357.2023.10096699
+    parent:
+        type: Proceedings
+        title: "ICASSP 2023 - 2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)"
+
+textpa:
+    type: Article
+    title: "Read to Hear: A Zero-Shot Pronunciation Assessment Using Textual Descriptions and LLMs"
+    author:
+        - Chen, Yu-Wen
+        - Ma, Melody
+        - Hirschberg, Julia
+    date: 2025-09-17
+    serial-number:
+        doi: 10.48550/arXiv.2509.14187
+    parent:
+        type: Proceedings
+        title: EMNLP 2025
+
+phonologybench:
+    type: Article
+    title: "PhonologyBench: Evaluating Phonological Skills of Large Language Models"
+    author:
+        - Suvarna, Ashima
+        - Khandelwal, Harshita
+        - Peng, Nanyun
+    date: 2024-04-05
+    serial-number:
+        doi: 10.48550/arXiv.2404.02456
