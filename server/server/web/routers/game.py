@@ -3,7 +3,12 @@ import asyncio
 from fastapi import APIRouter
 
 from ..dependencies import Service, User
-from ..schemas.game import LeaderboardResponse, UserStatisticsResponse
+from ..schemas.game import (
+    AchievementClaimResponse,
+    AchievementsResponse,
+    LeaderboardResponse,
+    UserStatisticsResponse,
+)
 
 router = APIRouter()
 
@@ -26,6 +31,22 @@ async def stats(user: User, service: Service) -> UserStatisticsResponse:
     #     user = _user
     stats = await service.game.get_user_stats(user)
     return UserStatisticsResponse(**stats.model_dump())
+
+
+@router.get("/achievements")
+async def achievements(user: User, service: Service) -> AchievementsResponse.List:
+    items = await service.game.list_user_achievements(user)
+    return [AchievementsResponse.T(**item.model_dump()) for item in items]
+
+
+@router.post("/achievements/claim/{key}")
+async def achievement_claim(
+    key: str,
+    user: User,
+    service: Service,
+) -> AchievementClaimResponse:
+    claim = await service.game.claim_user_achievement(user, key)
+    return AchievementClaimResponse(**claim.model_dump())
 
 
 __all__ = ["router"]

@@ -64,3 +64,11 @@ export type UserStats = {
   total_points_30d: number;
   completion_rate_30d: number;
 };
+
+export type Achievement = {
+  key: string;
+  title: string;
+  description: string;
+  progress: number;
+  claimed_at: string | null;
+};
