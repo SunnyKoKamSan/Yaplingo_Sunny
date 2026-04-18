@@ -5,7 +5,7 @@ import { useSetAtom } from "jotai";
 
 import { $token } from "../store";
 import client from "./client";
-import type { Leaderboard, User, UserInsights } from "./models";
+import type { Leaderboard, User, UserInsights, UserStats } from "./models";
 
 export const useCurrentUserQuery = ({ check = false }: { check?: boolean } = {}) =>
   useQuery<User, AxiosError>({
@@ -90,6 +90,15 @@ export const useLeaderboardQuery = () =>
     queryKey: ["game", "leaderboard"],
     queryFn: async () => {
       const response = await client.get("/game/leaderboard");
+      return response.data;
+    },
+  });
+
+export const useUserStatsQuery = () =>
+  useQuery<UserStats, AxiosError>({
+    queryKey: ["game", "stats"],
+    queryFn: async () => {
+      const response = await client.get("/game/stats");
       return response.data;
     },
   });

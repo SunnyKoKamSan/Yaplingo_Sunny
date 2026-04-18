@@ -447,7 +447,7 @@ export default function MainLeaderboardScreen() {
                       <ZapIcon size={24} color={tw.color("blue-500")} />
                       <Text style={tw`text-3xl font-bold text-blue-500`}>{user.points[0]}</Text>
                     </View>
-                    <Text style={tw`text-lg font-medium`}>Gained Today</Text>
+                    <Text style={tw`text-lg font-medium`}>Earned Today</Text>
                   </View>
                 </View>
                 <Text style={tw`text-center text-base text-neutral-500`}>

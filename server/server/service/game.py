@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel
@@ -15,6 +15,19 @@ class LeaderboardEntry(BaseModel):
     name: str
     rank: int
     score: int
+
+
+class UserStatistics(BaseModel):
+    class ProgressEntry(BaseModel):
+        date: datetime
+        points: int
+        count: int
+
+    progress: list[ProgressEntry]
+    average_points_7d: float
+    best_streak_30d: int
+    total_points_30d: int
+    completion_rate_30d: float
 
 
 class GameService:
@@ -70,5 +83,61 @@ class GameService:
             return await self.store.user.increment_points_today(user, 0)
         return points_today
 
+    async def get_user_points_progress(self, user: User, days: int = 30) -> list[UserStatistics.ProgressEntry]:
+        tz = ZoneInfo(user.timezone)
+        today = datetime.now(tz).date()
+        start = today - timedelta(days=days - 1)
+        start = datetime(start.year, start.month, start.day, tzinfo=tz)
+        end = datetime(today.year, today.month, today.day, tzinfo=tz) + timedelta(days=1)
 
-__all__ = ["GameService"]
+        sessions = await self.repository.aggregation.get_sessions_by_user(user, start=start, end=end)
+
+        daily_points: dict[str, int] = {}
+        daily_sessions: dict[str, int] = {}
+        for s in sessions:
+            key = s.completed_at.astimezone(tz).date().isoformat()
+            daily_points[key] = daily_points.get(key, 0) + s.points
+            daily_sessions[key] = daily_sessions.get(key, 0) + 1
+
+        progress: list[UserStatistics.ProgressEntry] = []
+        current = start
+        while current <= end:
+            key = current.date().isoformat()
+            progress.append(
+                UserStatistics.ProgressEntry(
+                    date=current,
+                    points=daily_points.get(key, 0),
+                    count=daily_sessions.get(key, 0),
+                )
+            )
+            current += timedelta(days=1)
+        return progress
+
+    async def get_user_stats(self, user: User) -> UserStatistics:
+        progress = await self.get_user_points_progress(user, 30)
+
+        last_7_days = progress[-7:]
+        average_points = sum(e.points for e in last_7_days) / 7
+        active_days = sum(1 for e in progress if e.count > 0)
+        completion_rate = (active_days / 30) * 100
+
+        best_streak = current_run = 0
+        for entry in progress:
+            if entry.points > 0:
+                current_run += 1
+                best_streak = max(best_streak, current_run)
+            else:
+                current_run = 0
+
+        total_points = sum(e.points for e in progress)
+
+        return UserStatistics(
+            progress=progress,
+            average_points_7d=round(average_points, 1),
+            best_streak_30d=best_streak,
+            total_points_30d=total_points,
+            completion_rate_30d=round(completion_rate, 1),
+        )
+
+
+__all__ = ["GameService", "LeaderboardEntry", "UserStatistics"]

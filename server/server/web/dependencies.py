@@ -50,7 +50,7 @@ async def user(
     ],
     service: Service,
 ) -> _User:
-    if (user := await service.user.get(claims.sub)) is None:
+    if (user := await service.user.get(claims.sub, check_streak=True)) is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Not Found")
     return user
 

@@ -26,7 +26,7 @@ async def get_me(user: User, service: Service) -> UserResponse:
 
 @router.get("/{uid}.svg")
 async def get_user_avatar(uid: ULID, service: Service):
-    _user = await service.user.get(uid, check_streak=False)
+    _user = await service.user.get(uid)
     if _user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found")
     svg = multiavatar(str(uid), None, None)
@@ -35,7 +35,7 @@ async def get_user_avatar(uid: ULID, service: Service):
 
 @router.get("/{uid}")
 async def get_user(uid: ULID, user: User, service: Service) -> UserResponse:
-    _user = await service.user.get(uid, check_streak=False)
+    _user = await service.user.get(uid)
     if _user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found")
     (today_points, activity) = await asyncio.gather(

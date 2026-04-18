@@ -52,3 +52,15 @@ export type Transcript = {
   audio: string;
   sequence: string;
 };
+
+export type UserStats = {
+  progress: {
+    date: string;
+    points: number;
+    count: number;
+  }[];
+  average_points_7d: number;
+  best_streak_30d: number;
+  total_points_30d: number;
+  completion_rate_30d: number;
+};

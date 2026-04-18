@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from server.service.game import LeaderboardEntry
+from server.service.game import LeaderboardEntry, UserStatistics
 
 
 class LeaderboardResponse(BaseModel):
@@ -8,4 +8,7 @@ class LeaderboardResponse(BaseModel):
     entries: list[LeaderboardEntry]
 
 
-__all__ = ["LeaderboardResponse"]
+class UserStatisticsResponse(UserStatistics): ...
+
+
+__all__ = ["LeaderboardResponse", "UserStatisticsResponse"]

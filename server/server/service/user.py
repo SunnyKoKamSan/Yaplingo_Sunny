@@ -55,7 +55,7 @@ class UserService:
         user = User(**creation.model_dump(exclude={"password"}), password=password)
         return await self.repository.user.dump(user)
 
-    async def get(self, id: ULID, check_streak: bool = True) -> User | None:
+    async def get(self, id: ULID, check_streak: bool = False) -> User | None:
         user = await self.repository.user.get_one(id)
         # reset streak if over 1 day gap since last streak (in user's timezone)
         if check_streak and user is not None and user.streak > 0:
