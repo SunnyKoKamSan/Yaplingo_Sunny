@@ -1,12 +1,10 @@
-import { useCallback } from "react";
-import { Alert, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@react-navigation/native";
 import { CalendarIcon, ZapIcon } from "lucide-react-native";
 import tw from "twrnc";
 
-import { useAchievementsQuery, useClaimAchievementMutation, useCurrentUserQuery, type User } from "~/client";
-import { AchievementGrid } from "~/components";
+import { useCurrentUserQuery, type User } from "~/client";
 import { Spinner, Text } from "~/components/primitives";
 import { useNavigationOptions, useTomorrowCountdown } from "~/hooks";
 import { formatCompactNumber } from "~/utils";
@@ -92,23 +90,6 @@ const MilestoneCard = ({ user }: { user: User }) => {
 
 export default function MainHomeScreen() {
   const { data: user } = useCurrentUserQuery();
-  const { data: achievements = [] } = useAchievementsQuery();
-  const claimAchievement = useClaimAchievementMutation();
-
-  const handleClaim = useCallback(
-    (achievementKey: string) => {
-      claimAchievement.mutate(
-        { achievement_key: achievementKey },
-        {
-          onSuccess: () => Alert.alert("Achievement claimed", "Nice work!"),
-          onError: () => Alert.alert("Unable to claim", "This achievement is not claimable yet."),
-        },
-      );
-    },
-    [claimAchievement],
-  );
-
-  const claimingKey = claimAchievement.isPending ? (claimAchievement.variables?.achievement_key ?? null) : null;
 
   useNavigationOptions({ header: () => <Header user={user} /> });
 
@@ -126,9 +107,6 @@ export default function MainHomeScreen() {
         <MilestoneCard user={user} />
       </View>
       <ActivityCard user={user} />
-      {achievements.length > 0 && (
-        <AchievementGrid achievements={achievements} onClaim={handleClaim} claimingKey={claimingKey} />
-      )}
     </ScrollView>
   );
 }

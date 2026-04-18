@@ -58,12 +58,12 @@ class Repository:
         return ChatRepository(self.session)
 
     @cached_property
-    def aggregation(self) -> AggregationRepository:
-        return AggregationRepository(self.session)
-
-    @cached_property
     def achievement(self) -> AchievementRepository:
         return AchievementRepository(self.session)
+
+    @cached_property
+    def aggregation(self) -> AggregationRepository:
+        return AggregationRepository(self.session)
 
 
 __all__ = ["Repository"]

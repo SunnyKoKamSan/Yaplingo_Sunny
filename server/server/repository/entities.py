@@ -46,6 +46,7 @@ class User(SQLModel, table=True):
 
     echo_sessions: list["EchoSession"] = Relationship(back_populates="user")
     chat_sessions: list["ChatSession"] = Relationship(back_populates="user")
+    achievements: list["UserAchievement"] = Relationship(back_populates="user")
 
     @field_validator("password")
     @classmethod  # last wall of defense to ensure password is hashed before storing into database
@@ -71,12 +72,11 @@ class User(SQLModel, table=True):
 class UserAchievement(SQLModel, table=True):
     __tablename__ = "user_achievement"  # type: ignore
 
+    key: str = Field(primary_key=True)
+    claimed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), sa_type=TIMESTAMP(timezone=True))
+
     user_id: ULID = Field(foreign_key="user.id", primary_key=True, sa_type=ULIDType)
-    achievement_key: str = Field(primary_key=True, max_length=64)
-    unlocked_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_type=TIMESTAMP(timezone=True),
-    )
+    user: User = Relationship(back_populates="achievements")
 
 
 class EchoAttempt(SQLModel, table=True):

@@ -13,6 +13,10 @@ const TABS: Record<string, Tab> = {
     title: "HOME",
     icon: require("@/icons/tabs/home.png"),
   },
+  achievements: {
+    title: "ACHIEVEMENTS",
+    icon: require("@/icons/tabs/shop.png"),
+  },
   learn: {
     header: false,
     title: "LEARN",

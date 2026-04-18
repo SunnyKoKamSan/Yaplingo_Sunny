@@ -53,20 +53,10 @@ export type Transcript = {
   sequence: string;
 };
 
-export type AchievementResponse = {
+export type Achievement = {
   key: string;
   title: string;
-  desc: string;
-  unlocked: boolean;
-  unlocked_at: string | null;
+  description: string;
   progress: number;
-};
-
-export type ClaimAchievementRequest = {
-  achievement_key: string;
-};
-
-export type ClaimAchievementResponse = {
-  achievement_key: string;
-  unlocked_at: string;
+  claimed_at: string | null;
 };

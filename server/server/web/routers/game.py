@@ -1,10 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 
 from ..dependencies import Service, User
 from ..schemas.game import (
-    AchievementClaimInput,
     AchievementClaimResponse,
-    AchievementResponse,
+    AchievementsResponse,
     LeaderboardResponse,
 )
 
@@ -19,25 +18,19 @@ async def leaderboard(user: User, service: Service) -> LeaderboardResponse:
 
 
 @router.get("/achievements")
-async def achievements(user: User, service: Service) -> list[AchievementResponse]:
-    items = await service.game.list_achievements(user)
-    return [AchievementResponse(**item.model_dump()) for item in items]
+async def achievements(user: User, service: Service) -> AchievementsResponse.List:
+    items = await service.game.list_user_achievements(user)
+    return [AchievementsResponse.T(**item.model_dump()) for item in items]
 
 
-@router.post("/achievements/claim")
-async def claim_achievement(
-    payload: AchievementClaimInput,
+@router.post("/achievements/claim/{key}")
+async def achievement_claim(
+    key: str,
     user: User,
     service: Service,
 ) -> AchievementClaimResponse:
-    try:
-        unlocked = await service.game.claim_achievement(user, payload.achievement_key)
-    except (ValueError, PermissionError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        )
-    return AchievementClaimResponse(**unlocked.model_dump())
+    claim = await service.game.claim_user_achievement(user, key)
+    return AchievementClaimResponse(**claim.model_dump())
 
 
 __all__ = ["router"]

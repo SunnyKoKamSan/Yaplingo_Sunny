@@ -5,48 +5,7 @@ import { useSetAtom } from "jotai";
 
 import { $token } from "../store";
 import client from "./client";
-import type {
-  AchievementResponse,
-  ClaimAchievementRequest,
-  ClaimAchievementResponse,
-  Leaderboard,
-  User,
-  UserInsights,
-} from "./models";
-
-export const useCurrentUserQuery = ({ check = false }: { check?: boolean } = {}) =>
-  useQuery<User, AxiosError>({
-    queryKey: ["user", "me"],
-    queryFn: async () => {
-      const options: AxiosRequestConfig = {
-        timeout: 5000,
-        validateStatus: (status) => [200, 401, 403].includes(status),
-      };
-      const response = await client.get("/user/@", check ? options : undefined);
-      return response.data;
-    },
-    retry: true,
-    staleTime: Infinity,
-  });
-
-export const useCurrentUserInsightsQuery = () =>
-  useQuery<UserInsights | null, AxiosError>({
-    queryKey: ["user", "me", "insights"],
-    queryFn: async () => {
-      const response = await client.get(`/user/@/insights`);
-      return response.data;
-    },
-    staleTime: Infinity,
-  });
-
-export const useUserQuery = (uid: string) =>
-  useQuery<User, AxiosError>({
-    queryKey: ["user", uid],
-    queryFn: async () => {
-      const response = await client.get(`/user/${uid}`);
-      return response.data;
-    },
-  });
+import type { Achievement, Leaderboard, User, UserInsights } from "./models";
 
 export const useLoginMutation = () => {
   const setToken = useSetAtom($token);
@@ -92,6 +51,40 @@ export const useRegisterMutation = () => {
   });
 };
 
+export const useCurrentUserQuery = ({ check = false }: { check?: boolean } = {}) =>
+  useQuery<User, AxiosError>({
+    queryKey: ["user", "me"],
+    queryFn: async () => {
+      const options: AxiosRequestConfig = {
+        timeout: 5000,
+        validateStatus: (status) => [200, 401, 403].includes(status),
+      };
+      const response = await client.get("/user/@", check ? options : undefined);
+      return response.data;
+    },
+    retry: true,
+    staleTime: Infinity,
+  });
+
+export const useCurrentUserInsightsQuery = () =>
+  useQuery<UserInsights | null, AxiosError>({
+    queryKey: ["user", "me", "insights"],
+    queryFn: async () => {
+      const response = await client.get(`/user/@/insights`);
+      return response.data;
+    },
+    staleTime: Infinity,
+  });
+
+export const useUserQuery = (uid: string) =>
+  useQuery<User, AxiosError>({
+    queryKey: ["user", uid],
+    queryFn: async () => {
+      const response = await client.get(`/user/${uid}`);
+      return response.data;
+    },
+  });
+
 export const useLeaderboardQuery = () =>
   useQuery<Leaderboard, AxiosError>({
     queryKey: ["game", "leaderboard"],
@@ -102,7 +95,7 @@ export const useLeaderboardQuery = () =>
   });
 
 export const useAchievementsQuery = () =>
-  useQuery<AchievementResponse[], AxiosError>({
+  useQuery<Achievement[], AxiosError>({
     queryKey: ["game", "achievements"],
     queryFn: async () => {
       const response = await client.get("/game/achievements");
@@ -111,9 +104,9 @@ export const useAchievementsQuery = () =>
   });
 
 export const useClaimAchievementMutation = () =>
-  useMutation<ClaimAchievementResponse, AxiosError, ClaimAchievementRequest>({
-    mutationFn: async (payload) => {
-      const response = await client.post("/game/achievements/claim", payload);
+  useMutation<Achievement, AxiosError, { key: string }>({
+    mutationFn: async ({ key }: { key: string }) => {
+      const response = await client.post(`/game/achievements/claim/${key}`);
       return response.data;
     },
     onSettled: (_data, _error, _variables, _onMutateResult, context) =>
