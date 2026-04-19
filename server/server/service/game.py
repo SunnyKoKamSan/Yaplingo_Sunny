@@ -37,6 +37,7 @@ class AchievementRule(BaseModel):
     description: str
     threshold_type: Literal["points", "streak", "sessions", "rank"]
     threshold_value: int
+    gems: int
 
 
 class AchievementStatus(AchievementRule):
@@ -45,12 +46,14 @@ class AchievementStatus(AchievementRule):
 
 
 ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
+    # --- Points ---
     AchievementRule(
         key="first_step",
         title="First Step",
         description="Earn your first 10 XP",
         threshold_type="points",
         threshold_value=10,
+        gems=5,
     ),
     AchievementRule(
         key="bronze_mic",
@@ -58,6 +61,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Earn 500 XP total",
         threshold_type="points",
         threshold_value=500,
+        gems=10,
     ),
     AchievementRule(
         key="silver_mic",
@@ -65,6 +69,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Earn 2,000 XP total",
         threshold_type="points",
         threshold_value=2000,
+        gems=25,
     ),
     AchievementRule(
         key="gold_mic",
@@ -72,6 +77,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Earn 10,000 XP total",
         threshold_type="points",
         threshold_value=10000,
+        gems=50,
     ),
     AchievementRule(
         key="platinum_mic",
@@ -79,6 +85,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Earn 50,000 XP total",
         threshold_type="points",
         threshold_value=50000,
+        gems=100,
     ),
     AchievementRule(
         key="diamond_mic",
@@ -86,13 +93,16 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Earn 100,000 XP total",
         threshold_type="points",
         threshold_value=100000,
+        gems=200,
     ),
+    # --- Streaks ---
     AchievementRule(
         key="streak_5",
         title="On Fire",
         description="Maintain a 5-day streak",
         threshold_type="streak",
         threshold_value=5,
+        gems=10,
     ),
     AchievementRule(
         key="streak_14",
@@ -100,6 +110,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Maintain a 14-day streak",
         threshold_type="streak",
         threshold_value=14,
+        gems=25,
     ),
     AchievementRule(
         key="streak_30",
@@ -107,6 +118,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Maintain a 30-day streak",
         threshold_type="streak",
         threshold_value=30,
+        gems=50,
     ),
     AchievementRule(
         key="streak_100",
@@ -114,6 +126,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Maintain a 100-day streak",
         threshold_type="streak",
         threshold_value=100,
+        gems=150,
     ),
     AchievementRule(
         key="streak_365",
@@ -121,13 +134,16 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Practice every day for a year",
         threshold_type="streak",
         threshold_value=365,
+        gems=500,
     ),
+    # --- Sessions ---
     AchievementRule(
         key="session_50",
         title="Half Century",
         description="Complete 50 Echo + Chat sessions",
         threshold_type="sessions",
         threshold_value=50,
+        gems=25,
     ),
     AchievementRule(
         key="session_200",
@@ -135,6 +151,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Complete 200 Echo + Chat sessions",
         threshold_type="sessions",
         threshold_value=200,
+        gems=75,
     ),
     AchievementRule(
         key="session_500",
@@ -142,13 +159,16 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Complete 500 Echo + Chat sessions",
         threshold_type="sessions",
         threshold_value=500,
+        gems=150,
     ),
+    # --- Rank ---
     AchievementRule(
         key="alltime_legend",
         title="All-Time Legend",
         description="Reach #1 on the global leaderboard",
         threshold_type="rank",
         threshold_value=1,
+        gems=500,
     ),
 )
 
@@ -309,6 +329,7 @@ class GameService:
         assert achievement.claimed_at is None, "achievement claimed already"
         assert achievement.progress >= 1.0, "achievement criteria not met"
         claim = await self.repository.achievement.claim(user.id, key)
+        await self.repository.user.increment_gems(user, achievement.gems)
         return AchievementStatus(
             **achievement.model_dump(exclude={"claimed_at"}),
             claimed_at=claim.claimed_at,

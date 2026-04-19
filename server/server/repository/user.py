@@ -47,6 +47,12 @@ class UserRepository:
             session.add(user)
             await session.commit()
 
+    async def increment_gems(self, user: User, gems_to_add: int) -> None:
+        async with self._session() as session:
+            user.gems += gems_to_add
+            session.add(user)
+            await session.commit()
+
     async def increment_streak(self, user: User) -> None:
         tz = ZoneInfo(user.timezone)
         now = datetime.now(tz)

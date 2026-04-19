@@ -20,6 +20,7 @@ class UserResponse(BaseModel):
     language: LanguageAlpha2
     timezone: TimeZoneName
     streak: int
+    gems: int
     milestone: int
     points: tuple[int, int]  # (today, total)
     activity: dict[date, int]
