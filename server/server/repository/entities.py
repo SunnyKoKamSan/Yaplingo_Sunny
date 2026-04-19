@@ -38,6 +38,7 @@ class User(SQLModel, table=True):
     timezone: TimeZoneName
     points: int = Field(default=0, ge=0)
     gems: int = Field(default=0, ge=0)
+    streak_freezes: int = Field(default=0, ge=0)
 
     streak: int = Field(default=0, ge=0)
     streaked_at: datetime = Field(

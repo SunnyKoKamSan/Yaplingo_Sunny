@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Awaitable, cast
+from typing import Awaitable, NamedTuple, cast
 from zoneinfo import ZoneInfo
 
 from redis.asyncio import Redis
@@ -9,6 +9,10 @@ from server.repository.entities import User
 
 POINTS_TTL = timedelta(days=1, hours=1)
 INSIGHTS_TTL = timedelta(days=1)
+BOOST_TTL = timedelta(hours=24)
+
+
+Boost = NamedTuple("Boost", [("multiplier", float), ("expiry", int)])
 
 
 class UserStore:
@@ -22,6 +26,10 @@ class UserStore:
         @staticmethod
         def insights(user: User) -> str:
             return f"user:{user.id}:insights"
+
+        @staticmethod
+        def boost(user: User) -> str:
+            return f"user:{user.id}:boost"
 
     def __init__(self, client: Redis):
         self._client = client
@@ -60,6 +68,18 @@ class UserStore:
         key = UserStore.Key.insights(user)
         op = self._client.json().set(key, "$.summary", summary)
         await cast(Awaitable, op)
+
+    async def get_boost(self, user: User) -> Boost | None:
+        key = UserStore.Key.boost(user)
+        value = await self._client.get(key)
+        timestamp = await cast(Awaitable[int], self._client.expiretime(key))
+        if value is None:
+            return
+        return Boost(int(value), timestamp)
+
+    async def set_boost(self, user: User, multiplier: float) -> None:
+        key = UserStore.Key.boost(user)
+        await self._client.set(key, multiplier, ex=BOOST_TTL, nx=True)
 
 
 __all__ = ["UserStore"]
