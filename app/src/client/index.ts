@@ -5,7 +5,7 @@ import { useSetAtom } from "jotai";
 
 import { $token } from "../store";
 import client from "./client";
-import type { Achievement, Leaderboard, User, UserInsights, UserStats } from "./models";
+import type { Achievement, Leaderboard, ShopItem, User, UserInsights, UserStats } from "./models";
 
 export const useLoginMutation = () => {
   const qclient = useQueryClient();
@@ -55,7 +55,7 @@ export const useRegisterMutation = () => {
 
 export const useCurrentUserQuery = ({ check = false }: { check?: boolean } = {}) =>
   useQuery<User, AxiosError>({
-    queryKey: check ? ["user", "me"] : [],
+    queryKey: check ? [] : ["user", "me"],
     queryFn: async () => {
       const options: AxiosRequestConfig = {
         timeout: 5000,
@@ -78,20 +78,20 @@ export const useCurrentUserInsightsQuery = () =>
     staleTime: Infinity,
   });
 
+export const useCurrentUserStatsQuery = () =>
+  useQuery<UserStats, AxiosError>({
+    queryKey: ["user", "me", "stats"],
+    queryFn: async () => {
+      const response = await client.get("/user/@/stats");
+      return response.data;
+    },
+  });
+
 export const useUserQuery = (uid: string) =>
   useQuery<User, AxiosError>({
     queryKey: ["user", uid],
     queryFn: async () => {
       const response = await client.get(`/user/${uid}`);
-      return response.data;
-    },
-  });
-
-export const useUserStatsQuery = () =>
-  useQuery<UserStats, AxiosError>({
-    queryKey: ["game", "stats"],
-    queryFn: async () => {
-      const response = await client.get("/game/stats");
       return response.data;
     },
   });
@@ -104,6 +104,28 @@ export const useLeaderboardQuery = () =>
       return response.data;
     },
   });
+
+export const useShopItemsQuery = () =>
+  useQuery<ShopItem[], AxiosError>({
+    queryKey: ["game", "shop"],
+    queryFn: async () => {
+      const response = await client.get("/game/shop");
+      return response.data;
+    },
+  });
+
+export const usePurchaseShopItemMutation = () => {
+  const qclient = useQueryClient();
+  return useMutation<void, AxiosError, { key: string }>({
+    mutationFn: async ({ key }: { key: string }) => {
+      await client.post(`/game/shop/purchase/${key}`);
+    },
+    onSettled: () => {
+      qclient.invalidateQueries({ queryKey: ["user", "me"] });
+      qclient.invalidateQueries({ queryKey: ["game", "shop"] });
+    },
+  });
+};
 
 export const useAchievementsQuery = () =>
   useQuery<Achievement[], AxiosError>({
@@ -121,7 +143,10 @@ export const useClaimAchievementMutation = () => {
       const response = await client.post(`/game/achievements/claim/${key}`);
       return response.data;
     },
-    onSettled: () => qclient.invalidateQueries({ queryKey: ["game", "achievements"] }),
+    onSettled: () => {
+      qclient.invalidateQueries({ queryKey: ["user", "me"] });
+      qclient.invalidateQueries({ queryKey: ["game"] });
+    },
   });
 };
 

@@ -30,7 +30,7 @@ const PointsCard = ({ user }: { user: User }) => {
     <View style={tw`grow items-center justify-center rounded-2xl border-2 border-zinc-500/50 p-4`}>
       <View style={tw`flex-row items-center`}>
         <ZapIcon color={tw.color("sky-500")} fill={tw.color("sky-500")} size={36} />
-        <Text style={tw`text-5xl font-bold leading-[0] tracking-tighter text-sky-500`}>{user.points[1]}</Text>
+        <Text style={tw`text-5xl font-bold leading-[0] tracking-tighter text-sky-500`}>{user.points.total}</Text>
       </View>
       <Text style={tw`text-center text-xl font-medium text-sky-500`}>XP Points</Text>
     </View>
