@@ -47,6 +47,12 @@ class UserRepository:
             session.add(user)
             await session.commit()
 
+    async def increment_gems(self, user: User, gems_to_add: int) -> None:
+        async with self._session() as session:
+            user.gems += gems_to_add
+            session.add(user)
+            await session.commit()
+
     async def increment_streak(self, user: User) -> None:
         tz = ZoneInfo(user.timezone)
         now = datetime.now(tz)
@@ -66,6 +72,21 @@ class UserRepository:
     async def reset_streak(self, user: User) -> None:
         async with self._session() as session:
             user.streak = 0
+            session.add(user)
+            await session.commit()
+
+    async def increment_streak_freezes(self, user: User, count: int = 1) -> None:
+        async with self._session() as session:
+            user.streak_freezes += count
+            session.add(user)
+            await session.commit()
+
+    async def consume_streak_freeze(self, user: User) -> None:
+        tz = ZoneInfo(user.timezone)
+        yesterday = datetime.now(tz) - timedelta(days=1)
+        async with self._session() as session:
+            user.streak_freezes -= 1
+            user.streaked_at = yesterday
             session.add(user)
             await session.commit()
 

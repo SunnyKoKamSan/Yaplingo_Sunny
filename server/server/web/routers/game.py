@@ -4,17 +4,16 @@ from fastapi import APIRouter
 
 from ..dependencies import Service, User
 from ..schemas.game import (
-    AchievementClaimResponse,
     AchievementsResponse,
     LeaderboardResponse,
-    UserStatisticsResponse,
+    ShopResponse,
 )
 
 router = APIRouter()
 
 
 @router.get("/leaderboard")
-async def leaderboard(user: User, service: Service) -> LeaderboardResponse:
+async def get_leaderboard(user: User, service: Service) -> LeaderboardResponse:
     (entries, my_entry) = await asyncio.gather(
         service.game.list_leaderboard(),
         service.game.get_leaderboard_user(user),
@@ -22,31 +21,30 @@ async def leaderboard(user: User, service: Service) -> LeaderboardResponse:
     return LeaderboardResponse(me=my_entry, entries=entries)
 
 
-@router.get("/stats")
-async def stats(user: User, service: Service) -> UserStatisticsResponse:
-    # if uid != user.id:
-    #     _user = await service.user.get(uid)
-    #     if _user is None:
-    #         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found")
-    #     user = _user
-    stats = await service.game.get_user_stats(user)
-    return UserStatisticsResponse(**stats.model_dump())
-
-
 @router.get("/achievements")
-async def achievements(user: User, service: Service) -> AchievementsResponse.List:
-    items = await service.game.list_user_achievements(user)
+async def get_achievements(user: User, service: Service) -> AchievementsResponse.List:
+    items = await service.game.get_user_achievements(user)
     return [AchievementsResponse.T(**item.model_dump()) for item in items]
 
 
 @router.post("/achievements/claim/{key}")
-async def achievement_claim(
+async def claim_achievement(
     key: str,
     user: User,
     service: Service,
-) -> AchievementClaimResponse:
-    claim = await service.game.claim_user_achievement(user, key)
-    return AchievementClaimResponse(**claim.model_dump())
+) -> None:
+    await service.game.claim_user_achievement(user, key)
+
+
+@router.get("/shop")
+async def get_shop(user: User, service: Service) -> ShopResponse.List:
+    items = await service.game.get_user_shop_items(user)
+    return [ShopResponse.T(**item.model_dump()) for item in items]
+
+
+@router.post("/shop/purchase/{key}")
+async def purchase_shop_item(key: str, user: User, service: Service) -> None:
+    await service.game.purchase_user_shop_item(user, key)
 
 
 __all__ = ["router"]

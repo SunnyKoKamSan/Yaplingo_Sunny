@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from server.service.game import AchievementStatus, LeaderboardEntry, UserStatistics
+from server.service.game import AchievementStatus, LeaderboardEntry, ShopItem
 
 
 class LeaderboardResponse(BaseModel):
@@ -8,15 +8,18 @@ class LeaderboardResponse(BaseModel):
     entries: list[LeaderboardEntry]
 
 
-class UserStatisticsResponse(UserStatistics): ...
-
-
 class AchievementsResponse:
     T = AchievementStatus
     List = list[T]
 
 
-class AchievementClaimResponse(AchievementStatus): ...
+class ShopResponse:
+    T = ShopItem
+    List = list[T]
 
 
-__all__ = ["LeaderboardResponse", "UserStatisticsResponse", "AchievementsResponse", "AchievementClaimResponse"]
+__all__ = [
+    "LeaderboardResponse",
+    "AchievementsResponse",
+    "ShopResponse",
+]

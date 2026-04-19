@@ -36,9 +36,11 @@ class User(SQLModel, table=True):
     password: str
     language: LanguageAlpha2
     timezone: TimeZoneName
-    points: int = 0
+    points: int = Field(default=0, ge=0)
+    gems: int = Field(default=0, ge=0)
+    streak_freezes: int = Field(default=0, ge=0)
 
-    streak: int = 0
+    streak: int = Field(default=0, ge=0)
     streaked_at: datetime = Field(
         default_factory=lambda: datetime.min.replace(tzinfo=timezone.utc),
         sa_type=TIMESTAMP(timezone=True),

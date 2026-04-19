@@ -16,13 +16,11 @@ class AchievementRepository:
             results = await session.exec(query)
             return {ua.key: ua for ua in results.all()}
 
-    async def claim(self, uid: ULID, key: str) -> UserAchievement:
-        ua = UserAchievement(user_id=uid, key=key)
+    async def claim(self, uid: ULID, key: str) -> None:
         async with self._session() as session:
+            ua = UserAchievement(user_id=uid, key=key)
             session.add(ua)
             await session.commit()
-            await session.refresh(ua)
-            return ua
 
 
 __all__ = ["AchievementRepository"]

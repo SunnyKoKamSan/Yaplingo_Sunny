@@ -4,8 +4,17 @@ export type User = {
   language: string;
   timezone: string;
   streak: number;
-  milestone: number;
-  points: [number, number]; // [today, total]
+  streak_freezes: number;
+  gems: number;
+  points: {
+    total: number;
+    today: number;
+    milestone: number;
+  };
+  boost: {
+    multiplier: number;
+    expiry: number;
+  } | null;
   activity: Record<string, number>;
 };
 
@@ -71,4 +80,12 @@ export type Achievement = {
   description: string;
   progress: number;
   claimed_at: string | null;
+};
+
+export type ShopItem = {
+  key: string;
+  name: string;
+  description: string;
+  price: number;
+  purchasable: boolean;
 };

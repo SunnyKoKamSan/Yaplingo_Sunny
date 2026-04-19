@@ -3,12 +3,20 @@ import { Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Line, Rect } from "react-native-svg";
 import { useIsFocused, useTheme } from "@react-navigation/native";
-import { CalendarIcon, FlameIcon, TargetIcon, TrendingUpIcon, ZapIcon } from "lucide-react-native";
+import {
+  CalendarIcon,
+  FlameIcon,
+  RocketIcon,
+  ShieldIcon,
+  TargetIcon,
+  TrendingUpIcon,
+  ZapIcon,
+} from "lucide-react-native";
 import tw from "twrnc";
 
-import { useCurrentUserQuery, useUserStatsQuery, type User, type UserStats } from "~/client";
+import { useCurrentUserQuery, useCurrentUserStatsQuery, type User, type UserStats } from "~/client";
 import { Spinner, Text } from "~/components/primitives";
-import { useSetNavigationOptions, useTomorrowCountdown } from "~/hooks";
+import { useCountdown, useSetNavigationOptions } from "~/hooks";
 import { formatCompactNumber } from "~/utils";
 
 import { ActivityCard, StreakCard } from "./profile";
@@ -39,7 +47,7 @@ const Header = ({ user }: { user?: User }) => {
         <View style={tw`flex-row items-center gap-1.5 rounded-full bg-sky-500/25 px-2.5 py-0.5`}>
           <ZapIcon size={16} color={tw.color("sky-500")} fill={tw.color("sky-500")} />
           <Text style={tw`text-lg font-bold tracking-tighter text-sky-500`}>
-            {user ? formatCompactNumber(user.points[1]) : "-"}
+            {user ? formatCompactNumber(user.points.total) : "-"}
           </Text>
         </View>
       </View>
@@ -48,11 +56,12 @@ const Header = ({ user }: { user?: User }) => {
 };
 
 const MilestoneCard = ({ user }: { user: User }) => {
-  const [points] = user.points; // only care about daily points for milestone progress
-  const remaining = user.milestone - points;
-  const progress = Math.round((points / user.milestone) * 100);
+  const remaining = user.points.milestone - user.points.today;
+  const progress = Math.round((user.points.today / user.points.milestone) * 100);
 
-  const countdown = useTomorrowCountdown();
+  const midnight = new Date();
+  midnight.setHours(24, 0, 0, 0);
+  const countdown = useCountdown(midnight);
 
   return (
     <View style={tw`grow items-center justify-center gap-2 rounded-2xl border-2 border-zinc-500/50 p-4`}>
@@ -66,7 +75,9 @@ const MilestoneCard = ({ user }: { user: User }) => {
         </View>
       ) : (
         <View>
-          <Text style={tw`text-center text-3xl font-bold tracking-tighter text-sky-500`}>{user.milestone} XP</Text>
+          <Text style={tw`text-center text-3xl font-bold tracking-tighter text-sky-500`}>
+            {user.points.milestone} XP
+          </Text>
           <Text style={tw`text-center text-lg font-medium`}>Completed</Text>
           <Text style={tw`text-center text-sm font-medium text-neutral-500`}>next milestone at {countdown}</Text>
         </View>
@@ -81,9 +92,9 @@ const MilestoneCard = ({ user }: { user: User }) => {
         <Text
           style={tw.style(
             "text-xs font-medium tracking-tighter text-neutral-500",
-            points > user.milestone && "font-bold text-sky-500",
+            user.points.today > user.points.milestone && "font-bold text-sky-500",
           )}>
-          {Math.max(user.milestone, points)}
+          {Math.max(user.points.milestone, user.points.today)}
         </Text>
       </View>
     </View>
@@ -270,10 +281,48 @@ const PointsBanner = ({ stats }: { stats: UserStats }) => {
   );
 };
 
+export const ActiveCard = ({ user }: { user?: User }) => {
+  const expiry = user?.boost ? new Date(user.boost.expiry * 1000) : null;
+  const countdown = useCountdown(expiry);
+  return (
+    <View style={tw`gap-2`}>
+      <View style={tw`flex-row items-center gap-4 rounded-xl border-2 border-zinc-500/50 px-2.5 py-2`}>
+        <View
+          style={tw.style(
+            "size-10 items-center justify-center rounded-full",
+            user?.boost ? "bg-orange-500/25" : "bg-neutral-500/25",
+          )}>
+          <RocketIcon size={20} color={user?.boost ? tw.color("orange-500") : tw.color("neutral-500")} />
+        </View>
+        <View>
+          <Text style={tw`text-base font-medium`}>
+            {user?.boost ? `${user.boost.multiplier}x XP Boost` : "No Active Boost"}
+          </Text>
+          {user?.boost && <Text style={tw`text-sm font-medium text-neutral-500`}>{countdown} remaining</Text>}
+        </View>
+        {user?.boost && (
+          <View style={tw`ml-auto rounded-lg bg-orange-500/25 px-2.5 py-0.5`}>
+            <Text style={tw`font-medium text-orange-500`}>Active</Text>
+          </View>
+        )}
+      </View>
+      <View style={tw`flex-row items-center gap-4 rounded-xl border-2 border-zinc-500/50 px-2.5 py-2`}>
+        <View style={tw`size-10 items-center justify-center rounded-full bg-neutral-500/25`}>
+          <ShieldIcon size={20} color={tw.color("neutral-500")} />
+        </View>
+        <View>
+          <Text style={tw`text-base font-medium`}>You have {user ? user.streak_freezes : 0} streak freezes.</Text>
+          <Text style={tw`text-sm font-medium text-neutral-500`}>Automatically consumed when streak is broken.</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
 export default function MainHomeScreen() {
   const focused = useIsFocused();
   const { data: user } = useCurrentUserQuery();
-  const { data: stats, isLoading: statsLoading } = useUserStatsQuery();
+  const { data: stats, isLoading: statsLoading } = useCurrentUserStatsQuery();
   const [animationToken, setAnimationToken] = useState(Math.random());
 
   useSetNavigationOptions({ header: () => <Header user={user} /> });
@@ -297,6 +346,7 @@ export default function MainHomeScreen() {
         <StreakCard user={user} />
         <MilestoneCard user={user} />
       </View>
+      <ActiveCard user={user} />
       <ActivityCard user={user} />
       {statsLoading && (
         <View style={tw`items-center py-8`}>

@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Literal
 from zoneinfo import ZoneInfo
 
@@ -9,6 +9,7 @@ from ulid import ULID
 from server.repository import Repository
 from server.repository.entities import User
 from server.store import Store
+from server.store.user import Boost
 
 
 class LeaderboardEntry(BaseModel):
@@ -18,25 +19,13 @@ class LeaderboardEntry(BaseModel):
     score: int
 
 
-class UserStatistics(BaseModel):
-    class ProgressEntry(BaseModel):
-        date: datetime
-        points: int
-        count: int
-
-    progress: list[ProgressEntry]
-    average_points_7d: float
-    best_streak_30d: int
-    total_points_30d: int
-    completion_rate_30d: float
-
-
 class AchievementRule(BaseModel):
     key: str
     title: str
     description: str
     threshold_type: Literal["points", "streak", "sessions", "rank"]
     threshold_value: int
+    gems: int
 
 
 class AchievementStatus(AchievementRule):
@@ -45,12 +34,14 @@ class AchievementStatus(AchievementRule):
 
 
 ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
+    # --- Points ---
     AchievementRule(
         key="first_step",
         title="First Step",
         description="Earn your first 10 XP",
         threshold_type="points",
         threshold_value=10,
+        gems=5,
     ),
     AchievementRule(
         key="bronze_mic",
@@ -58,6 +49,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Earn 500 XP total",
         threshold_type="points",
         threshold_value=500,
+        gems=10,
     ),
     AchievementRule(
         key="silver_mic",
@@ -65,6 +57,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Earn 2,000 XP total",
         threshold_type="points",
         threshold_value=2000,
+        gems=25,
     ),
     AchievementRule(
         key="gold_mic",
@@ -72,6 +65,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Earn 10,000 XP total",
         threshold_type="points",
         threshold_value=10000,
+        gems=50,
     ),
     AchievementRule(
         key="platinum_mic",
@@ -79,6 +73,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Earn 50,000 XP total",
         threshold_type="points",
         threshold_value=50000,
+        gems=100,
     ),
     AchievementRule(
         key="diamond_mic",
@@ -86,13 +81,16 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Earn 100,000 XP total",
         threshold_type="points",
         threshold_value=100000,
+        gems=200,
     ),
+    # --- Streaks ---
     AchievementRule(
         key="streak_5",
         title="On Fire",
         description="Maintain a 5-day streak",
         threshold_type="streak",
         threshold_value=5,
+        gems=10,
     ),
     AchievementRule(
         key="streak_14",
@@ -100,6 +98,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Maintain a 14-day streak",
         threshold_type="streak",
         threshold_value=14,
+        gems=25,
     ),
     AchievementRule(
         key="streak_30",
@@ -107,6 +106,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Maintain a 30-day streak",
         threshold_type="streak",
         threshold_value=30,
+        gems=50,
     ),
     AchievementRule(
         key="streak_100",
@@ -114,6 +114,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Maintain a 100-day streak",
         threshold_type="streak",
         threshold_value=100,
+        gems=150,
     ),
     AchievementRule(
         key="streak_365",
@@ -121,13 +122,16 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Practice every day for a year",
         threshold_type="streak",
         threshold_value=365,
+        gems=500,
     ),
+    # --- Sessions ---
     AchievementRule(
         key="session_50",
         title="Half Century",
         description="Complete 50 Echo + Chat sessions",
         threshold_type="sessions",
         threshold_value=50,
+        gems=25,
     ),
     AchievementRule(
         key="session_200",
@@ -135,6 +139,7 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Complete 200 Echo + Chat sessions",
         threshold_type="sessions",
         threshold_value=200,
+        gems=75,
     ),
     AchievementRule(
         key="session_500",
@@ -142,14 +147,56 @@ ACHIEVEMENT_RULES: tuple[AchievementRule, ...] = (
         description="Complete 500 Echo + Chat sessions",
         threshold_type="sessions",
         threshold_value=500,
+        gems=150,
     ),
+    # --- Rank ---
     AchievementRule(
         key="alltime_legend",
         title="All-Time Legend",
         description="Reach #1 on the global leaderboard",
         threshold_type="rank",
         threshold_value=1,
+        gems=500,
     ),
+)
+
+
+class ShopItem(BaseModel):
+    key: str
+    name: str
+    description: str
+    price: int
+    purchasable: bool
+
+
+SHOP_CATALOG: tuple[dict, ...] = (
+    {
+        "key": "instant_points",
+        "name": "Instant XP 500",
+        "description": "Instantly earn 500 XP.",
+        "price": 50,
+        "value": 500,
+    },
+    {
+        "key": "streak_freeze",
+        "name": "Streak Freeze",
+        "description": "Protect your streak for one day.",
+        "price": 100,
+    },
+    {
+        "key": "boost_2x",
+        "name": "2x XP Boost",
+        "description": "2x XP from sessions for 24 hours.",
+        "price": 75,
+        "value": 2,
+    },
+    {
+        "key": "boost_5x",
+        "name": "5x XP Boost",
+        "description": "5x XP from sessions for 24 hours.",
+        "price": 150,
+        "value": 5,
+    },
 )
 
 
@@ -206,63 +253,7 @@ class GameService:
             return await self.store.user.increment_points_today(user, 0)
         return points_today
 
-    async def get_user_points_progress(self, user: User, days: int = 30) -> list[UserStatistics.ProgressEntry]:
-        tz = ZoneInfo(user.timezone)
-        today = datetime.now(tz).date()
-        start = today - timedelta(days=days - 1)
-        start = datetime(start.year, start.month, start.day, tzinfo=tz)
-        end = datetime(today.year, today.month, today.day, tzinfo=tz) + timedelta(days=1)
-
-        sessions = await self.repository.aggregation.get_sessions_by_user(user, start=start, end=end)
-
-        daily_points: dict[str, int] = {}
-        daily_sessions: dict[str, int] = {}
-        for s in sessions:
-            key = s.completed_at.astimezone(tz).date().isoformat()
-            daily_points[key] = daily_points.get(key, 0) + s.points
-            daily_sessions[key] = daily_sessions.get(key, 0) + 1
-
-        progress: list[UserStatistics.ProgressEntry] = []
-        current = start
-        while current <= end:
-            key = current.date().isoformat()
-            progress.append(
-                UserStatistics.ProgressEntry(
-                    date=current,
-                    points=daily_points.get(key, 0),
-                    count=daily_sessions.get(key, 0),
-                )
-            )
-            current += timedelta(days=1)
-        return progress
-
-    async def get_user_stats(self, user: User) -> UserStatistics:
-        progress = await self.get_user_points_progress(user, 30)
-
-        last_7_days = progress[-7:]
-        average_points = sum(e.points for e in last_7_days) / 7
-        active_days = sum(1 for e in progress if e.count > 0)
-        completion_rate = (active_days / 30) * 100
-
-        best_streak = current_run = 0
-        for entry in progress:
-            if entry.points > 0:
-                current_run += 1
-                best_streak = max(best_streak, current_run)
-            else:
-                current_run = 0
-
-        total_points = sum(e.points for e in progress)
-
-        return UserStatistics(
-            progress=progress,
-            average_points_7d=round(average_points, 1),
-            best_streak_30d=best_streak,
-            total_points_30d=total_points,
-            completion_rate_30d=round(completion_rate, 1),
-        )
-
-    async def list_user_achievements(self, user: User) -> list[AchievementStatus]:
+    async def get_user_achievements(self, user: User) -> list[AchievementStatus]:
         rank_score = await self.store.leaderboard.get(user)
         is_rank_one = rank_score is not None and rank_score[0] == 1
         claims = await self.repository.achievement.list(user.id)
@@ -302,17 +293,63 @@ class GameService:
             )
         return achievements
 
-    async def claim_user_achievement(self, user: User, key: str) -> AchievementStatus:
-        achievements = await self.list_user_achievements(user)
+    async def claim_user_achievement(self, user: User, key: str) -> None:
+        achievements = await self.get_user_achievements(user)
         achievement = next((a for a in achievements if a.key == key), None)
         assert achievement is not None, "invalid achievement key"
         assert achievement.claimed_at is None, "achievement claimed already"
         assert achievement.progress >= 1.0, "achievement criteria not met"
-        claim = await self.repository.achievement.claim(user.id, key)
-        return AchievementStatus(
-            **achievement.model_dump(exclude={"claimed_at"}),
-            claimed_at=claim.claimed_at,
-        )
+        await self.repository.achievement.claim(user.id, key)
+        await self.repository.user.increment_gems(user, achievement.gems)
+
+    async def get_user_active_boost(self, user: User) -> Boost | None:
+        return await self.store.user.get_boost(user)
+
+    async def get_user_shop_items(self, user: User) -> list[ShopItem]:
+        boost = await self.store.user.get_boost(user)
+
+        items: list[ShopItem] = []
+        for entry in SHOP_CATALOG:
+            key = entry["key"]
+            price = entry["price"]
+            affordable = user.gems >= price
+            purchasable = affordable
+            if key in ("boost_2x", "boost_5x"):
+                purchasable = affordable and boost is None
+            items.append(
+                ShopItem(
+                    key=entry["key"],
+                    name=entry["name"],
+                    description=entry["description"],
+                    price=entry["price"],
+                    purchasable=purchasable,
+                )
+            )
+        return items
+
+    async def purchase_user_shop_item(self, user: User, key: str) -> None:
+        catalog = {entry["key"]: entry for entry in SHOP_CATALOG}
+        assert key in catalog, "invalid shop item key"
+
+        entry = catalog[key]
+        price = entry["price"]
+
+        assert user.gems >= price, "insufficient gems"
+
+        match key:
+            case "instant_points":
+                amount = entry["value"]
+                await self.repository.user.increment_gems(user, -price)
+                await self.repository.user.increment_points(user, amount)
+                await self.store.leaderboard.increment(user, amount)
+                await self.store.user.increment_points_today(user, amount)
+            case "streak_freeze":
+                await self.repository.user.increment_gems(user, -price)
+                await self.repository.user.increment_streak_freezes(user)
+            case "boost_2x" | "boost_5x":
+                multiplier = entry["value"]
+                await self.store.user.set_boost(user, multiplier)
+                await self.repository.user.increment_gems(user, -price)
 
 
-__all__ = ["GameService", "LeaderboardEntry", "UserStatistics", "AchievementStatus"]
+__all__ = ["GameService", "LeaderboardEntry", "AchievementStatus", "ShopItem"]
