@@ -102,7 +102,7 @@ class EchoService:
             points_net = self.state.points
             boost = await self._service.store.user.get_boost(self.user)
             if boost is not None:
-                points_net *= boost[0]
+                points_net *= boost.multiplier
             points_net_final = points_net - self.state.expense
             await self._service.repository.user.increment_points(self.user, points_net_final)
             await self._service.store.leaderboard.increment(self.user, points_net_final)

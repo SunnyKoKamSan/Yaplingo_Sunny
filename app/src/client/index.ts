@@ -122,7 +122,7 @@ export const usePurchaseShopItemMutation = () => {
     },
     onSettled: () => {
       qclient.invalidateQueries({ queryKey: ["user", "me"] });
-      qclient.invalidateQueries({ queryKey: ["game", "shop"] });
+      qclient.invalidateQueries({ queryKey: ["game"] });
     },
   });
 };
@@ -138,10 +138,9 @@ export const useAchievementsQuery = () =>
 
 export const useClaimAchievementMutation = () => {
   const qclient = useQueryClient();
-  return useMutation<Achievement, AxiosError, { key: string }>({
+  return useMutation<void, AxiosError, { key: string }>({
     mutationFn: async ({ key }: { key: string }) => {
-      const response = await client.post(`/game/achievements/claim/${key}`);
-      return response.data;
+      await client.post(`/game/achievements/claim/${key}`);
     },
     onSettled: () => {
       qclient.invalidateQueries({ queryKey: ["user", "me"] });

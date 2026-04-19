@@ -12,7 +12,7 @@ INSIGHTS_TTL = timedelta(days=1)
 BOOST_TTL = timedelta(hours=24)
 
 
-Boost = NamedTuple("Boost", [("multiplier", float), ("expiry", int)])
+Boost = NamedTuple("Boost", [("multiplier", int), ("expiry", int)])
 
 
 class UserStore:
@@ -71,13 +71,15 @@ class UserStore:
 
     async def get_boost(self, user: User) -> Boost | None:
         key = UserStore.Key.boost(user)
-        value = await self._client.get(key)
-        timestamp = await cast(Awaitable[int], self._client.expiretime(key))
-        if value is None:
-            return
-        return Boost(int(value), timestamp)
+        pipe = self._client.pipeline()
+        pipe.get(key)
+        pipe.expiretime(key)
+        value, timestamp = await pipe.execute()
+        if value is None or timestamp is None:
+            return None
+        return Boost(int(value), int(timestamp))
 
-    async def set_boost(self, user: User, multiplier: float) -> None:
+    async def set_boost(self, user: User, multiplier: int) -> None:
         key = UserStore.Key.boost(user)
         await self._client.set(key, multiplier, ex=BOOST_TTL, nx=True)
 

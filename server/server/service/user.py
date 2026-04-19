@@ -207,7 +207,7 @@ class UserService:
 
         progress: list[UserStatistics.ProgressEntry] = []
         current = start
-        while current <= end:
+        while current < end:
             key = current.date().isoformat()
             progress.append(
                 UserStatistics.ProgressEntry(

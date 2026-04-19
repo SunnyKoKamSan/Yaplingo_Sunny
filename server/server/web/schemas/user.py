@@ -21,7 +21,7 @@ class UserResponse(BaseModel):
         milestone: int
 
     class Boost(BaseModel):
-        multiplier: float
+        multiplier: int
         expiry: int
 
     id: ULID
