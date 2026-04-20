@@ -29,6 +29,7 @@ dependencies = [
     "gtts",
     "phonemizer",
     "pycountry>=24.6.1",
+    "deepgram-sdk>=4.0.0",
     "faster-whisper>=1.2.1",
     "multiavatar>=1.0.3",
 ]

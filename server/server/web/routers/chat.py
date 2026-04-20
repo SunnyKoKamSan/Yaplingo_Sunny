@@ -1,19 +1,44 @@
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import StreamingResponse
+
+from server.core.textspeech import DeepgramTextSpeech
 
 from ..dependencies import Service, User
 from ..schemas.chat import ChatInput, ChatOutputType, ChatResponse
+from ..settings import settings
 from ..websocket import SessionManager, Sessions
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.sessions = SessionManager()
+    app.state.tts = DeepgramTextSpeech(api_key=settings.deepgram_api_key.get_secret_value())
     yield
 
 
 router = APIRouter(lifespan=lifespan)
+
+
+@router.get("/tts")
+async def stream_tts(
+    request: Request,
+    user: User,
+    service: Service,
+):
+    session = await service.chat.session(user, generate=False)
+    if session is None or session.state.finished:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No Active Session")
+
+    text = [session.state.scenario.opening, *[turn.reply.content for turn in session.state.turns]][-1]
+    tts: DeepgramTextSpeech = request.app.state.tts
+
+    return StreamingResponse(
+        tts(text),
+        media_type=DeepgramTextSpeech.MIME,
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @router.websocket("/ws")

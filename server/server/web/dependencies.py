@@ -35,7 +35,7 @@ class BearerToken(HTTPBearer):
         try:
             claims: dict[str, Any] = jwt.decode(
                 credentials.credentials,
-                settings.secret,
+                settings.secret.get_secret_value(),
                 algorithms=["HS256"],
             )
             return TokenClaims.model_validate(claims)

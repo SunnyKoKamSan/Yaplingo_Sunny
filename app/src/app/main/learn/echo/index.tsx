@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
 import Animated, {
   FadeIn,
@@ -16,7 +16,9 @@ import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { useTheme } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RecorderState } from "expo-audio";
+import { useAudioPlayer } from "expo-audio";
 import { useRouter } from "expo-router";
+import { useAtomValue } from "jotai";
 import {
   ArrowRightIcon,
   EarIcon,
@@ -30,10 +32,12 @@ import {
 import tw from "twrnc";
 
 import { useCurrentUserQuery } from "~/client";
+import { API_URL } from "~/client/client";
 import { EchoSessionStatus, useEchoSession, type Attempt, type EchoSession, type Session } from "~/client/echo";
 import { PronunciationBreakdown, RecordButton } from "~/components";
 import { Spinner, Text } from "~/components/primitives";
 import { useAudio, useSetNavigationOptions } from "~/hooks";
+import { $token } from "~/store";
 import { getScoreColor } from "~/utils";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -115,13 +119,32 @@ const Header = ({
 const AttemptSheet = ({
   ref,
   attempt,
+  autoplay = false,
   onWillDismiss,
 }: {
   ref?: React.Ref<TrueSheet>;
   attempt: Attempt;
+  autoplay: boolean;
   onWillDismiss?: () => void;
 }) => {
   const theme = useTheme();
+
+  const token = useAtomValue($token);
+
+  const player = useAudioPlayer(
+    autoplay
+      ? {
+          uri: `${API_URL}/echo/tts`,
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      : null,
+  );
+
+  useEffect(() => {
+    if (autoplay) {
+      player.play();
+    }
+  }, [autoplay, player]);
 
   const score = useMemo(() => {
     const color = getScoreColor(attempt.pronunciation.score);
@@ -140,7 +163,12 @@ const AttemptSheet = ({
       detents={[0.5]}
       initialDetentIndex={0}
       initialDetentAnimated={true}
-      onWillDismiss={onWillDismiss}>
+      onWillDismiss={() => {
+        if (autoplay) {
+          player.pause();
+        }
+        onWillDismiss?.();
+      }}>
       <ScrollView contentContainerStyle={tw`gap-4 p-4`}>
         <View style={tw`mt-8 items-center justify-center gap-2`}>
           <Text style={[tw`text-center text-6xl font-bold tracking-tighter`, { color: score.color }]}>
@@ -237,7 +265,7 @@ const SummaryView = ({ session }: { session: Session }) => {
           </ScrollView>
         </View>
       </View>
-      {attempt && <AttemptSheet attempt={attempt} onWillDismiss={() => setSelection(null)} />}
+      {attempt && <AttemptSheet autoplay={false} attempt={attempt} onWillDismiss={() => setSelection(null)} />}
     </>
   );
 };
@@ -273,7 +301,7 @@ export default function MainLearnEchoScreen() {
 
   const buyable = useMemo(() => {
     if (user === undefined || session.data === undefined) return false;
-    return user.points[1] >= session.data.expense + session.data.price;
+    return user.points.total >= session.data.expense + session.data.price;
   }, [session.data, user]);
 
   const _flipped = useSharedValue(false);
@@ -325,16 +353,14 @@ export default function MainLearnEchoScreen() {
   const handlePronounce = () => {
     setPlaybacking(false);
     audio.player.replace(transcript!.audio);
-    audio.player.seekTo(0);
-    audio.player.play();
+    audio.player.seekTo(0).then(() => audio.player.play());
   };
 
   const handlePlayback = () => {
     if (!attempt) return;
     setPlaybacking(true);
     audio.player.replace(attempt.audio);
-    audio.player.seekTo(0);
-    audio.player.play();
+    audio.player.seekTo(0).then(() => audio.player.play());
   };
 
   const handleBuy = () => {
@@ -536,7 +562,7 @@ export default function MainLearnEchoScreen() {
           )}
         </>
       )}
-      {attempt && <AttemptSheet ref={sheet} attempt={attempt} />}
+      {attempt && <AttemptSheet ref={sheet} autoplay={true} attempt={attempt} />}
     </View>
   );
 }

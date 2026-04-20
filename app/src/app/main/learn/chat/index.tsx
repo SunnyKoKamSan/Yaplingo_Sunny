@@ -1,10 +1,12 @@
-import { useRef, useState, type Ref } from "react";
+import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import { Alert, FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { useTheme } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAudioPlayer } from "expo-audio";
 import { useRouter } from "expo-router";
+import { useAtomValue } from "jotai";
 import { CircleCheckBigIcon, CircleIcon, ListTodoIcon, PlayIcon, StarsIcon, XIcon } from "lucide-react-native";
 import tw from "twrnc";
 
@@ -16,9 +18,11 @@ import {
   type Evaluation,
   type Turn,
 } from "~/client/chat";
+import { API_URL } from "~/client/client";
 import { PronunciationBreakdown, RecordButton } from "~/components";
 import { Spinner, Text } from "~/components/primitives";
 import { useAudio, useSetNavigationOptions } from "~/hooks";
+import { $token } from "~/store";
 import { getScoreColor } from "~/utils";
 
 const Header = ({ session, onClose }: { session: ChatSession; onClose: () => void }) => {
@@ -203,14 +207,32 @@ export default function MainLearnChatScreen() {
 
   const [selection, setSelection] = useState<Turn | null>(null);
 
-  const audio = useAudio();
-
   const { session, submit, abort, end } = useChatSession({
     onClose: () => {
       if (router.canDismiss()) router.dismissAll();
       client.invalidateQueries({ queryKey: ["user", "me"] });
     },
   });
+
+  const token = useAtomValue($token);
+
+  const tts = useMemo(
+    () => ({
+      uri: `${API_URL}/chat/tts`,
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+    [token],
+  );
+
+  const audio = useAudio();
+  const player = useAudioPlayer(tts);
+
+  useEffect(() => {
+    if (session.status === ChatSessionStatus.READY_TURN) {
+      player.replace(tts);
+      player.seekTo(0).then(() => player.play());
+    }
+  }, [player, session.status, tts]);
 
   useSetNavigationOptions({
     header: () => <Header session={session} onClose={handleClose} />,
@@ -235,8 +257,7 @@ export default function MainLearnChatScreen() {
 
   const playback = (turn: Turn) => {
     audio.player.replace(turn.audio);
-    audio.player.seekTo(0);
-    audio.player.play();
+    audio.player.seekTo(0).then(() => audio.player.play());
   };
 
   return (

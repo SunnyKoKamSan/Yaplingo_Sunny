@@ -18,7 +18,7 @@ router = APIRouter()
 def generate_token(uid: ULID) -> str:
     expiration = datetime.now(timezone.utc) + TOKEN_TTL
     claims = {"sub": str(uid), "exp": expiration}
-    return jwt.encode(claims, settings.secret, algorithm="HS256")
+    return jwt.encode(claims, settings.secret.get_secret_value(), algorithm="HS256")
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)

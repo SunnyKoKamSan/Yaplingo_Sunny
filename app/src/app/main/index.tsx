@@ -219,8 +219,8 @@ const PointsBarChart = ({ entries, token }: { entries: UserStats["progress"][num
 const StatCard = ({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) => (
   <View style={tw`flex-1 items-center gap-0.5 rounded-xl bg-green-600/20 px-2 py-3`}>
     {icon}
-    <Text style={tw`text-base font-bold text-green-800 dark:text-green-200`}>{value}</Text>
-    <Text style={tw`text-center text-xs font-medium text-green-700/70 dark:text-green-300/70`}>{label}</Text>
+    <Text style={tw`text-xl font-bold text-green-800 dark:text-green-200`}>{value}</Text>
+    <Text style={tw`text-center text-sm font-medium text-green-700/70 dark:text-green-300/70`}>{label}</Text>
   </View>
 );
 
@@ -238,8 +238,8 @@ const PointsBanner = ({ stats }: { stats: UserStats }) => {
           <Pressable
             key={t}
             onPress={() => setTab(t)}
-            style={[tw`flex-1 items-center py-2.5`, t === tab && tw`-mb-px border-b-2 border-green-500`]}>
-            <Text style={tw.style("text-xs font-medium uppercase", t === tab ? "text-green-600" : "text-zinc-500")}>
+            style={[tw`flex-1 items-center py-3`, t === tab && tw`-mb-px border-b-2 border-green-500`]}>
+            <Text style={tw.style("text-sm font-bold uppercase", t === tab ? "text-green-600" : "text-zinc-500")}>
               {t === "30d" ? "Last 30 Days" : "Today"}
             </Text>
           </Pressable>
@@ -262,7 +262,7 @@ const PointsBanner = ({ stats }: { stats: UserStats }) => {
 
       <View style={tw`flex-row gap-2 px-3 pb-3`}>
         <StatCard
-          label="7-Day Avg"
+          label="7D Average"
           value={`${Math.round(stats.average_points_7d)}`}
           icon={<TrendingUpIcon size={16} color={tw.color("green-500")} />}
         />
