@@ -52,6 +52,7 @@ class DeepgramTextSpeech(BaseTextSpeech):
         )
 
     async def __call__(self, text: str) -> AsyncIterator[bytes]:
+        text = text.replace('"', "")
         async with self._client.stream(
             "POST",
             "/speak",

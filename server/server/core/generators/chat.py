@@ -14,7 +14,7 @@ class ScenarioGenerator(BaseGenerator):
     async def __call__(self) -> Scenario:
         response = await super().call(
             "Generate a new scenario.",
-            temperature=1.25,
+            temperature=0.8,
             response_format={
                 "type": "json_schema",
                 "json_schema": Scenario.model_json_schema(),

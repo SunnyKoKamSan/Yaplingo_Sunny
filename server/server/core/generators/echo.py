@@ -60,4 +60,4 @@ class FeedbackGenerator(BaseGenerator):
         Errors: \n{errors}
         """
         print(f"--- Feedback Generator ---\n{prompt}\n" + "-" * 25)
-        return (await super().call(prompt, temperature=0)).strip()
+        return (await super().call(prompt, temperature=0)).strip().replace("*", "")
